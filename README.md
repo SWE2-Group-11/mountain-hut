@@ -12,6 +12,7 @@
 ```
 backend/    Server: REST API and database
 frontend/   Client: web user interface
+e2e/        End-to-end tests: full user flows across frontend and backend
 docs/       Project documentation
 ```
 
