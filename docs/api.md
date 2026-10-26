@@ -27,6 +27,41 @@ Base URL: `http://localhost:3000/api/v1`
 - **Query parameters:**
   - `date`: required date, formatted `YYYY-MM-DD`
 - **Responses:**
-  - `200 OK`: returns the list of the available slots; returns [] if no slots are available
+  - `200 OK`: returns the list of the available slots; returns `[]` if no slots are available
   - `400 Bad Request`: missing date or invalid date
+  - `500 Internal Server Error`: unexpected server error
+
+### GET /slots/configurations
+
+- **Description:** returns the saved configurations that can be reused
+- **Authentication:** required
+- **Permissions:** employee, warden
+- **Responses:**
+  - `200 OK`: returns the list of configurations, including identifiers, tables and seat capacity; returns `[]` if no configuration exists
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
+  - `500 Internal Server Error`: unexpected server error
+
+### POST /slots
+
+- **Description:** creates a slot for a specific date and time
+  interval, with its table and seat configuration
+- **Authentication:** required
+- **Permissions:** employee or warden
+- **Request body:**
+  - `date`: required, formatted as `YYYY-MM-DD`
+  - `startTime`: required, formatted as `HH:mm`
+  - `endTime`: required, formatted as `HH:mm`
+  - `configuration`: a new table and seat configuration
+  - `configurationId`: identifier of a saved configuration
+  - Exactly one of `configuration` and `configurationId` is required
+- **Possible responses:**
+  - `201 Created`: returns the created slot, including its identifier
+  - `400 Bad Request`: missing fields, invalid values or both
+    configuration options provided
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
+  - `404 Not Found`: a referenced configuration or table does not exist
+  - `409 Conflict`: the slot conflicts with an existing one,
+    according to the agreed scheduling rules
   - `500 Internal Server Error`: unexpected server error
