@@ -7,6 +7,14 @@
 - [Database](docs/database.md): schema, rules and SQL scripts
 - [Working agreement](docs/working-agreement.md): branches, commits, pull requests
 
+## License motivations
+
+We want our project to be used commercially by mountain huts.
+We want to be credited when the code gets modified and redistributed.
+We are free to use any license based on npm packages used to build this project.
+
+Considering these main motivations, we choose to adopt the EUPL-1.2 license, included in the root directory of the repository inside the [LICENSE](LICENSE) file
+
 ## Repository layout
 
 ```
