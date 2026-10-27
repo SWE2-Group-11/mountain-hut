@@ -4,7 +4,7 @@ Base URL: `http://localhost:3000/api/v1`
 
 ## Service
 
-### POST /reservation
+### POST /reservations
 
 - **Description:** create the reservation to book a table for an authenticated user
 - **Authentication:** required
@@ -13,9 +13,12 @@ Base URL: `http://localhost:3000/api/v1`
   - `date`: required date, formatted `YYYY-MM-DD`
   - `slot`: required slot
   - `partySize`: required positive integer
+  - `requirements`: optional object containing dietary requirements; if omitted, no dietary requirements are declared
+    - `hasAllergies`: optional boolean
+    - `details`: optional string describing dietary restrictions, preferences and affected party members; required and not empty when `hasAllergies` is true
 - **Responses:**
-  - `201 Created`: booking created; returns the booking details
-  - `400 Bad Request`: missing or invalid request fields
+  - `201 Created`: booking created; returns the booking details, including any declared dietary requirements
+  - `400 Bad Request`: missing or invalid request fields, including missing allergy details when `hasAllergies` is true
   - `401 Unauthorized`: user is not authenticated
   - `409 Conflict`: the requested capacity is no longer available
   - `500 Internal Server Error`: unexpected server error
