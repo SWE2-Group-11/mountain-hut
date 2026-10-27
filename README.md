@@ -75,7 +75,14 @@ The server listens on `http://localhost:3000`.
 
 ### Demo accounts
 
+All demo accounts have the password `password`.
 
+| Email | Role |
+|---|---|
+| `warden@mountainhut.test` | Warden |
+| `employee@mountainhut.test` | Employee |
+| `mario@mountainhut.test` | Hiker |
+| `laura@mountainhut.test` | Hiker |
 
 ## Frontend
 
