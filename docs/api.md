@@ -65,3 +65,18 @@ Base URL: `http://localhost:3000/api/v1`
   - `409 Conflict`: the slot conflicts with an existing one,
     according to the agreed scheduling rules
   - `500 Internal Server Error`: unexpected server error
+
+### GET /slots/:slotId/availability — Check booking availability
+
+- **Description:** checks whether the selected slot can accommodate the requested party size
+- **Authentication:** not required
+- **Path parameters:**
+  - `slotId`: required identifier of the selected slot
+- **Query parameters:**
+  - `partySize`: required positive integer
+- **Possible responses:**
+  - `200 OK`: returns the availability result `available` which is false if the party cannot be accommodated or the slot is closed
+  - `400 Bad Request`: invalid slot identifier or missing,
+    invalid or non-positive party size
+  - `404 Not Found`: the slot does not exist
+  - `500 Internal Server Error`: unexpected server error
