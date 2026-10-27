@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { db } from "../database/database";
 import { Account } from "../models/entities/account";
-import { PASSWORD_KEY_LENGTH } from "../config/config";
 import { hashPassword } from "../services/password-service";
 
 /**

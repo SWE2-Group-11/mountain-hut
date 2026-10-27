@@ -1,13 +1,10 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import session from "express-session";
 import morgan from "morgan";
 import cors from "cors";
-import { ROUTES, CLIENT_ORIGIN, SESSION_SECRET } from "./config/config";
-import { authenticateSession, requireRole } from "./services/auth-service";
-import authRouter from "./routes/auth-route";
-import servicesRoute from "./routes/services-route";
-import ticketsRoute from "./routes/tickets-route";
+import { CLIENT_ORIGIN, SESSION_SECRET } from "./config/config";
 import { sendAppError, sendNotFoundError, sendBadRequestError } from "./services/error-service";
+import { authenticateSession } from "./services/auth-service";
 
 // Init express
 export const app = express();
@@ -36,7 +33,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Unhandled errors (e.g. malformed JSON) → ErrorDTO format
-app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+app.use((err: unknown, req: Request, res: Response) => {
     if (err instanceof SyntaxError && "body" in err) {
         return sendBadRequestError("Malformed JSON body", res);
     }
