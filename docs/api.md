@@ -4,7 +4,7 @@ Base URL: `http://localhost:3000/api/v1`
 
 ## Service
 
-### POST /reservations
+### POST /reservations - Create a reservation
 
 - **Description:** create the reservation to book a table for an authenticated user
 - **Authentication:** required
@@ -23,7 +23,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `409 Conflict`: the requested capacity is no longer available
   - `500 Internal Server Error`: unexpected server error
 
-### GET /slots
+### GET /slots - Get slots for the selected date
 
 - **Description:** get the slots available for the selected date, including their booking availability
 - **Authentication:** not required
@@ -34,7 +34,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `400 Bad Request`: missing date or invalid date
   - `500 Internal Server Error`: unexpected server error
 
-### GET /slots/configurations
+### GET /slots/configurations - Get saved slots configurations
 
 - **Description:** returns the saved configurations that can be reused
 - **Authentication:** required
@@ -45,7 +45,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
 
-### POST /slots
+### POST /slots - Create a slot
 
 - **Description:** creates a slot for a specific date and time
   interval, with its table and seat configuration
@@ -82,4 +82,39 @@ Base URL: `http://localhost:3000/api/v1`
   - `400 Bad Request`: invalid slot identifier or missing,
     invalid or non-positive party size
   - `404 Not Found`: the slot does not exist
+  - `500 Internal Server Error`: unexpected server error
+
+### PATCH /reservations/:reservationId - Update a reservation
+
+- **Description:** updates a reservation belonging to the authenticated user
+- **Authentication:** required
+- **Permissions:** user
+- **Path parameters:**
+  - `reservationId`: required reservation identifier
+- **Request Body:**
+  - `date`: optional date, formatted `YYYY-MM-DD`
+  - `slot`: optional slot identifier
+  - `partySize`: optional positive integer
+  - `requirements`: optional dietary requirements object;
+    when provided, replaces the previous requirements
+  - At least one field must be provided
+- **Responses:**
+  - `200 OK`: returns the updated reservation
+  - `400 Bad Request`: empty body, invalid fields or inconsistent date and slot
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: the reservation belongs to another user
+  - `404 Not Found`: the reservation or requested slot does not exist
+  - `409 Conflict`: insufficient availability or the reservation
+    cannot be modified under the applicable business rules
+  - `500 Internal Server Error`: unexpected server error
+
+### GET /reservations — Get the authenticated user's reservations
+
+- **Description:** returns active reservations (reservation_date>now) belonging to the authenticated user
+- **Authentication:** required
+- **Permissions:** user
+- **Responses:**
+  - `200 OK`: returns the reservations ordered by start date and time;
+    returns `[]` if no reservations match
+  - `401 Unauthorized`: user is not authenticated
   - `500 Internal Server Error`: unexpected server error
