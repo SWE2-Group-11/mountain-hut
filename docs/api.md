@@ -43,7 +43,6 @@ Base URL: `http://localhost:3000/api/v1`
   - `from`: optional inclusive start date, formatted `YYYY-MM-DD`
   - `to`: optional inclusive end date, formatted `YYYY-MM-DD`
   - `limit`: optional positive integer; defaults to 20, maximum 100
-  - `offset`: optional non-negative integer; defaults to 0
 - **Ordering:** most recent dates first, with configuration ID
   as a secondary ordering criterion
 - **Responses:**
