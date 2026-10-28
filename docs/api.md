@@ -39,8 +39,16 @@ Base URL: `http://localhost:3000/api/v1`
 - **Description:** returns the saved configurations that can be reused
 - **Authentication:** required
 - **Permissions:** employee, warden
+- - **Query parameters:**
+  - `from`: optional inclusive start date, formatted `YYYY-MM-DD`
+  - `to`: optional inclusive end date, formatted `YYYY-MM-DD`
+  - `limit`: optional positive integer; defaults to 20, maximum 100
+  - `offset`: optional non-negative integer; defaults to 0
+- **Ordering:** most recent dates first, with configuration ID
+  as a secondary ordering criterion
 - **Responses:**
   - `200 OK`: returns the list of configurations, including identifiers, tables and seat capacity; returns `[]` if no configuration exists
+  - `400 Bad Request`: `from` > `to`, `limit` or `offset` invalid
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
@@ -56,6 +64,9 @@ Base URL: `http://localhost:3000/api/v1`
   - `startTime`: required, formatted as `HH:mm`
   - `endTime`: required, formatted as `HH:mm`
   - `configuration`: a new table and seat configuration
+    - `tables`: required non-empty array of objects
+      - `tableId`: required integer; identifier of an existing table
+      - `seats`: required positive integer; configured seat capacity
   - `configurationId`: identifier of a saved configuration
   - Exactly one of `configuration` and `configurationId` is required
 - **Possible responses:**
@@ -78,7 +89,13 @@ Base URL: `http://localhost:3000/api/v1`
 - **Query parameters:**
   - `partySize`: required positive integer
 - **Possible responses:**
-  - `200 OK`: returns the availability result `available` which is false if the party cannot be accommodated or the slot is closed
+  - `200 OK`: returns an object containing `available`, an array describing one possible table arrangement for the entire party
+    - `tableId`: integer; identifier of the proposed table
+    - `assignedSeats`: positive integer; number of party members
+    assigned to that table
+    - The sum of `assignedSeats` equals the requested `partySize`
+    - `available` is empty if the entire party cannot be accommodated
+    or the slot is closed
   - `400 Bad Request`: invalid slot identifier or missing,
     invalid or non-positive party size
   - `404 Not Found`: the slot does not exist
