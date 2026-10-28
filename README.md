@@ -24,6 +24,27 @@ e2e/        End-to-end tests: full user flows across frontend and backend
 docs/       Project documentation
 ```
 
+## Running with Docker
+
+```bash
+docker compose up --build
+```
+
+This starts two containers:
+
+| Service | URL | Description |
+|---|---|---|
+| `frontend` | `http://localhost:5173` | Production bundle served by `vite preview`, proxies `/api` to the backend |
+| `backend` | `http://localhost:3000` | REST API |
+
+The SQLite database is stored in the `db-data` volume. It is created and seeded on the first start and kept on later starts. To reset it:
+
+```bash
+RESET_DB=true docker compose up
+```
+
+or remove the volume with `docker compose down -v`.
+
 ## Backend
 
 ### Tech stack
