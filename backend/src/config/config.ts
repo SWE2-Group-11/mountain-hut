@@ -25,3 +25,6 @@ export const SESSION_SECRET = "shhhhh... it's a secret!";
 
 // Password hashing
 export const PASSWORD_KEY_LENGTH = 16;
+
+// How many hours before the due time can be reserved a seat
+export const BOOKING_CUTOFF_HOURS = 2;
