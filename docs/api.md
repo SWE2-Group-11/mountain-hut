@@ -13,9 +13,10 @@ Base URL: `http://localhost:3000/api/v1`
   - `date`: required date, formatted `YYYY-MM-DD`
   - `slot`: required slot
   - `partySize`: required positive integer
-  - `requirements`: optional object containing dietary requirements; if omitted, no dietary requirements are declared
+  - `requirements`: optional list of objects, each containing dietary requirements; if omitted, no dietary requirements are declared
+    - `numPeople`: required integer representing the number of people this sub-set is made of
     - `hasAllergies`: optional boolean
-    - `details`: optional string describing dietary restrictions, preferences and affected party members; required and not empty when `hasAllergies` is true
+    - `details`: optional string describing dietary restrictions or preferences; required and not empty when `hasAllergies` is true
 - **Responses:**
   - `201 Created`: booking created; returns the booking details, including any declared dietary requirements
   - `400 Bad Request`: missing or invalid request fields, including missing allergy details when `hasAllergies` is true
