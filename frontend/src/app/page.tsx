@@ -40,9 +40,9 @@ export default function HomePage() {
 
     {/* Footer */}
     <footer className="bg-[#1C2826] text-white py-10 px-16 flex flex-col md:flex-row justify-between items-center text-sm border-t border-[#2C3835]">
-      <p className="text-gray-400 mb-4 md:mb-0">© 2026 Mountain Hut Refuge. All rights reserved.</p>
-      <Link to="/staff/login" className="text-xs text-gray-400 hover:text-white transition-colors underline">
-        Staff Portal Login
+      <p className="text-gray-400 mb-4 md:mb-0">© 2026 Mountain Hut Refuge.</p>
+      <Link to="/login" className="text-xs text-gray-400 hover:text-white transition-colors underline">
+        Login
       </Link>
     </footer>
   </div>
