@@ -39,6 +39,7 @@ flowchart TD
 | `services/` | Helpers: entity → DTO mapping, error → response, authentication |
 | `database/` | DB connection (`database.ts`) and SQL scripts (`sql/`) |
 | `config/` | Configuration from environment variables |
+| `notifications/` | Outgoing emails: templates, building their data, sending (fire-and-forget) |
 | `tests/` | Vitest + Supertest tests |
 
 ## Rules
