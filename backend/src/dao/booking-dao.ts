@@ -40,7 +40,7 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
  * @returns The seats to assign per table, or null if the capacity is not enough.
  */
 const assignSeats = (tables: TableAvailability[], party_size: number): Assignment[] | null => {
-    const free = tables.filter((t) => t.free_seats > 0).map((t) => ({ ...t }));
+    const free = tables.filter((t) => t.free_seats > 0);
     if (free.reduce((sum, t) => sum + t.free_seats, 0) < party_size) return null;
 
     const assignment: Assignment[] = [];
