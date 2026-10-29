@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction  } from "express";
 import session from "express-session";
 import morgan from "morgan";
 import cors from "cors";
@@ -33,7 +33,7 @@ app.use((req: Request, res: Response) => {
 });
 
 // Unhandled errors (e.g. malformed JSON) → ErrorDTO format
-app.use((err: unknown, req: Request, res: Response) => {
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof SyntaxError && "body" in err) {
         return sendBadRequestError("Malformed JSON body", res);
     }
