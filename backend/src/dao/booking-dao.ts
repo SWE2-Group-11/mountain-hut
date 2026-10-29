@@ -37,9 +37,10 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
  * one that fits), otherwise it is spread over the fewest tables possible.
  * @param tables The tables of the slot with their free seats.
  * @param party_size The number of people to seat.
- * @returns The seats to assign per table, or null if the capacity is not enough.
+ * @returns The seats to assign per table, or null if the capacity is not enough or the party_size is <= 0i.
  */
 const assignSeats = (tables: TableAvailability[], party_size: number): Assignment[] | null => {
+    if(party_size <= 0) return null;
     const free = tables.filter((t) => t.free_seats > 0);
     if (free.reduce((sum, t) => sum + t.free_seats, 0) < party_size) return null;
 
@@ -78,7 +79,7 @@ export const saveBooking = (
 ): { booking: Booking; seatings: SeatedAt[] } | null =>
     db.transaction(() => {
         const assignment = assignSeats(getTablesAvailability(date, start_time), party_size);
-        if (!assignment) return null;
+        if (!assignment || (Array.isArray(assignment) && assignment.length === 0)) return null;
 
         const result = db.prepare("INSERT INTO booking (hiker_id) VALUES (?)").run(hiker_id);
         const booking = new Booking(Number(result.lastInsertRowid), hiker_id);
