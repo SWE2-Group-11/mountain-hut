@@ -1,15 +1,16 @@
-import React, {useState} from 'react';
-import { Link, useLocation} from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import logoImage from '../../assets/logo.jpeg';
 import { Menu, X } from 'lucide-react';
 
 export const Header: React.FC = () => {
- const location = useLocation();
+  const location = useLocation();
   const currentPath = location.pathname;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const isLoginActive = currentPath === '/login' || currentPath === '/staff/login';
   const isHomeActive = currentPath === '/';
+  const isBookActive = currentPath === '/book-table';
+  const isLoginActive = currentPath === '/login' || currentPath === '/staff/login';
 
   // Close mobile menu when a link is clicked
   const handleNavClick = () => {
@@ -31,6 +32,14 @@ export const Header: React.FC = () => {
           className={`hover:text-[#1C2826] transition-colors ${isHomeActive ? 'font-bold text-[#1C2826]' : ''}`}
         >
           Home
+        </Link>
+        <Link 
+          to="/book-table" 
+          className={`px-4 py-2 rounded-full transition-all ${
+            isBookActive ? 'bg-[#EFE4D2] text-[#1C2826] shadow-sm font-semibold' : 'hover:text-[#1C2826]'
+          }`}
+        >
+          Book a Table
         </Link>
         <Link 
           to="/login" 
@@ -60,6 +69,13 @@ export const Header: React.FC = () => {
             className={`text-base font-medium py-2 transition-colors ${isHomeActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'}`}
           >
             Home
+          </Link>
+          <Link 
+            to="/book-table" 
+            onClick={handleNavClick}
+            className={`text-base font-medium py-2 transition-colors ${isBookActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'}`}
+          >
+            Book a Table
           </Link>
           <Link 
             to="/login" 
