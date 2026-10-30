@@ -1,4 +1,3 @@
-import React from 'react';
 import { Header } from '../components/layout/Header';
 import { AboutSection } from '../features/home/components/AboutSection';
 import { LocationSection } from '../features/home/components/LocationSection';
@@ -10,7 +9,7 @@ import hutBackgroundImage from '../assets/hut.jpg';
 export default function HomePage() {
  return (
   <div className="min-h-screen bg-[#FDFBF7] flex flex-col font-sans overflow-x-hidden">
-    <Header activeTab="home" />
+    <Header />
 
     {/* Hero Banner */}
     <div 

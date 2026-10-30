@@ -1,4 +1,3 @@
-import React from 'react';
 import { Header } from '../../components/layout/Header';
 import { LoginForm } from '../../features/auth/components/LoginForm';
 
