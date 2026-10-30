@@ -1,7 +1,9 @@
 import { ErrorDTO } from '../models/dto/error-dto';
+import { AccountResponseDTO } from '../models/dto/account-dto';
 import { SlotDTO } from '../models/dto/slot-dto';
 import { CreateReservationResponseDTO, SeatingDTO } from '../models/dto/reservation-dto';
 import { SlotAvailability } from '../dao/slot-dao';
+import { Account } from '../models/entities/account';
 import { Booking } from '../models/entities/booking';
 import { SeatedAt } from '../models/entities/seated_at';
 import { AppError } from '../models/errors/app-error';
@@ -28,6 +30,13 @@ export const appErrorToDTO = (error: unknown): ErrorDTO => {
     }
 
     return errorDTO;
+};
+
+/**
+ * Maps an Account entity into a client-ready AccountResponseDTO instance (no password data).
+ */
+export const accountEntityToResponseDTO = (account: Account): AccountResponseDTO => {
+    return new AccountResponseDTO(account.id, account.email, account.role);
 };
 
 /**

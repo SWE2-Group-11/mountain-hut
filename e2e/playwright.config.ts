@@ -19,7 +19,7 @@ export default defineConfig({
       command: 'npx tsx src/index.ts',
       cwd: '../backend',
       env: { RESET_DB: 'true', DB_PATH: ':memory:', PORT: '3000' },
-      url: 'http://localhost:3000/api/v1/services',
+      port: 3000,
       reuseExistingServer: false,
     },
     {
