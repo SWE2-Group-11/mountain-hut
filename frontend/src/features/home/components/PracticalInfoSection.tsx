@@ -50,11 +50,11 @@ export const PracticalInfoSection: React.FC = () => {
               <div className="space-y-4 text-xs text-[#5A6865] leading-relaxed">
                 <div>
                   <strong className="text-[#1C2826] block mb-0.5">Cash & Card Accepted</strong>
-                  <p>POS terminal is available via satellite link, though cash is recommended in case of severe weather interference.</p>
+                  <p>POS terminal is available, though cash is recommended in case of severe weather interference.</p>
                 </div>
                 <div>
                   <strong className="text-[#1C2826] block mb-0.5">Dietary Requests</strong>
-                  <p>Vegetarian and gluten-conscious options are available. Please indicate notes during your table booking process.</p>
+                  <p>Vegetarian and gluten-conscious options are available. </p>
                 </div>
               </div>
             </div>
