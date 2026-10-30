@@ -84,19 +84,28 @@ export function useReservation() {
   // Helper: get remaining seats for a time slot
  const getAvailableSeatsForSlot = useCallback(
   (time: string | null): number => {
-    if (!time) return 0;
+    if (!time || !state.selectedDate) return 14;
+
+    // 1. Check if the date is in the past (ignoring time component for day comparison)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDay = new Date(state.selectedDate);
+    targetDay.setHours(0, 0, 0, 0);
+
+    if (targetDay < today) {
+      return 0; // Past dates have 0 available seats
+    }
+
+    // 2. Check the 2-hour cutoff rule for today or any date
+    if (!isSlotAtLeastTwoHoursAway(state.selectedDate, time)) {
+      return 0; // Slots less than 2 hours away have 0 available seats
+    }
 
     const cleanTime = normalizeTime(time);
-    const tables = slotTables[cleanTime];
-
-    if (!tables) return 0;
-
-    return tables.reduce(
-      (total, table) => total + Math.max(0, table.capacity - table.currentOccupancy),
-      0
-    );
+    const tables = slotTables[cleanTime] || DEFAULT_SLOT_TABLES;
+    return tables.reduce((sum, t) => sum + (t.capacity - t.currentOccupancy), 0);
   },
-  [slotTables]
+  [state.selectedDate, slotTables, isSlotAtLeastTwoHoursAway]
 );
 
 const maxAvailableSeats = useMemo(

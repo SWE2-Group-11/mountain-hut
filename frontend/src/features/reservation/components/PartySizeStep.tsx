@@ -4,14 +4,14 @@ import { Minus, Plus, Users } from 'lucide-react';
 interface PartySizeStepProps {
   partySize: number;
   onUpdatePartySize: (size: number) => void;
-  maxSeats: number; 
+  maxSeats: number;
 }
 
 export const PartySizeStep: React.FC<PartySizeStepProps> = ({
   partySize,
   onUpdatePartySize,
   maxSeats,
- 
+
 }) => {
   const handleDecrement = () => {
     if (partySize > 1) {
@@ -32,7 +32,7 @@ export const PartySizeStep: React.FC<PartySizeStepProps> = ({
           <Users className="w-4 h-4 text-[#234E39]" />
           3. Number of People
         </label>
-     
+
       </div>
 
       <div className="flex items-center justify-between bg-[#FAF6EE] border border-[#EFEADF] rounded-2xl p-4">
@@ -40,9 +40,7 @@ export const PartySizeStep: React.FC<PartySizeStepProps> = ({
           <span className="text-lg font-serif font-bold text-[#1C2826]">
             {partySize} {partySize === 1 ? 'Person' : 'People'}
           </span>
-          <p className="text-xs text-[#5A6865]">
-            Shared seating at long wooden tables
-          </p>
+         
         </div>
 
         <div className="flex items-center gap-3">
