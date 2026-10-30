@@ -1,44 +1,75 @@
 import React from 'react';
-import { Users, Plus, Minus } from 'lucide-react';
+import { Minus, Plus, Users } from 'lucide-react';
 
 interface PartySizeStepProps {
   partySize: number;
   onUpdatePartySize: (size: number) => void;
+  maxSeats: number; 
 }
 
-export const PartySizeStep: React.FC<PartySizeStepProps> = ({ partySize, onUpdatePartySize }) => {
+export const PartySizeStep: React.FC<PartySizeStepProps> = ({
+  partySize,
+  onUpdatePartySize,
+  maxSeats,
+ 
+}) => {
+  const handleDecrement = () => {
+    if (partySize > 1) {
+      onUpdatePartySize(partySize - 1);
+    }
+  };
+
+  const handleIncrement = () => {
+    if (partySize < maxSeats) {
+      onUpdatePartySize(partySize + 1);
+    }
+  };
+
   return (
     <div className="mb-8">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-7 h-7 rounded-full bg-[#234E39] text-white flex items-center justify-center text-sm font-semibold">
-          3
-        </div>
-        <div className="flex items-center gap-2 text-[#1C2826] font-semibold text-base">
-          <Users className="w-4 h-4" />
-          <span>Number of people</span>
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <label className="text-xs font-bold uppercase tracking-wider text-[#5A6865] flex items-center gap-2">
+          <Users className="w-4 h-4 text-[#234E39]" />
+          3. Number of People
+        </label>
+     
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center border border-[#EFEADF] bg-white rounded-2xl p-1.5 shadow-sm">
+      <div className="flex items-center justify-between bg-[#FAF6EE] border border-[#EFEADF] rounded-2xl p-4">
+        <div>
+          <span className="text-lg font-serif font-bold text-[#1C2826]">
+            {partySize} {partySize === 1 ? 'Person' : 'People'}
+          </span>
+          <p className="text-xs text-[#5A6865]">
+            Shared seating at long wooden tables
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => onUpdatePartySize(partySize - 1)}
+            type="button"
+            onClick={handleDecrement}
             disabled={partySize <= 1}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#FAF6EE] text-[#2C3835] hover:bg-[#EFEADF] disabled:opacity-40 transition-colors"
+            className="w-10 h-10 rounded-xl bg-white border border-[#EFEADF] flex items-center justify-center text-[#1C2826] hover:bg-[#EFE4D2] disabled:opacity-40 disabled:hover:bg-white transition-colors"
+            aria-label="Decrease party size"
           >
             <Minus className="w-4 h-4" />
           </button>
-          <span className="w-12 text-center font-serif font-bold text-lg text-[#1C2826]">
+
+          <span className="w-8 text-center font-bold text-[#1C2826]">
             {partySize}
           </span>
+
           <button
-            onClick={() => onUpdatePartySize(partySize + 1)}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#FAF6EE] text-[#2C3835] hover:bg-[#EFEADF] transition-colors"
+            type="button"
+            onClick={handleIncrement}
+            disabled={partySize >= maxSeats}
+            className="w-10 h-10 rounded-xl bg-white border border-[#EFEADF] flex items-center justify-center text-[#1C2826] hover:bg-[#EFE4D2] disabled:opacity-40 disabled:hover:bg-white transition-colors"
+            aria-label="Increase party size"
           >
             <Plus className="w-4 h-4" />
           </button>
         </div>
-        <span className="text-sm font-medium text-[#5A6865]">people</span>
       </div>
     </div>
   );

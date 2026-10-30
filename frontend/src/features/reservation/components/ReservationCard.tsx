@@ -13,6 +13,7 @@ export const ReservationCard: React.FC = () => {
     partySize,
     setSelectedDate,
     setSelectedTime,
+    maxAvailableSeats,
     setPartySize,
     isFormValid,
     bookingError,
@@ -28,7 +29,7 @@ export const ReservationCard: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white rounded-[32px] p-10 shadow-xl border border-[#EFEADF] relative z-10 space-y-6">
+    <div className="w-full max-w-2xl mx-auto bg-white rounded-[32px] p-10 shadow-xl border border-[#EFEADF] relative -mt-20  space-y-6">
       <div className="mb-2">
         <h2 className="text-3xl font-serif font-bold text-[#1C2826] mb-2">Reserve your table</h2>
         <p className="text-[#5A6865] text-sm">Choose your meal time and party size.</p>
@@ -69,13 +70,14 @@ export const ReservationCard: React.FC = () => {
 
       <DatePickerStep selectedDate={selectedDate} onSelectDate={setSelectedDate} />
       <TimeSlotStep selectedDate={selectedDate} selectedTime={selectedTime} onSelectTime={setSelectedTime} />
-      <PartySizeStep partySize={partySize} onUpdatePartySize={setPartySize} />
+      <PartySizeStep partySize={partySize} onUpdatePartySize={setPartySize}  maxSeats={maxAvailableSeats}   />
 
       <SummaryBox
         selectedDate={selectedDate}
         selectedTime={selectedTime}
         partySize={partySize}
         isFormValid={isFormValid}
+        maxSeats={maxAvailableSeats} 
         onBookTable={handleBookingClick}
       />
     </div>
