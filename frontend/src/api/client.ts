@@ -1,60 +1,58 @@
 const BASE_URL = 'http://localhost:3000/api/v1';
 
-interface RequestOptions extends RequestInit {
-  headers?: Record<string, string>;
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
 }
+
+type RequestOptions = Omit<RequestInit, 'method' | 'body'>;
 
 async function handleResponse(response: Response) {
   const contentType = response.headers.get('content-type');
-  const isJson = contentType && contentType.includes('application/json');
-  const data = isJson ? await response.json() : null;
+  const isJson = contentType?.includes('application/json');
+  const data = isJson ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
-    const errorMsg = data?.message || data?.error || response.statusText || 'An error occurred';
-    throw new Error(errorMsg);
+    const message =
+      data?.message || data?.error || response.statusText || 'An error occurred';
+    throw new ApiError(response.status, message);
   }
 
   return data;
 }
 
+async function request(
+  method: string,
+  endpoint: string,
+  body?: unknown,
+  options: RequestOptions = {},
+) {
+  const { headers, ...rest } = options;
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    ...rest,
+    method,
+    credentials: 'include', // keep the session cookie
+    headers: {
+      'Content-Type': 'application/json',
+      ...(headers as Record<string, string> | undefined),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse(response);
+}
+
 export const apiClient = {
-  async get(endpoint: string, options: RequestOptions = {}) {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    });
-    return handleResponse(response);
-  },
+  get: (endpoint: string, options?: RequestOptions) =>
+    request('GET', endpoint, undefined, options),
 
-  async post(endpoint: string, body?: any, options: RequestOptions = {}) {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-      ...options,
-    });
-    return handleResponse(response);
-  },
+  post: (endpoint: string, body?: unknown, options?: RequestOptions) =>
+    request('POST', endpoint, body, options),
 
-  async delete(endpoint: string, options: RequestOptions = {}) {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: 'DELETE',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    });
-    return handleResponse(response);
-  },
+  delete: (endpoint: string, options?: RequestOptions) =>
+    request('DELETE', endpoint, undefined, options),
 };
