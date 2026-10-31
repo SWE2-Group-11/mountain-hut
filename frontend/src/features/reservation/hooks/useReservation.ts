@@ -108,10 +108,10 @@ export function useReservation() {
 
   const isFormValid = Boolean(
     state.selectedDate &&
-      state.selectedTime &&
-      state.partySize > 0 &&
-      state.partySize <= maxAvailableSeats &&
-      !isSubmitting
+    state.selectedTime &&
+    state.partySize > 0 &&
+    state.partySize <= maxAvailableSeats &&
+    !isSubmitting
   );
 
   const confirmReservation = async (): Promise<boolean> => {
@@ -135,12 +135,12 @@ export function useReservation() {
       if (err instanceof ApiError) {
         if (err.status === 401) {
           setBookingError('Please log in to book a table.');
-        } else if (err.status === 409) {
-          setBookingError('Those seats were just taken. The available times have been refreshed.');
+        } else if (err.status === 403) {
+          setBookingError('Only hiker accounts can book a table.');
+        } else if (err.status === 409 || err.status === 400) {
+          // The server says why: already booked this slot, seats gone, 2-hour rule...
+          setBookingError(err.message);
           setRefreshKey((k) => k + 1); // reload the slots
-        } else if (err.status === 400) {
-          setBookingError(err.message); // e.g. the 2-hour rule, or slot not available
-          setRefreshKey((k) => k + 1);
         } else {
           setBookingError('Something went wrong. Please try again.');
         }
