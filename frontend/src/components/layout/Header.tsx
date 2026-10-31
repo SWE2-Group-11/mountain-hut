@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoImage from '../../assets/logo.jpeg';
-import { Menu, X, LogOut, User as UserIcon, Calendar } from 'lucide-react';
+import { Menu, X, LogOut, User as UserIcon} from 'lucide-react';
 import { useAuth } from '../../features/auth/useAuth';
 
 export const Header: React.FC = () => {
@@ -129,7 +129,7 @@ export const Header: React.FC = () => {
                 isBookActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
               }`}
             >
-              <Calendar className="w-4 h-4 text-[#234E39]" />
+            
               Book a Table
             </Link>
           )}
