@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoImage from '../../assets/logo.jpeg';
 import { Menu, X, LogOut, User as UserIcon, Calendar } from 'lucide-react';
-import { useAuth } from '../../features/auth/AuthContext';
+import { useAuth } from '../../features/auth/useAuth';
 
 export const Header: React.FC = () => {
   const { user, loading, logout } = useAuth();

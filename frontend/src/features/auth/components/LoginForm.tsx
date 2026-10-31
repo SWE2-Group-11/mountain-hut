@@ -1,156 +1,96 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
-import { useAuth } from '../AuthContext';
-import { User, ShieldCheck, Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../useAuth';
+import { ApiError } from '../../../api/client';
+import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const LoginForm: React.FC = () => {
-  const navigate = useNavigate();
   const { user, loading: authLoading, login } = useAuth();
 
-  const [loginType, setLoginType] = useState<'user' | 'staff'>('user');
-  const [staffRole, setStaffRole] = useState<'employee' | 'warden'>('employee');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If already logged in, redirect away from login
+  // All hooks are above this line. Already logged in (or just logged in): redirect by role.
   if (!authLoading && user) {
     const destination = user.role === 'hiker' ? '/book-table' : '/';
     return <Navigate to={destination} replace />;
   }
 
-  const validateEmail = (emailStr: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError(null);
 
     // Validate before sending
-    if (!email.trim() || !password.trim()) {
+    if (!email.trim() || !password) {
       setError('Please fill in all required fields.');
       return;
     }
-    if (!validateEmail(email)) {
+    if (!EMAIL_REGEX.test(email.trim())) {
       setError('Please enter a valid email address.');
       return;
     }
 
     setIsSubmitting(true);
-
     try {
       // Calls POST /api/v1/session with { username: email, password } via AuthContext
-      await login(email, password);
-    } catch (err: any) {
-      if (
-        err.message.includes('401') ||
-        err.message.toLowerCase().includes('credential') ||
-        err.message.toLowerCase().includes('password') ||
-        err.message.toLowerCase().includes('incorrect')
-      ) {
-        setError('Incorrect username or password');
+      await login(email.trim(), password);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError('Incorrect email or password.');
+      } else if (err instanceof ApiError && err.status === 404) {
+        setError('The server is not reachable right now. Please try again later.');
       } else {
-        setError(err.message || 'Failed to sign in. Please try again.');
+        setError('Failed to sign in. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Redirect after login by role
-  useEffect(() => {
-    if (user) {
-      if (user.role === 'hiker') {
-        navigate('/book-table', { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
-    }
-  }, [user, navigate]);
-
   return (
     <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-sm border border-[#EFEADF] space-y-6">
-      
-      {/* Top Toggle: User vs Staff */}
-      <div className="flex bg-[#FAF6EE] p-1.5 rounded-2xl border border-[#EFEADF]">
-        <button
-          type="button"
-          onClick={() => { setLoginType('user'); setError(null); }}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
-            loginType === 'user' 
-              ? 'bg-[#1C2826] text-white shadow-sm' 
-              : 'text-[#5A6865] hover:text-[#1C2826]'
-          }`}
-        >
-          <User className="w-4 h-4" /> Hiker / Guest
-        </button>
-        <button
-          type="button"
-          onClick={() => { setLoginType('staff'); setError(null); }}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
-            loginType === 'staff' 
-              ? 'bg-[#1C2826] text-white shadow-sm' 
-              : 'text-[#5A6865] hover:text-[#1C2826]'
-          }`}
-        >
-          <ShieldCheck className="w-4 h-4" /> Hut Staff
-        </button>
-      </div>
-
       <div className="mb-2">
-        <h2 className="text-2xl font-serif font-bold text-[#1C2826] mb-1">
-          {loginType === 'staff' ? 'Staff Portal Access' : 'Welcome'}
-        </h2>
+        <h2 className="text-2xl font-serif font-bold text-[#1C2826] mb-1">Sign in</h2>
         <p className="text-xs text-[#5A6865]">
-          {loginType === 'staff' 
-            ? 'Select your employee role and enter credentials.' 
-            : 'Enter your credentials to manage your refuge bookings.'}
+          Enter your credentials to book a table or manage the hut.
         </p>
       </div>
 
-      {/* Error Message Box */}
+      {/* Error message box */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-red-700 text-xs animate-fadeIn">
+        <div
+          role="alert"
+          className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-red-700 text-xs"
+        >
           <AlertCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
           <div>
-            <span className="font-bold block mb-0.5">Authentication Error</span>
+            <span className="font-bold block mb-0.5">Authentication error</span>
             {error}
           </div>
         </div>
       )}
 
-      <form onSubmit={handleLogin} className="space-y-4">
-        
-        {/* Staff Role Selector (Only shown if 'Staff' is selected) */}
-        {loginType === 'staff' && (
-          <div className="space-y-1.5 pb-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#234E39]">
-              Employee Role
-            </label>
-            <select
-              value={staffRole}
-              onChange={(e) => setStaffRole(e.target.value as any)}
-              className="w-full px-4 py-3 bg-[#FAF6EE] border border-[#EFEADF] rounded-xl text-sm font-medium text-[#1C2826] focus:outline-none focus:border-[#234E39] transition-all"
-            >
-              <option value="employee">Employee</option>
-              <option value="warden">Warden</option>
-            </select>
-          </div>
-        )}
-
-        {/* Email Field */}
+      <form onSubmit={handleLogin} noValidate className="space-y-4">
+        {/* Email field */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-[#5A6865]">
-            Email Address
+          <label
+            htmlFor="login-email"
+            className="text-xs font-bold uppercase tracking-wider text-[#5A6865]"
+          >
+            Email address
           </label>
           <div className="relative">
             <Mail className="w-4 h-4 text-[#7C8885] absolute left-4 top-3.5" />
             <input
+              id="login-email"
               type="email"
-              required
-              placeholder={loginType === 'staff' ? 'staff@mountainhut.it' : 'hiker@example.com'}
+              autoComplete="email"
+              placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-[#FDFBF7] border border-[#EFEADF] rounded-xl text-sm text-[#1C2826] focus:outline-none focus:border-[#234E39] transition-all"
@@ -158,16 +98,20 @@ export const LoginForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Password Field */}
+        {/* Password field */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-[#5A6865]">
+          <label
+            htmlFor="login-password"
+            className="text-xs font-bold uppercase tracking-wider text-[#5A6865]"
+          >
             Password
           </label>
           <div className="relative">
             <Lock className="w-4 h-4 text-[#7C8885] absolute left-4 top-3.5" />
             <input
+              id="login-password"
               type="password"
-              required
+              autoComplete="current-password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -176,7 +120,7 @@ export const LoginForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Submit Button */}
+        {/* Submit button */}
         <button
           type="submit"
           disabled={isSubmitting}
@@ -189,7 +133,7 @@ export const LoginForm: React.FC = () => {
             </>
           ) : (
             <>
-              <span>Sign In</span>
+              <span>Sign in</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}

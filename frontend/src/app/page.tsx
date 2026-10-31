@@ -4,7 +4,7 @@ import { LocationSection } from '../features/home/components/LocationSection';
 import { BookingSteps } from '../features/home/components/BookingSteps';
 import { PracticalInfoSection } from '../features/home/components/PracticalInfoSection';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../features/auth/AuthContext';
+import { useAuth } from '../features/auth/useAuth';
 import { Calendar, ArrowRight } from 'lucide-react';
 import hutBackgroundImage from '../assets/hut.jpg';
 
