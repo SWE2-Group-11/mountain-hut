@@ -1,49 +1,12 @@
-import { useState, useCallback, useMemo } from 'react';
-import type { ReservationState } from '../types/reservation.types';
-import { allocateTables } from '../utils/tableAllocator';
-import type { Table } from '../utils/tableAllocator';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { apiClient, ApiError } from '../../../api/client';
+import type { ReservationState, Slot, Reservation } from '../types/reservation.types';
 
 export const formatLocalDate = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-// Default fallback tables totaling 14 free seats to match the UI
-const DEFAULT_SLOT_TABLES: Table[] = [
-  { id: 'Table 1', capacity: 8, currentOccupancy: 2 }, // 6 free
-  { id: 'Table 2', capacity: 8, currentOccupancy: 0 }, // 8 free (Total: 14)
-];
-
-// Mock tables per time slot (synced so standard slots have 14 free seats)
-const INITIAL_SLOT_TABLES: Record<string, Table[]> = {
-  '12:00': [
-    { id: 'Table 1', capacity: 6, currentOccupancy: 2 }, // 4 free
-    { id: 'Table 2', capacity: 6, currentOccupancy: 0 }, // 6 free
-    { id: 'Table 3', capacity: 4, currentOccupancy: 0 }, // 4 free (Total: 14)
-  ],
-  '12:30': [
-    { id: 'Table 1', capacity: 6, currentOccupancy: 0 }, // 6 free
-    { id: 'Table 2', capacity: 8, currentOccupancy: 0 }, // 8 free (Total: 14)
-  ],
-  '13:00': [
-    { id: 'Table 1', capacity: 8, currentOccupancy: 0 }, // 8 free
-    { id: 'Table 2', capacity: 6, currentOccupancy: 0 }, // 6 free (Total: 14)
-  ],
-  '19:00': [
-    { id: 'Table 1', capacity: 8, currentOccupancy: 0 }, // 8 free
-    { id: 'Table 2', capacity: 6, currentOccupancy: 0 }, // 6 free (Total: 14)
-  ],
-  '19:30': [
-    { id: 'Table 1', capacity: 8, currentOccupancy: 0 }, // 8 free
-    { id: 'Table 2', capacity: 6, currentOccupancy: 0 }, // 6 free (Total: 14)
-  ],
-};
-
-// Helper to normalize time strings (e.g. "12:00 PM" -> "12:00")
-const normalizeTime = (time: string): string => {
-  return time.replace(/\s*(AM|PM)/i, '').trim();
 };
 
 export function useReservation() {
@@ -60,163 +23,152 @@ export function useReservation() {
     partySize: 2,
   });
 
-  const [existingBookings, setExistingBookings] = useState<Array<{ date: string; time: string }>>([]);
-  const [slotTables, setSlotTables] = useState<Record<string, Table[]>>(INITIAL_SLOT_TABLES);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
-  const [allocationResult, setAllocationResult] = useState<{
-    allocation: Array<{ tableId: string; seatsAssigned: number }>;
-    isSplit: boolean;
-  } | null>(null);
+  const [reservation, setReservation] = useState<Reservation | null>(null);
 
-  // Helper: check if a (date, time) is at least 2 hours in the future
-  const isSlotAtLeastTwoHoursAway = useCallback((date: Date | null, time: string): boolean => {
-    if (!date) return false;
-    const now = new Date();
-    const cleanTime = normalizeTime(time);
-    const [hours, minutes] = cleanTime.split(':').map(Number);
-    const targetDateTime = new Date(date);
-    targetDateTime.setHours(hours, minutes || 0, 0, 0);
+  // Load the bookable slots whenever the date changes (or a refresh is requested)
+  useEffect(() => {
+    if (!state.selectedDate) return;
+    let cancelled = false;
+    const date = formatLocalDate(state.selectedDate);
 
-    const twoHoursBefore = new Date(targetDateTime.getTime() - 2 * 60 * 60 * 1000);
-    return now <= twoHoursBefore;
-  }, []);
-
-  // Helper: get remaining seats for a time slot
- const getAvailableSeatsForSlot = useCallback(
-  (time: string | null): number => {
-    if (!time || !state.selectedDate) return 14;
-
-    // 1. Check if the date is in the past (ignoring time component for day comparison)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const targetDay = new Date(state.selectedDate);
-    targetDay.setHours(0, 0, 0, 0);
-
-    if (targetDay < today) {
-      return 0; // Past dates have 0 available seats
+    async function loadSlots() {
+      setSlotsLoading(true);
+      setSlotsError(null);
+      try {
+        const data: Slot[] = await apiClient.get(`/slots?date=${date}`);
+        if (cancelled) return;
+        setSlots(data);
+        // Drop the selected time if the slot is gone or full
+        setState((prev) =>
+          prev.selectedTime && !data.some((s) => s.start_time === prev.selectedTime)
+            ? { ...prev, selectedTime: null }
+            : prev
+        );
+      } catch (err) {
+        if (cancelled) return;
+        setSlots([]);
+        setSlotsError(
+          err instanceof ApiError && err.status === 400
+            ? 'Please choose a valid date.'
+            : 'Could not load the available times. Please try again.'
+        );
+      } finally {
+        if (!cancelled) setSlotsLoading(false);
+      }
     }
 
-    // 2. Check the 2-hour cutoff rule for today or any date
-    if (!isSlotAtLeastTwoHoursAway(state.selectedDate, time)) {
-      return 0; // Slots less than 2 hours away have 0 available seats
-    }
+    loadSlots();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.selectedDate, refreshKey]);
 
-    const cleanTime = normalizeTime(time);
-    const tables = slotTables[cleanTime] || DEFAULT_SLOT_TABLES;
-    return tables.reduce((sum, t) => sum + (t.capacity - t.currentOccupancy), 0);
-  },
-  [state.selectedDate, slotTables, isSlotAtLeastTwoHoursAway]
-);
-
-const maxAvailableSeats = useMemo(
-  () => getAvailableSeatsForSlot(state.selectedTime),
-  [state.selectedTime, getAvailableSeatsForSlot]
-);
+  const selectedSlot = useMemo(
+    () => slots.find((s) => s.start_time === state.selectedTime) ?? null,
+    [slots, state.selectedTime]
+  );
+  const maxAvailableSeats = selectedSlot?.available_seats ?? 0;
 
   const setSelectedDate = useCallback((date: Date) => {
     setState((prev) => ({ ...prev, selectedDate: date, selectedTime: null }));
     setBookingError(null);
-    setAllocationResult(null);
   }, []);
 
   const setSelectedTime = useCallback(
     (time: string) => {
-      const available = getAvailableSeatsForSlot(time);
+      const slot = slots.find((s) => s.start_time === time);
+      const available = slot?.available_seats ?? 0;
       setState((prev) => ({
         ...prev,
         selectedTime: time,
         partySize: available > 0 ? Math.min(prev.partySize, available) : 1,
       }));
       setBookingError(null);
-      setAllocationResult(null);
     },
-    [getAvailableSeatsForSlot]
+    [slots]
   );
 
   const setPartySize = useCallback(
     (size: number) => {
-      setState((prev) => {
-        const limit = getAvailableSeatsForSlot(prev.selectedTime);
-        return {
-          ...prev,
-          partySize: Math.max(1, Math.min(size, limit)),
-        };
-      });
+      setState((prev) => ({
+        ...prev,
+        partySize: Math.max(1, Math.min(size, maxAvailableSeats || 1)),
+      }));
       setBookingError(null);
-      setAllocationResult(null);
     },
-    [getAvailableSeatsForSlot]
+    [maxAvailableSeats]
   );
 
   const isFormValid = Boolean(
     state.selectedDate &&
       state.selectedTime &&
       state.partySize > 0 &&
-      state.partySize <= maxAvailableSeats
+      state.partySize <= maxAvailableSeats &&
+      !isSubmitting
   );
 
-  const confirmReservation = () => {
+  const confirmReservation = async (): Promise<boolean> => {
     if (!state.selectedDate || !state.selectedTime) {
       setBookingError('Please select an available date and time slot.');
       return false;
     }
+    if (isSubmitting) return false;
 
-    if (!isSlotAtLeastTwoHoursAway(state.selectedDate, state.selectedTime)) {
-      setBookingError('Reservations must be made at least 2 hours before the selected time.');
-      return false;
-    }
-
-    const formattedDate = formatLocalDate(state.selectedDate);
-    const cleanTime = normalizeTime(state.selectedTime);
-
-    const hasDuplicate = existingBookings.some(
-      (b) => b.date === formattedDate && b.time === cleanTime
-    );
-    if (hasDuplicate) {
-      setBookingError(
-        'You already have a reservation for this date and time slot. To add more people, please modify your existing reservation.'
-      );
-      return false;
-    }
-
-    const currentTables = slotTables[cleanTime] || DEFAULT_SLOT_TABLES;
-    const result = allocateTables(state.partySize, currentTables);
-
-    if (!result.success || !result.allocation) {
-      setBookingError(result.error || 'Not enough seats available for this party size.');
-      return false;
-    }
-
-    setSlotTables((prev) => {
-      const updated = (prev[cleanTime] || currentTables).map((table) => {
-        const assigned = result.allocation!.find((a) => a.tableId === table.id);
-        return assigned
-          ? { ...table, currentOccupancy: table.currentOccupancy + assigned.seatsAssigned }
-          : table;
-      });
-      return { ...prev, [cleanTime]: updated };
-    });
-
-    setAllocationResult({
-      allocation: result.allocation,
-      isSplit: Boolean(result.isSplit),
-    });
-    setExistingBookings((prev) => [...prev, { date: formattedDate, time: cleanTime }]);
+    setIsSubmitting(true);
     setBookingError(null);
-    return true;
+    try {
+      const created: Reservation = await apiClient.post('/reservations', {
+        date: formatLocalDate(state.selectedDate),
+        slot: state.selectedTime,
+        partySize: state.partySize,
+      });
+      setReservation(created);
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setBookingError('Please log in to book a table.');
+        } else if (err.status === 409) {
+          setBookingError('Those seats were just taken. The available times have been refreshed.');
+          setRefreshKey((k) => k + 1); // reload the slots
+        } else if (err.status === 400) {
+          setBookingError(err.message); // e.g. the 2-hour rule, or slot not available
+          setRefreshKey((k) => k + 1);
+        } else {
+          setBookingError('Something went wrong. Please try again.');
+        }
+      } else {
+        setBookingError('Something went wrong. Please try again.');
+      }
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const clearError = useCallback(() => setBookingError(null), []);
 
   return {
     ...state,
+    slots,
+    slotsLoading,
+    slotsError,
     maxAvailableSeats,
     isFormValid,
+    isSubmitting,
     bookingError,
-    allocationResult,
+    reservation,
     setSelectedDate,
     setSelectedTime,
     setPartySize,
-    isSlotAtLeastTwoHoursAway,
-    getAvailableSeatsForSlot,
     confirmReservation,
+    clearError,
   };
 }

@@ -1,86 +1,73 @@
 import React, { useState } from 'react';
-<<<<<<< HEAD
-import { Link, useLocation } from 'react-router-dom';
-=======
 import { Link, useLocation, useNavigate } from 'react-router-dom';
->>>>>>> feat/MH-30-UI-Home/LoginPage
 import logoImage from '../../assets/logo.jpeg';
 import { Menu, X, LogOut, User as UserIcon, Calendar } from 'lucide-react';
 import { useAuth } from '../../features/auth/useAuth';
 
 export const Header: React.FC = () => {
-<<<<<<< HEAD
-=======
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
->>>>>>> feat/MH-30-UI-Home/LoginPage
   const location = useLocation();
   const currentPath = location.pathname;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const isLoginActive = currentPath === '/login' || currentPath === '/staff/login';
   const isHomeActive = currentPath === '/';
   const isBookActive = currentPath === '/book-table';
-<<<<<<< HEAD
-  const isLoginActive = currentPath === '/login' || currentPath === '/staff/login';
-=======
->>>>>>> feat/MH-30-UI-Home/LoginPage
+
+  // Visitors and hikers see the link; staff do not book tables.
+  // A visitor who clicks it is sent to /login by ProtectedRoute.
+  const canSeeBooking = !loading && (!user || user.role === 'hiker');
 
   const handleNavClick = () => {
     setIsMobileMenuOpen(false);
   };
 
+  // Always end up on /login, even if the logout request fails
   const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Logout failed', err);
+    } finally {
+      navigate('/login');
+    }
   };
 
   return (
     <header className="w-full bg-[#FAF6EE] px-6 md:px-12 py-4 flex items-center justify-between border-b border-[#EFEADF] relative z-50">
       {/* Logo & Brand */}
       <Link to="/" className="flex items-center gap-3">
-        <img src={logoImage} alt="Mountain Hut Logo" className="w-10 h-10 md:w-14 md:h-14 rounded-full object-cover" />
+        <img
+          src={logoImage}
+          alt="Mountain Hut Logo"
+          className="w-10 h-10 md:w-14 md:h-14 rounded-full object-cover"
+        />
         <span className="text-lg md:text-xl font-serif font-bold text-[#1C2826]">Mountain Hut</span>
       </Link>
-      
+
       {/* Desktop Navigation */}
       <nav className="hidden md:flex items-center gap-6 font-medium text-sm text-[#3C4A47]">
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className={`hover:text-[#1C2826] transition-colors ${isHomeActive ? 'font-bold text-[#1C2826]' : ''}`}
         >
           Home
         </Link>
-<<<<<<< HEAD
-        <Link 
-          to="/book-table" 
-          className={`px-4 py-2 rounded-full transition-all ${
-            isBookActive ? 'bg-[#EFE4D2] text-[#1C2826] shadow-sm font-semibold' : 'hover:text-[#1C2826]'
-          }`}
-        >
-          Book a Table
-        </Link>
-        <Link 
-          to="/login" 
-          className={`text-xs transition-colors border-l border-[#EFEADF] pl-6 ${
-            isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#7C8885] hover:text-[#1C2826]'
-          }`}
-        >
-          Login
-        </Link>
-=======
 
-        {/* Show Book a Table for logged-in hikers */}
-        {!loading && user && user.role === 'hiker' && (
-          <Link 
-            to="/book-table" 
-            className={`flex items-center gap-1.5 transition-colors ${isBookActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'}`}
+        {canSeeBooking && (
+          <Link
+            to="/book-table"
+            className={`flex items-center gap-1.5 transition-colors ${
+              isBookActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'
+            }`}
           >
-            <Calendar className="w-4 h-4" />
+           
             Book a Table
           </Link>
         )}
 
-        {/* Session check loading state to prevent flickering */}
+        {/* Wait for the session check to avoid a flash of "Login" */}
         {loading ? (
           <div className="w-16 h-6 bg-[#EFEADF] rounded-lg animate-pulse" />
         ) : user ? (
@@ -90,6 +77,7 @@ export const Header: React.FC = () => {
               <span className="font-semibold text-[#1C2826]">{user.username}</span>
             </div>
             <button
+              type="button"
               onClick={handleLogout}
               className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium transition-colors cursor-pointer"
             >
@@ -98,8 +86,8 @@ export const Header: React.FC = () => {
             </button>
           </div>
         ) : (
-          <Link 
-            to="/login" 
+          <Link
+            to="/login"
             className={`text-xs transition-colors border-l border-[#EFEADF] pl-6 ${
               isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#7C8885] hover:text-[#1C2826]'
             }`}
@@ -107,14 +95,15 @@ export const Header: React.FC = () => {
             Login
           </Link>
         )}
->>>>>>> feat/MH-30-UI-Home/LoginPage
       </nav>
 
       {/* Mobile Hamburger Button */}
-      <button 
+      <button
+        type="button"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         className="md:hidden p-2 rounded-xl text-[#1C2826] hover:bg-[#EFEADF] transition-colors focus:outline-none"
         aria-label="Toggle menu"
+        aria-expanded={isMobileMenuOpen}
       >
         {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
@@ -122,37 +111,23 @@ export const Header: React.FC = () => {
       {/* Mobile Dropdown Drawer */}
       {isMobileMenuOpen && (
         <div className="absolute top-full left-0 w-full bg-[#FAF6EE] border-b border-[#EFEADF] shadow-lg py-6 px-8 flex flex-col gap-4 md:hidden">
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             onClick={handleNavClick}
-            className={`text-base font-medium py-2 transition-colors ${isHomeActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'}`}
+            className={`text-base font-medium py-2 transition-colors ${
+              isHomeActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
+            }`}
           >
             Home
           </Link>
-<<<<<<< HEAD
-          <Link 
-            to="/book-table" 
-            onClick={handleNavClick}
-            className={`text-base font-medium py-2 transition-colors ${isBookActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'}`}
-          >
-            Book a Table
-          </Link>
-          <Link 
-            to="/login" 
-            onClick={handleNavClick}
-            className={`text-base font-medium py-2 transition-colors border-t border-[#EFEADF] pt-4 ${
-              isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
-            }`}
-          >
-            Login
-          </Link>
-=======
 
-          {!loading && user && user.role === 'hiker' && (
-            <Link 
-              to="/book-table" 
+          {canSeeBooking && (
+            <Link
+              to="/book-table"
               onClick={handleNavClick}
-              className={`text-base font-medium py-2 transition-colors flex items-center gap-2 ${isBookActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'}`}
+              className={`text-base font-medium py-2 transition-colors flex items-center gap-2 ${
+                isBookActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
+              }`}
             >
               <Calendar className="w-4 h-4 text-[#234E39]" />
               Book a Table
@@ -171,16 +146,20 @@ export const Header: React.FC = () => {
                 </span>
               </div>
               <button
-                onClick={() => { handleNavClick(); handleLogout(); }}
-                className="flex items-center gap-2 text-xs text-red-600 font-medium py-2 text-left"
+                type="button"
+                onClick={() => {
+                  handleNavClick();
+                  handleLogout();
+                }}
+                className="flex items-center gap-2 text-xs text-red-600 font-medium py-2 text-left cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
                 Logout
               </button>
             </div>
           ) : (
-            <Link 
-              to="/login" 
+            <Link
+              to="/login"
               onClick={handleNavClick}
               className={`text-base font-medium py-2 transition-colors border-t border-[#EFEADF] pt-4 ${
                 isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
@@ -189,7 +168,6 @@ export const Header: React.FC = () => {
               Login
             </Link>
           )}
->>>>>>> feat/MH-30-UI-Home/LoginPage
         </div>
       )}
     </header>

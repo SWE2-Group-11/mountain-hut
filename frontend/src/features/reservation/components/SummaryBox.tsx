@@ -6,7 +6,9 @@ interface SummaryBoxProps {
   partySize: number;
   isFormValid: boolean;
   maxSeats: number;
-  onBookTable: () => void;
+   isSubmitting: boolean;
+  onBookTable: () => void | Promise<unknown>;
+ 
 }
 
 export const SummaryBox: React.FC<SummaryBoxProps> = ({
@@ -15,6 +17,7 @@ export const SummaryBox: React.FC<SummaryBoxProps> = ({
   partySize,
   isFormValid,
   maxSeats,
+     isSubmitting,
   onBookTable,
 }) => {
   const formattedDate = selectedDate
@@ -72,17 +75,18 @@ export const SummaryBox: React.FC<SummaryBoxProps> = ({
         </div>
       </div>
 
-      <button
-        disabled={!isFormValid}
-        onClick={onBookTable}
-        className={`w-full py-4 rounded-xl font-medium text-white transition-all shadow-sm ${
-          isFormValid
-            ? 'bg-[#234E39] hover:bg-[#1C3E2E] cursor-pointer'
-            : 'bg-[#9FB2A9] cursor-not-allowed opacity-80'
-        }`}
-      >
-        Book Table
-      </button>
+    <button
+  type="button"
+  disabled={!isFormValid || isSubmitting}
+  onClick={onBookTable}
+  className={`w-full py-4 rounded-xl font-medium text-white transition-all shadow-sm ${
+    isFormValid && !isSubmitting
+      ? 'bg-[#234E39] hover:bg-[#1C3E2E] cursor-pointer'
+      : 'bg-[#9FB2A9] cursor-not-allowed opacity-80'
+  }`}
+>
+  {isSubmitting ? 'Booking...' : 'Book Table'}
+</button>
 
       <p className="text-center text-xs text-[#7C8885] mt-3">
         {isFormValid
