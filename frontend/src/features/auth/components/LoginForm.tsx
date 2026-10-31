@@ -1,35 +1,84 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, ShieldCheck, Mail, Lock, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
+import { User, ShieldCheck, Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
 export const LoginForm: React.FC = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading, login } = useAuth();
+
   const [loginType, setLoginType] = useState<'user' | 'staff'>('user');
- const [staffRole, setStaffRole] = useState<'Employee' | 'Warden'>('Employee');
+  const [staffRole, setStaffRole] = useState<'employee' | 'warden'>('employee');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // If already logged in, redirect away from login
+  if (!authLoading && user) {
+    const destination = user.role === 'hiker' ? '/book-table' : '/';
+    return <Navigate to={destination} replace />;
+  }
+
+  const validateEmail = (emailStr: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate login routing based on role
-    if (loginType === 'staff') {
-      console.log(`Logging in as staff role: ${staffRole}`);
-      navigate(`/staff/dashboard/${staffRole}`);
-    } else {
-      console.log('Logging in as standard user');
-      navigate('/');
+    setError(null);
+
+    // Validate before sending
+    if (!email.trim() || !password.trim()) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Calls POST /api/v1/session with { username: email, password } via AuthContext
+      await login(email, password);
+    } catch (err: any) {
+      if (
+        err.message.includes('401') ||
+        err.message.toLowerCase().includes('credential') ||
+        err.message.toLowerCase().includes('password') ||
+        err.message.toLowerCase().includes('incorrect')
+      ) {
+        setError('Incorrect username or password');
+      } else {
+        setError(err.message || 'Failed to sign in. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  // Redirect after login by role
+  useEffect(() => {
+    if (user) {
+      if (user.role === 'hiker') {
+        navigate('/book-table', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [user, navigate]);
+
   return (
-    <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-sm border border-[#EFEADF]">
+    <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-sm border border-[#EFEADF] space-y-6">
       
       {/* Top Toggle: User vs Staff */}
-      <div className="flex bg-[#FAF6EE] p-1.5 rounded-2xl mb-8 border border-[#EFEADF]">
+      <div className="flex bg-[#FAF6EE] p-1.5 rounded-2xl border border-[#EFEADF]">
         <button
           type="button"
-          onClick={() => setLoginType('user')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+          onClick={() => { setLoginType('user'); setError(null); }}
+          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             loginType === 'user' 
               ? 'bg-[#1C2826] text-white shadow-sm' 
               : 'text-[#5A6865] hover:text-[#1C2826]'
@@ -39,8 +88,8 @@ export const LoginForm: React.FC = () => {
         </button>
         <button
           type="button"
-          onClick={() => setLoginType('staff')}
-          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+          onClick={() => { setLoginType('staff'); setError(null); }}
+          className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
             loginType === 'staff' 
               ? 'bg-[#1C2826] text-white shadow-sm' 
               : 'text-[#5A6865] hover:text-[#1C2826]'
@@ -50,7 +99,7 @@ export const LoginForm: React.FC = () => {
         </button>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-2">
         <h2 className="text-2xl font-serif font-bold text-[#1C2826] mb-1">
           {loginType === 'staff' ? 'Staff Portal Access' : 'Welcome'}
         </h2>
@@ -61,11 +110,22 @@ export const LoginForm: React.FC = () => {
         </p>
       </div>
 
+      {/* Error Message Box */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-red-700 text-xs animate-fadeIn">
+          <AlertCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
+          <div>
+            <span className="font-bold block mb-0.5">Authentication Error</span>
+            {error}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleLogin} className="space-y-4">
         
         {/* Staff Role Selector (Only shown if 'Staff' is selected) */}
         {loginType === 'staff' && (
-          <div className="space-y-1.5 pb-2">
+          <div className="space-y-1.5 pb-1">
             <label className="text-xs font-bold uppercase tracking-wider text-[#234E39]">
               Employee Role
             </label>
@@ -74,9 +134,8 @@ export const LoginForm: React.FC = () => {
               onChange={(e) => setStaffRole(e.target.value as any)}
               className="w-full px-4 py-3 bg-[#FAF6EE] border border-[#EFEADF] rounded-xl text-sm font-medium text-[#1C2826] focus:outline-none focus:border-[#234E39] transition-all"
             >
-             
               <option value="employee">Employee</option>
-              {/* <option value="warden">Warden </option> */}
+              <option value="warden">Warden</option>
             </select>
           </div>
         )}
@@ -120,10 +179,20 @@ export const LoginForm: React.FC = () => {
         {/* Submit Button */}
         <button
           type="submit"
-          className="w-full mt-2 py-3.5 bg-[#234E39] text-white font-medium rounded-xl hover:bg-[#1C3E2E] transition-all shadow-sm flex items-center justify-center gap-2 text-sm"
+          disabled={isSubmitting}
+          className="w-full mt-2 py-3.5 bg-[#234E39] text-white font-medium rounded-xl hover:bg-[#1C3E2E] transition-all shadow-sm flex items-center justify-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
         >
-          <span>Sign In</span>
-          <ArrowRight className="w-4 h-4" />
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Signing in...</span>
+            </>
+          ) : (
+            <>
+              <span>Sign In</span>
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
         </button>
       </form>
     </div>
