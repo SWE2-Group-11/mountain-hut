@@ -1,38 +1,56 @@
 import React, { useState } from 'react';
+<<<<<<< HEAD
 import { Link, useLocation } from 'react-router-dom';
+=======
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+>>>>>>> feat/MH-30-UI-Home/LoginPage
 import logoImage from '../../assets/logo.jpeg';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogOut, User as UserIcon, Calendar } from 'lucide-react';
+import { useAuth } from '../../features/auth/useAuth';
 
 export const Header: React.FC = () => {
+<<<<<<< HEAD
+=======
+  const { user, loading, logout } = useAuth();
+  const navigate = useNavigate();
+>>>>>>> feat/MH-30-UI-Home/LoginPage
   const location = useLocation();
   const currentPath = location.pathname;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isHomeActive = currentPath === '/';
   const isBookActive = currentPath === '/book-table';
+<<<<<<< HEAD
   const isLoginActive = currentPath === '/login' || currentPath === '/staff/login';
+=======
+>>>>>>> feat/MH-30-UI-Home/LoginPage
 
-  // Close mobile menu when a link is clicked
   const handleNavClick = () => {
     setIsMobileMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
   return (
     <header className="w-full bg-[#FAF6EE] px-6 md:px-12 py-4 flex items-center justify-between border-b border-[#EFEADF] relative z-50">
       {/* Logo & Brand */}
-      <div className="flex items-center gap-3">
+      <Link to="/" className="flex items-center gap-3">
         <img src={logoImage} alt="Mountain Hut Logo" className="w-10 h-10 md:w-14 md:h-14 rounded-full object-cover" />
         <span className="text-lg md:text-xl font-serif font-bold text-[#1C2826]">Mountain Hut</span>
-      </div>
+      </Link>
       
       {/* Desktop Navigation */}
-      <nav className="hidden md:flex items-center gap-8 font-medium text-sm text-[#3C4A47]">
+      <nav className="hidden md:flex items-center gap-6 font-medium text-sm text-[#3C4A47]">
         <Link 
           to="/" 
           className={`hover:text-[#1C2826] transition-colors ${isHomeActive ? 'font-bold text-[#1C2826]' : ''}`}
         >
           Home
         </Link>
+<<<<<<< HEAD
         <Link 
           to="/book-table" 
           className={`px-4 py-2 rounded-full transition-all ${
@@ -49,6 +67,47 @@ export const Header: React.FC = () => {
         >
           Login
         </Link>
+=======
+
+        {/* Show Book a Table for logged-in hikers */}
+        {!loading && user && user.role === 'hiker' && (
+          <Link 
+            to="/book-table" 
+            className={`flex items-center gap-1.5 transition-colors ${isBookActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'}`}
+          >
+            <Calendar className="w-4 h-4" />
+            Book a Table
+          </Link>
+        )}
+
+        {/* Session check loading state to prevent flickering */}
+        {loading ? (
+          <div className="w-16 h-6 bg-[#EFEADF] rounded-lg animate-pulse" />
+        ) : user ? (
+          <div className="flex items-center gap-4 pl-4 border-l border-[#EFEADF]">
+            <div className="flex items-center gap-2 text-xs text-[#5A6865]">
+              <UserIcon className="w-4 h-4 text-[#234E39]" />
+              <span className="font-semibold text-[#1C2826]">{user.username}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+        ) : (
+          <Link 
+            to="/login" 
+            className={`text-xs transition-colors border-l border-[#EFEADF] pl-6 ${
+              isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#7C8885] hover:text-[#1C2826]'
+            }`}
+          >
+            Login
+          </Link>
+        )}
+>>>>>>> feat/MH-30-UI-Home/LoginPage
       </nav>
 
       {/* Mobile Hamburger Button */}
@@ -70,6 +129,7 @@ export const Header: React.FC = () => {
           >
             Home
           </Link>
+<<<<<<< HEAD
           <Link 
             to="/book-table" 
             onClick={handleNavClick}
@@ -86,6 +146,50 @@ export const Header: React.FC = () => {
           >
             Login
           </Link>
+=======
+
+          {!loading && user && user.role === 'hiker' && (
+            <Link 
+              to="/book-table" 
+              onClick={handleNavClick}
+              className={`text-base font-medium py-2 transition-colors flex items-center gap-2 ${isBookActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'}`}
+            >
+              <Calendar className="w-4 h-4 text-[#234E39]" />
+              Book a Table
+            </Link>
+          )}
+
+          {loading ? (
+            <div className="w-20 h-8 bg-[#EFEADF] rounded-lg animate-pulse" />
+          ) : user ? (
+            <div className="pt-4 border-t border-[#EFEADF] flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-xs text-[#5A6865]">
+                <UserIcon className="w-4 h-4 text-[#234E39]" />
+                <span className="font-semibold text-[#1C2826]">{user.username}</span>
+                <span className="bg-white px-2 py-0.5 rounded text-[10px] text-[#7C8885] uppercase border border-[#EFEADF]">
+                  {user.role}
+                </span>
+              </div>
+              <button
+                onClick={() => { handleNavClick(); handleLogout(); }}
+                className="flex items-center gap-2 text-xs text-red-600 font-medium py-2 text-left"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link 
+              to="/login" 
+              onClick={handleNavClick}
+              className={`text-base font-medium py-2 transition-colors border-t border-[#EFEADF] pt-4 ${
+                isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
+              }`}
+            >
+              Login
+            </Link>
+          )}
+>>>>>>> feat/MH-30-UI-Home/LoginPage
         </div>
       )}
     </header>
