@@ -55,7 +55,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="bg-[#1C2826] text-white py-10 px-8 md:px-16 flex flex-col md:flex-row justify-between items-center text-sm border-t border-[#2C3835]">
-        <p className="text-gray-400 mb-4 md:mb-0">© 2026 Mountain Hut Refuge (MH-01).</p>
+        <p className="text-gray-400 mb-4 md:mb-0">© 2026 Mountain Hut Refuge.</p>
         <div>
           {user ? (
             <button 
