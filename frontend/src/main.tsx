@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from './features/auth/AuthContext'; // Check your correct relative path
+import { AuthProvider } from './features/auth/AuthProvider';
 import App from './App';
 import './index.css';
 
