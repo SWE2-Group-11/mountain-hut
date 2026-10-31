@@ -40,7 +40,7 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
  * @returns The seats to assign per table, or null if the capacity is not enough or the party_size is <= 0i.
  */
 const assignSeats = (tables: TableAvailability[], party_size: number): Assignment[] | null => {
-    if(party_size <= 0) return null;
+    if (party_size <= 0) return null;
     const free = tables.filter((t) => t.free_seats > 0);
     if (free.reduce((sum, t) => sum + t.free_seats, 0) < party_size) return null;
 
@@ -95,3 +95,20 @@ export const saveBooking = (
         }
         return { booking, seatings };
     })();
+
+/**
+ * Checks whether a hiker already has a booking for a slot.
+ * @param hiker_id The account of the hiker.
+ * @param date The day of the slot (YYYY-MM-DD).
+ * @param start_time The start time of the slot (HH:MM).
+ * @returns true if the hiker already booked this slot.
+ */
+export const hasBookingForSlot = (hiker_id: number, date: string, start_time: string): boolean => {
+    const sql = `
+        SELECT 1
+        FROM booking b
+        JOIN seated_at sa ON sa.booking_id = b.id
+        WHERE b.hiker_id = ? AND sa.slot_date = ? AND sa.slot_start_time = ?
+        LIMIT 1`;
+    return db.prepare<[number, string, string], unknown>(sql).get(hiker_id, date, start_time) !== undefined;
+};
