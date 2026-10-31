@@ -9,15 +9,9 @@ export const RESET_DB = process.env.RESET_DB === "true";
 // Application URLs
 const APP_V1_BASE_URL = "/api/v1";
 const URL_AUTH = "/session";
-const URL_TICKETS = "/tickets";
-const URL_SERVICES = "/services";
-const URL_COUNTERS = "/counters";
 
 export const ROUTES = {
     V1_AUTH: `${APP_V1_BASE_URL}${URL_AUTH}`,
-    V1_TICKETS: `${APP_V1_BASE_URL}${URL_TICKETS}`,
-    V1_SERVICES: `${APP_V1_BASE_URL}${URL_SERVICES}`,
-    V1_COUNTERS: `${APP_V1_BASE_URL}${URL_COUNTERS}`,
 } as const;
 
 // Server configuration
@@ -32,5 +26,8 @@ export const SESSION_SECRET = "shhhhh... it's a secret!";
 // Password hashing
 export const PASSWORD_KEY_LENGTH = 16;
 
-// Ticket numbers: after this value the daily sequence of a service restarts from 0
-export const MAX_TICKET_NUMBER_PER_SERVICE = 999;
+// How many hours before the due time can be reserved a seat
+export const BOOKING_CUTOFF_HOURS = 2;
+
+// timezone in which the dates and start_time of the slots are expressed
+export const HUT_TIMEZONE = "Europe/Rome"; 
