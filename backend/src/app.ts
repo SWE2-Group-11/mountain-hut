@@ -27,6 +27,9 @@ app.use(session({
 
 app.use(authenticateSession);
 
+// Routes
+app.use(ROUTES.V1_AUTH, authRouter);
+
 // Unknown routes → 404 in ErrorDTO format
 app.use((req: Request, res: Response) => {
     sendNotFoundError("Route not found", res);
