@@ -14,9 +14,8 @@ export const LoginForm: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // All hooks are above this line. Already logged in (or just logged in): redirect by role.
   if (!authLoading && user) {
-    const destination = user.role === 'hiker' ? '/book-table' : '/';
+    const destination = user.role === 'hiker' ? '/book-table' : '/staff/slots';
     return <Navigate to={destination} replace />;
   }
 

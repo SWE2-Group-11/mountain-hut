@@ -14,10 +14,14 @@ export const Header: React.FC = () => {
   const isLoginActive = currentPath === '/login' || currentPath === '/staff/login';
   const isHomeActive = currentPath === '/';
   const isBookActive = currentPath === '/book-table';
+  const isSlotsActive = currentPath === '/staff/slots';
 
   // Visitors and hikers see the link; staff do not book tables.
   // A visitor who clicks it is sent to /login by ProtectedRoute.
   const canSeeBooking = !loading && (!user || user.role === 'hiker');
+
+  // Employees and wardens set up the slots
+  const canManageSlots = !loading && (user?.role === 'employee' || user?.role === 'warden');
 
   const handleNavClick = () => {
     setIsMobileMenuOpen(false);
@@ -64,6 +68,17 @@ export const Header: React.FC = () => {
           >
            
             Book a Table
+          </Link>
+        )}
+
+        {canManageSlots && (
+          <Link
+            to="/staff/slots"
+            className={`transition-colors ${
+              isSlotsActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'
+            }`}
+          >
+            Manage slots
           </Link>
         )}
 
@@ -131,6 +146,18 @@ export const Header: React.FC = () => {
             >
             
               Book a Table
+            </Link>
+          )}
+
+          {canManageSlots && (
+            <Link
+              to="/staff/slots"
+              onClick={handleNavClick}
+              className={`text-base font-medium py-2 transition-colors ${
+                isSlotsActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
+              }`}
+            >
+              Manage slots
             </Link>
           )}
 
