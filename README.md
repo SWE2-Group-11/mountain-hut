@@ -34,7 +34,7 @@ docs/       Project documentation
 | `cors` | Allows the frontend origin to call the API |
 | `better-sqlite3` | SQLite database (synchronous driver) |
 | `express-session` | Session cookies |
-| `passport`, `passport-local` | Login with username and password |
+| `passport`, `passport-local` | Login with email and password |
 | `typescript` | Type checking and compilation (pinned to v6) |
 | `tsx` | Runs TypeScript directly in development, with auto-restart |
 | `oxlint` | Linting |
