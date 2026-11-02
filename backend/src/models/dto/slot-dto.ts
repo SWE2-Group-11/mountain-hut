@@ -53,7 +53,7 @@ export type GetSlotsRequestDTO = z.infer<typeof GetSlotsRequestSchema>;
 
 /**
  * Validation schema for GetAvailability query parameters.
- * Used in GET /slots/:slotId/availability
+ * Used in GET /slots/availability
  */
 export const GetAvailabilityRequestSchema = z.object({
     date: DateSchema,

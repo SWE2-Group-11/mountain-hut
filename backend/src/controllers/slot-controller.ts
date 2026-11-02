@@ -18,7 +18,7 @@ export const getSlots = (request: GetSlotsRequestDTO): SlotDTO[] =>
 /**
  * Checks availability and proposes a table arrangement.
  * @param request The request payload containing date, slot and party size.
- * @returns The proposed arrangement, or an empty array if the party cannot be accommodated.
+ * @returns An object containing the proposed arrangement in available, or available: [] if the party cannot be accommodated
  * @throws NotFoundError if the slot does not exist.
  */
 export const getAvailability = (
