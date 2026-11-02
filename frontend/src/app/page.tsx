@@ -34,15 +34,7 @@ export default function HomePage() {
           </p>
 
           <div className="pt-4">
-            {/* Dynamic Link: goes to /book-table if logged in, otherwise redirects to /login */}
-            <Link
-              to={user ? "/book-table" : "/login"}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-[#234E39] text-white rounded-2xl font-medium text-sm hover:bg-[#1C3E2E] transition-colors shadow-lg cursor-pointer"
-            >
-              <Calendar className="w-5 h-5" />
-              Book a Table
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Link>
+           
           </div>
         </div>
       </div>
