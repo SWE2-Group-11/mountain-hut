@@ -9,9 +9,13 @@ export const RESET_DB = process.env.RESET_DB === "true";
 // Application URLs
 const APP_V1_BASE_URL = "/api/v1";
 const URL_AUTH = "/session";
+const URL_RESERVATIONS = "/reservations";
+const URL_SLOTS = "/slots";
 
 export const ROUTES = {
     V1_AUTH: `${APP_V1_BASE_URL}${URL_AUTH}`,
+    V1_RESERVATIONS: `${APP_V1_BASE_URL}${URL_RESERVATIONS}`,
+    V1_SLOTS: `${APP_V1_BASE_URL}${URL_SLOTS}`,
 } as const;
 
 // Server configuration
