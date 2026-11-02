@@ -1,5 +1,5 @@
 import { getSlot } from "../dao/slot-dao";
-import { saveBooking } from "../dao/booking-dao";
+import { saveBooking, hasBookingForSlot } from "../dao/booking-dao";
 import { CreateReservationRequestDTO, CreateReservationResponseDTO } from "../models/dto/reservation-dto";
 import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
@@ -29,6 +29,9 @@ export const createReservation = (
         throw new BadRequestError(
             `Reservations are allowed up to ${BOOKING_CUTOFF_HOURS} hours before the slot starts`
         );
+    }
+    if (hasBookingForSlot(hiker_id, slot.date, slot.start_time)) {
+        throw new ConflictError("You already have a booking for this slot");
     }
 
     const result = saveBooking(hiker_id, slot.date, slot.start_time, request.partySize);
