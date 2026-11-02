@@ -95,20 +95,3 @@ export const saveBooking = (
         }
         return { booking, seatings };
     })();
-
-/**
- * Checks whether a hiker already has a booking for a slot.
- * @param hiker_id The account of the hiker.
- * @param date The day of the slot (YYYY-MM-DD).
- * @param start_time The start time of the slot (HH:MM).
- * @returns true if the hiker already booked this slot.
- */
-export const hasBookingForSlot = (hiker_id: number, date: string, start_time: string): boolean => {
-    const sql = `
-        SELECT 1
-        FROM booking b
-        JOIN seated_at sa ON sa.booking_id = b.id
-        WHERE b.hiker_id = ? AND sa.slot_date = ? AND sa.slot_start_time = ?
-        LIMIT 1`;
-    return db.prepare<[number, string, string], unknown>(sql).get(hiker_id, date, start_time) !== undefined;
-};
