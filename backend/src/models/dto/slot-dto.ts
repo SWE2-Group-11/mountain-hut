@@ -56,30 +56,28 @@ export type GetSlotsRequestDTO = z.infer<typeof GetSlotsRequestSchema>;
  * Used in POST /slots and GET /slots/configurations
  */
 export class SlotTableDTO {
-    public tableId: number;
+    public tableNumber: number;
     public seats: number;
 
-    constructor(tableId: number, seats: number) {
-        this.tableId = tableId;
+    constructor(tableNumber: number, seats: number) {
+        this.tableNumber = tableNumber;
         this.seats = seats;
     }
 }
 
 /**
  * Data Transfer Object for a slot with its table and seat configuration.
- * The id can be sent back as configurationId to reuse the configuration.
+ * The slot can be referenced through copyFrom (date + startTime) to reuse its tables.
  * Used in POST /slots and GET /slots/configurations
  */
 export class SlotConfigurationDTO {
-    public id: number;
     public date: string;        // YYYY-MM-DD
     public startTime: string;   // HH:mm
     public endTime: string;     // HH:mm
     public tables: SlotTableDTO[];
     public totalSeats: number;
 
-    constructor(id: number, date: string, startTime: string, endTime: string, tables: SlotTableDTO[], totalSeats: number) {
-        this.id = id;
+    constructor(date: string, startTime: string, endTime: string, tables: SlotTableDTO[], totalSeats: number) {
         this.date = date;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -97,7 +95,7 @@ export const TimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
  * Validation schema for a table and its configured seats.
  */
 const SlotTableSchema = z.object({
-    tableId: z.number().int().positive(),
+    tableNumber: z.number().int().positive(),
     seats: z.number().int().positive(),
 });
 
@@ -110,26 +108,28 @@ export const CreateSlotRequestSchema = z
         date: DateSchema,
         startTime: TimeSchema,
         endTime: TimeSchema,
-        configuration: z
+        tables: z
+            .array(SlotTableSchema)
+            .min(1)
+            .refine(
+                (tables) => new Set(tables.map((t) => t.tableNumber)).size === tables.length,
+                "Each tableNumber can appear only once"
+            )
+            .optional(),
+        copyFrom: z
             .object({
-                tables: z
-                    .array(SlotTableSchema)
-                    .min(1)
-                    .refine(
-                        (tables) => new Set(tables.map((t) => t.tableId)).size === tables.length,
-                        "Each table can appear only once"
-                    ),
+                date: DateSchema,
+                startTime: TimeSchema,
             })
             .optional(),
-        configurationId: z.number().int().positive().optional(),
     })
     .refine(({ startTime, endTime }) => endTime > startTime, {
         path: ["endTime"],
         message: "The end time must be after the start time",
     })
-    .refine(({ configuration, configurationId }) => (configuration === undefined) !== (configurationId === undefined), {
-        path: ["configuration"],
-        message: "Exactly one of configuration and configurationId is required",
+    .refine(({ tables, copyFrom }) => (tables === undefined) !== (copyFrom === undefined), {
+        path: ["tables"],
+        message: "Exactly one of tables and copyFrom is required",
     });
 
 /**
@@ -138,7 +138,7 @@ export const CreateSlotRequestSchema = z
 export type CreateSlotRequestDTO = z.infer<typeof CreateSlotRequestSchema>;
 
 /**
- * Validation schema for saved configurations query parameters.
+ * Validation schema for reusable configurations query parameters.
  * Used in GET /slots/configurations
  */
 export const GetConfigurationsRequestSchema = z

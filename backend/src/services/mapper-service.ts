@@ -49,31 +49,13 @@ export const slotAvailabilityToSlotDTO = ({ slot, total_seats, available_seats }
 };
 
 /**
- * Derives the numeric configuration identifier of a slot from its primary key,
- * as YYYYMMDDHHmm: the schema has no configuration table, every slot is a saved configuration.
- */
-export const slotToConfigurationId = (slot: Slot): number =>
-    Number(`${slot.date}${slot.start_time}`.replace(/\D/g, ""));
-
-/**
- * Recovers the primary key of a slot from its configuration identifier.
- * @returns The slot key, or null if the identifier is not formatted as YYYYMMDDHHmm.
- */
-export const configurationIdToSlotKey = (configurationId: number): { date: string; start_time: string } | null => {
-    const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(String(configurationId));
-    if (!match) return null;
-    const [, year, month, day, hours, minutes] = match;
-    return { date: `${year}-${month}-${day}`, start_time: `${hours}:${minutes}` };
-};
-
-/**
  * Maps a slot with its tables into a client-ready SlotConfigurationDTO instance.
  */
 export const slotConfigurationToDTO = ({ slot, tables }: SlotConfiguration): SlotConfigurationDTO => {
     const tableDTOs = tables.map((t) => new SlotTableDTO(t.table_number, t.seats));
     const totalSeats = tables.reduce((sum, t) => sum + t.seats, 0);
     const endTime = minutesToTime(timeToMinutes(slot.start_time) + slot.duration);
-    return new SlotConfigurationDTO(slotToConfigurationId(slot), slot.date, slot.start_time, endTime, tableDTOs, totalSeats);
+    return new SlotConfigurationDTO(slot.date, slot.start_time, endTime, tableDTOs, totalSeats);
 };
 
 /**
