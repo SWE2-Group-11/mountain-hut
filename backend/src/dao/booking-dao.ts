@@ -33,6 +33,23 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
 };
 
 /**
+ * Checks whether a hiker already has a booking in a slot (only one booking per slot is allowed).
+ * @param hiker_id The account of the hiker.
+ * @param date The day of the slot (YYYY-MM-DD).
+ * @param start_time The start time of the slot (HH:MM).
+ * @returns true if the hiker already has a booking in the slot, false otherwise.
+ */
+export const hasBookingInSlot = (hiker_id: number, date: string, start_time: string): boolean => {
+    const sql = `
+        SELECT 1
+        FROM booking b
+        JOIN seated_at sa ON sa.booking_id = b.id
+        WHERE b.hiker_id = ? AND sa.slot_date = ? AND sa.slot_start_time = ?
+        LIMIT 1`;
+    return db.prepare<[number, string, string], { 1: number }>(sql).get(hiker_id, date, start_time) !== undefined;
+};
+
+/**
  * Decides how to seat a party: it stays on one table if possible (the smallest
  * one that fits), otherwise it is spread over the fewest tables possible.
  * @param tables The tables of the slot with their free seats.

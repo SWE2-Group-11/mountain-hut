@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { db } from "../database/database";
-import { getTablesAvailability, saveBooking } from "../dao/booking-dao";
+import { getTablesAvailability, hasBookingInSlot, saveBooking } from "../dao/booking-dao";
 import { Booking } from "../models/entities/booking";
 import { SeatedAt } from "../models/entities/seated_at";
 
@@ -19,7 +19,7 @@ const START = "19:00";
 const HIKER_ID = 5;
 const BOOKING_ID = 42;
 
-const statement = { all: vi.fn(), run: vi.fn() };
+const statement = { all: vi.fn(), get: vi.fn(), run: vi.fn() };
 
 const table = (table_number: number, seats: number, free_seats = seats) => ({ table_number, seats, free_seats });
 
@@ -50,6 +50,26 @@ describe("getTablesAvailability (unit)", () => {
         getTablesAvailability(DATE, START);
         
         expect(statement.all).toHaveBeenCalledWith(DATE, START);
+    });
+});
+
+describe("hasBookingInSlot (unit)", () => {
+    it("returns true when the hiker has a booking in the slot", () => {
+        statement.get.mockReturnValue({ 1: 1 });
+
+        expect(hasBookingInSlot(HIKER_ID, DATE, START)).toBe(true);
+    });
+
+    it("returns false when the hiker has no booking in the slot", () => {
+        statement.get.mockReturnValue(undefined);
+
+        expect(hasBookingInSlot(HIKER_ID, DATE, START)).toBe(false);
+    });
+
+    it("queries the requested hiker and slot", () => {
+        hasBookingInSlot(HIKER_ID, DATE, START);
+
+        expect(statement.get).toHaveBeenCalledWith(HIKER_ID, DATE, START);
     });
 });
 

@@ -1,5 +1,5 @@
 import { getSlot } from "../dao/slot-dao";
-import { saveBooking } from "../dao/booking-dao";
+import { hasBookingInSlot, saveBooking } from "../dao/booking-dao";
 import { CreateReservationRequestDTO, CreateReservationResponseDTO } from "../models/dto/reservation-dto";
 import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
@@ -15,7 +15,8 @@ import { BOOKING_CUTOFF_HOURS } from "../config/config";
  * @returns The created booking with the tables assigned.
  * @throws BadRequestError if the slot does not exist or starts in less than
  *         BOOKING_CUTOFF_HOURS hours.
- * @throws ConflictError if the requested capacity is no longer available.
+ * @throws ConflictError if the hiker already has a booking in the slot,
+ *         or if the requested capacity is no longer available.
  */
 export const createReservation = (
     hiker_id: number,
@@ -30,7 +31,10 @@ export const createReservation = (
             `Reservations are allowed up to ${BOOKING_CUTOFF_HOURS} hours before the slot starts`
         );
     }
-  
+    if (hasBookingInSlot(hiker_id, slot.date, slot.start_time)) {
+        throw new ConflictError("You already have a booking for this date and time");
+    }
+
     const result = saveBooking(hiker_id, slot.date, slot.start_time, request.partySize);
     if (!result) {
         throw new ConflictError("The requested capacity is no longer available");

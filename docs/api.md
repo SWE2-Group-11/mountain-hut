@@ -21,7 +21,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `201 Created`: booking created; returns the booking details, including any declared dietary requirements
   - `400 Bad Request`: missing or invalid request fields, including missing allergy details when `hasAllergies` is true
   - `401 Unauthorized`: user is not authenticated
-  - `409 Conflict`: the requested capacity is no longer available
+  - `409 Conflict`: the user already has a booking for the same date and slot, or the requested capacity is no longer available
   - `500 Internal Server Error`: unexpected server error
 
 ### GET /slots - Get slots for the selected date
