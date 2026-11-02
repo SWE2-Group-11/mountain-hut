@@ -1,4 +1,4 @@
-import { getAvailableSlotsByDate, getSavedConfigurations, getSlotTables, saveSlot, TableInput } from "../dao/slot-dao";
+import { getAvailableSlotsByDate, getSavedConfigurations, getSlot, getSlotTables, saveSlot, TableInput } from "../dao/slot-dao";
 import {
     CreateSlotRequestDTO,
     GetConfigurationsRequestDTO,
@@ -8,11 +8,7 @@ import {
 } from "../models/dto/slot-dto";
 import { ConflictError } from "../models/errors/conflict-error";
 import { NotFoundError } from "../models/errors/notfound-error";
-import {
-    configurationIdToSlotKey,
-    slotAvailabilityToSlotDTO,
-    slotConfigurationToDTO,
-} from "../services/mapper-service";
+import { slotAvailabilityToSlotDTO, slotConfigurationToDTO } from "../services/mapper-service";
 import { isBookingOpen } from "../services/booking-rules";
 import { timeToMinutes } from "../services/date-service";
 
@@ -27,46 +23,45 @@ export const getSlots = (request: GetSlotsRequestDTO): SlotDTO[] =>
         .map(slotAvailabilityToSlotDTO);
 
 /**
- * Retrieves the saved configurations that can be reused for a new slot.
+ * Retrieves the table configurations of existing slots, so that they can be reused through copyFrom.
  * @param request The request payload containing the optional date range and the limit.
- * @returns The configurations, most recent first, or [] if none exists.
+ * @returns The configurations, most recent first, or [] if no slot exists.
  */
 export const getConfigurations = (request: GetConfigurationsRequestDTO): SlotConfigurationDTO[] =>
     getSavedConfigurations(request.from ?? null, request.to ?? null, request.limit)
         .map(slotConfigurationToDTO);
 
 /**
- * Retrieves the tables of a saved configuration.
- * @param configurationId The identifier of the configuration.
- * @returns The tables of the configuration.
- * @throws NotFoundError if the configuration does not exist.
+ * Retrieves the tables of an existing slot, to be copied into a new one.
+ * @param date The day of the source slot (YYYY-MM-DD).
+ * @param startTime The start time of the source slot (HH:mm).
+ * @returns The tables of the source slot.
+ * @throws NotFoundError if the source slot does not exist.
  */
-const getConfigurationTables = (configurationId: number): TableInput[] => {
-    const key = configurationIdToSlotKey(configurationId);
-    const tables = key ? getSlotTables(key.date, key.start_time) : [];
-    if (tables.length === 0) {
-        throw new NotFoundError("The selected configuration does not exist");
+const getCopiedTables = (date: string, startTime: string): TableInput[] => {
+    if (!getSlot(date, startTime)) {
+        throw new NotFoundError("The slot referenced by copyFrom does not exist");
     }
-    return tables.map(({ table_number, seats }) => ({ table_number, seats }));
+    return getSlotTables(date, startTime).map(({ table_number, seats }) => ({ table_number, seats }));
 };
 
 /**
- * Creates a slot with either a new table configuration or a saved one.
- * @param request The request payload containing the date, the time interval and the configuration.
+ * Creates a slot with either new tables or the tables copied from an existing slot.
+ * @param request The request payload containing the date, the time interval and the tables or copyFrom.
  * @returns The created slot with its tables.
- * @throws NotFoundError if the referenced configuration does not exist.
+ * @throws NotFoundError if the slot referenced by copyFrom does not exist.
  * @throws ConflictError if the slot overlaps an existing slot of the same day.
  */
 export const createSlot = (request: CreateSlotRequestDTO): SlotConfigurationDTO => {
-    const { date, startTime, endTime, configuration, configurationId } = request;
+    const { date, startTime, endTime, tables, copyFrom } = request;
 
     // The request schema guarantees that exactly one of the two is provided
-    const tables = configuration
-        ? configuration.tables.map(({ tableId, seats }) => ({ table_number: tableId, seats }))
-        : getConfigurationTables(configurationId!);
+    const slotTables = tables
+        ? tables.map(({ tableNumber, seats }) => ({ table_number: tableNumber, seats }))
+        : getCopiedTables(copyFrom!.date, copyFrom!.startTime);
 
     const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
-    const created = saveSlot(date, startTime, duration, tables);
+    const created = saveSlot(date, startTime, duration, slotTables);
     if (!created) {
         throw new ConflictError("The slot overlaps an existing slot of the same day");
     }
