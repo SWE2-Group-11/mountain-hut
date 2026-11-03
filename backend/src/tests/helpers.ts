@@ -32,15 +32,11 @@ export const loginAs = async (email: string) => {
 };
 
 export const createHikerWithoutBookings = (email: string = NEW_HIKER): void => {
-    db.transaction(() => {
-        const account = db
-            .prepare(
-                `INSERT INTO account (email, password_salt, password_hash)
-                 SELECT ?, password_salt, password_hash FROM account WHERE email = ?`
-            )
-            .run(email, MARIO);
-        db.prepare(
-            "INSERT INTO hiker (account_id, full_name, mobile_number) VALUES (?, 'New Hiker', '+39 000 000 0000')"
-        ).run(account.lastInsertRowid);
-    })();
+    const { lastInsertRowid } = db.prepare(
+        `INSERT INTO account (email, password_salt, password_hash)
+         SELECT ?, password_salt, password_hash FROM account WHERE email = ?`
+    ).run(email, MARIO);
+    db.prepare(
+        `INSERT INTO hiker (account_id, full_name, mobile_number) VALUES (?, 'New Hiker', '+39 300 000 0000')`
+    ).run(lastInsertRowid);
 };
