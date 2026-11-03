@@ -58,7 +58,7 @@ export type GetSlotsRequestDTO = z.infer<typeof GetSlotsRequestSchema>;
 export const GetAvailabilityRequestSchema = z.object({
     date: DateSchema,
     slot: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-    partySize: z.coerce.number().int().positive(),
+    partySize: z.string().regex(/^[1-9]\d*$/, "partySize must be a positive integer").transform(Number),
 });
 
 export type GetAvailabilityRequestDTO = z.infer<typeof GetAvailabilityRequestSchema>;
