@@ -16,7 +16,10 @@ CREATE TABLE slot (
     date       TEXT    NOT NULL CHECK (date IS strftime('%Y-%m-%d', date)),
     start_time TEXT    NOT NULL CHECK (start_time IS strftime('%H:%M', start_time)),
     duration   INTEGER NOT NULL CHECK (duration > 0),
-    PRIMARY KEY (date, start_time)
+    PRIMARY KEY (date, start_time),
+    -- A slot must end within the day it starts (at 23:59 at the latest)
+    CHECK (CAST(substr(start_time, 1, 2) AS INTEGER) * 60
+           + CAST(substr(start_time, 4, 2) AS INTEGER) + duration < 1440)
 );
 
 -- Tables available in each slot
