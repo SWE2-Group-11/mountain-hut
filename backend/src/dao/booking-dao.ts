@@ -1,6 +1,8 @@
 import { db } from "../database/database";
 import { Booking } from "../models/entities/booking";
 import { SeatedAt } from "../models/entities/seated_at";
+import { DietaryRequirement } from "../models/entities/dietary_requirement";
+import { getDietaryRequirementsByBooking } from "./dietary-requirement-dao";
 
 export type TableAvailability = {
     table_number: number;
@@ -8,9 +10,18 @@ export type TableAvailability = {
     free_seats: number;
 };
 
-export type Assignment = { 
-    table_number: number; 
-    assigned_seats: number 
+export type Assignment = {
+    table_number: number;
+    assigned_seats: number
+};
+
+export type Reservation = {
+    booking: Booking;
+    date: string;        // YYYY-MM-DD
+    start_time: string;  // HH:MM
+    party_size: number;
+    seatings: SeatedAt[];
+    dietary_requirements: DietaryRequirement[];
 };
 
 /**
@@ -115,3 +126,100 @@ export const getBookingAvailability = (
     const tables = getTablesAvailability(date, start_time);
     return assignSeats(tables, party_size);
 }
+
+/**
+ * Removes all the seats assigned to a booking, releasing them for other reservations.
+ * @param booking_id The id of the booking whose seats are released.
+ */
+export const deleteSeatings = (booking_id: number): void => {
+    db.prepare("DELETE FROM seated_at WHERE booking_id = ?").run(booking_id);
+};
+
+/**
+ * Persists the given seat assignment for a booking.
+ * @param booking_id The id of the booking the seats are assigned to.
+ * @param date The day of the slot (YYYY-MM-DD).
+ * @param start_time The start time of the slot (HH:MM).
+ * @param assignment The seats to assign per table.
+ * @returns The created seatings, in the same order as the assignment.
+ */
+export const insertSeatings = (
+    booking_id: number,
+    date: string,
+    start_time: string,
+    assignment: Assignment[]
+): SeatedAt[] => {
+    const sql = `INSERT INTO seated_at
+                 (booking_id, slot_date, slot_start_time, table_number, assigned_seats)
+                 VALUES (?, ?, ?, ?, ?)`;
+    const insert = db.prepare(sql);
+
+    return assignment.map((a) => {
+        insert.run(booking_id, date, start_time, a.table_number, a.assigned_seats);
+        return new SeatedAt(booking_id, date, start_time, a.table_number, a.assigned_seats);
+    });
+};
+
+/**
+ * Retrieves the seats assigned to a booking.
+ * All the seatings of a booking belong to the same slot.
+ * @param booking_id The id of the booking.
+ * @returns The seatings ordered by table number (empty if none).
+ */
+export const getSeatingsByBooking = (booking_id: number): SeatedAt[] => {
+    const sql = `SELECT booking_id, slot_date, slot_start_time, table_number, assigned_seats
+                 FROM seated_at
+                 WHERE booking_id = ?
+                 ORDER BY table_number`;
+    return db.prepare<[number], SeatedAt>(sql).all(booking_id);
+};
+
+/**
+ * Retrieves a booking with its slot, party size, seatings and dietary requirements.
+ * @param booking_id The id of the booking.
+ * @returns The reservation, or null if it does not exist or has no seatings.
+ */
+export const getBooking = (booking_id: number): Reservation | null => {
+    const sql = `SELECT id, hiker_id
+                 FROM booking
+                 WHERE id = ?`;
+    const row = db.prepare<[number], { id: number; hiker_id: number }>(sql).get(booking_id);
+    if (!row) return null;
+
+    const seatings = getSeatingsByBooking(booking_id);
+    if (seatings.length === 0) return null;
+
+    return {
+        booking: new Booking(row.id, row.hiker_id),
+        date: seatings[0].slot_date,
+        start_time: seatings[0].slot_start_time,
+        party_size: seatings.reduce((sum, s) => sum + s.assigned_seats, 0),
+        seatings: seatings,
+        dietary_requirements: getDietaryRequirementsByBooking(booking_id),
+    };
+};
+
+/**
+ * Retrieves the bookings of a hiker whose slot has not started yet.
+ * @param hiker_id The id of the hiker.
+ * @param now The current local date-time in the hut timezone (YYYY-MM-DD HH:MM).
+ * @returns The active reservations ordered by slot date and time (empty if none).
+ */
+export const getActiveBookingsByHiker = (hiker_id: number, now: string): Reservation[] => {
+    const sql = `SELECT b.id
+                 FROM booking b
+                 JOIN seated_at sa ON sa.booking_id = b.id
+                 WHERE b.hiker_id = ?
+                   AND sa.slot_date || ' ' || sa.slot_start_time > ?
+                 GROUP BY b.id
+                 ORDER BY MIN(sa.slot_date || ' ' || sa.slot_start_time)`;
+    const rows = db.prepare<[number, string], { id: number }>(sql).all(hiker_id, now);
+    const reservations: Reservation[] = [];
+    for (const row of rows) {
+        const reservation = getBooking(row.id);
+        if (reservation !== null) {
+            reservations.push(reservation);
+        }
+    }
+    return reservations;
+};
