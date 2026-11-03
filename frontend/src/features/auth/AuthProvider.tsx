@@ -33,8 +33,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Throws on failure (e.g. ApiError 401) so the login form can show the message
   const login = async (email: string, password: string) => {
-    // The backend expects { username: email, password }
-    const data: User = await apiClient.post('/session', { username: email, password });
+    // The backend expects { email, password }
+    const data: User = await apiClient.post('/session', { email, password });
     setUser(data);
   };
 

@@ -8,7 +8,10 @@ export type TableAvailability = {
     free_seats: number;
 };
 
-type Assignment = { table_number: number; assigned_seats: number };
+export type Assignment = { 
+    table_number: number; 
+    assigned_seats: number 
+};
 
 /**
  * Retrieves every table of a slot with the number of seats still free.
@@ -37,7 +40,7 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
  * one that fits), otherwise it is spread over the fewest tables possible.
  * @param tables The tables of the slot with their free seats.
  * @param party_size The number of people to seat.
- * @returns The seats to assign per table, or null if the capacity is not enough or the party_size is <= 0i.
+ * @returns The seats to assign per table, or null if the capacity is not enough or the party_size is <= 01.
  */
 const assignSeats = (tables: TableAvailability[], party_size: number): Assignment[] | null => {
     if (party_size <= 0) return null;
@@ -78,7 +81,7 @@ export const saveBooking = (
     party_size: number
 ): { booking: Booking; seatings: SeatedAt[] } | null =>
     db.transaction(() => {
-        const assignment = assignSeats(getTablesAvailability(date, start_time), party_size);
+        const assignment = getBookingAvailability(date, start_time, party_size);
         if (!assignment || (Array.isArray(assignment) && assignment.length === 0)) return null;
 
         const result = db.prepare("INSERT INTO booking (hiker_id) VALUES (?)").run(hiker_id);
@@ -95,3 +98,20 @@ export const saveBooking = (
         }
         return { booking, seatings };
     })();
+
+/** 
+ * Checks whether a party can be accommodated in the selected slot.
+ * Returns a possible table arrangement without reserving any seats.
+ * @param date The slot date (YYYY-MM-DD).
+ * @param start_time The slot start time (HH:mm).
+ * @param party_size A positive integer, validated by the caller.
+ * @returns The proposed assignments, or null if capacity is insufficient. 
+ */
+export const getBookingAvailability = (
+    date: string,
+    start_time: string,
+    party_size: number
+): Assignment[] | null => {
+    const tables = getTablesAvailability(date, start_time);
+    return assignSeats(tables, party_size);
+}
