@@ -68,6 +68,6 @@ CREATE TABLE seated_at (
 CREATE TABLE dietary_requirement (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     booking_id   INTEGER NOT NULL REFERENCES booking(id) ON DELETE CASCADE,
-    allergy_flag INTEGER NOT NULL DEFAULT 0 CHECK (allergy_flag IN (0, 1)),
+    allergy_flag INTEGER NOT NULL CHECK (allergy_flag IN (0, 1)),
     description  TEXT    NOT NULL
 );
