@@ -53,52 +53,46 @@ Base URL: `http://localhost:3000/api/v1`
   - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
 
-### POST /slots - Create a slot
+## POST /slots - Create a slot
 
-- **Description:** creates a slot for a specific date and time
-  interval, with its table and seat configuration
+- **Description:** creates a slot for a specific date and time interval, with the tables and seats available in it
 - **Authentication:** required
-- **Permissions:** employee or warden
+- **Permissions:** employee, warden
 - **Request body:**
-  - `date`: required, formatted as `YYYY-MM-DD`
-  - `startTime`: required, formatted as `HH:mm`
-  - `endTime`: required, formatted as `HH:mm`
-  - `configuration`: a new table and seat configuration
-    - `tables`: required non-empty array of objects
-      - `tableId`: required integer; identifier of an existing table
-      - `seats`: required positive integer; configured seat capacity
-  - `configurationId`: identifier of a saved configuration
-  - Exactly one of `configuration` and `configurationId` is required
-- **Possible responses:**
-  - `201 Created`: returns the created slot, including its identifier
-  - `400 Bad Request`: missing fields, invalid values or both
-    configuration options provided
+  - `date`: required, formatted `YYYY-MM-DD`
+  - `startTime`: required, formatted `HH:mm`
+  - `endTime`: required, formatted `HH:mm`, later than `startTime`
+  - `tables`: non-empty array of objects
+    - `tableNumber`: required positive integer, unique within the array
+    - `seats`: required positive integer
+  - `copyFrom`: object identifying an existing slot whose tables and seats are copied
+    - `date`: required, formatted `YYYY-MM-DD`
+    - `startTime`: required, formatted `HH:mm`
+  - Exactly one of `tables` and `copyFrom` is required
+- **Responses:**
+  - `201 Created`: returns the created slot (`date`, `startTime`, `endTime`, `tables`, `totalSeats`)
+  - `400 Bad Request`: missing fields, invalid values (including `endTime` not after `startTime` or duplicate `tableNumber`), or both or neither of `tables` and `copyFrom` provided
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
-  - `404 Not Found`: a referenced configuration or table does not exist
-  - `409 Conflict`: the slot conflicts with an existing one,
-    according to the agreed scheduling rules
+  - `404 Not Found`: the slot referenced by `copyFrom` does not exist
+  - `409 Conflict`: the slot overlaps an existing slot on the same date (slots that only touch, such as 12:00-13:00 and 13:00-14:00, do not overlap)
   - `500 Internal Server Error`: unexpected server error
 
-### GET /slots/:slotId/availability — Check booking availability
+## GET /slots/configurations - Get reusable table configurations
 
-- **Description:** checks whether the selected slot can accommodate the requested party size
-- **Authentication:** not required
-- **Path parameters:**
-  - `slotId`: required identifier of the selected slot
+- **Description:** returns the table and seat configurations of existing slots, so that they can be reused through `copyFrom`
+- **Authentication:** required
+- **Permissions:** employee, warden
 - **Query parameters:**
-  - `partySize`: required positive integer
-- **Possible responses:**
-  - `200 OK`: returns an object containing `available`, an array describing one possible table arrangement for the entire party
-    - `tableId`: integer; identifier of the proposed table
-    - `assignedSeats`: positive integer; number of party members
-    assigned to that table
-    - The sum of `assignedSeats` equals the requested `partySize`
-    - `available` is empty if the entire party cannot be accommodated
-    or the slot is closed
-  - `400 Bad Request`: invalid slot identifier or missing,
-    invalid or non-positive party size
-  - `404 Not Found`: the slot does not exist
+  - `from`: optional inclusive start date, formatted `YYYY-MM-DD`
+  - `to`: optional inclusive end date, formatted `YYYY-MM-DD`
+  - `limit`: optional positive integer; defaults to 20, maximum 100
+- **Ordering:** most recent dates first, then latest start time first
+- **Responses:**
+  - `200 OK`: returns the list of configurations, each with `date`, `startTime`, `endTime`, `tables` (`tableNumber`, `seats`) and `totalSeats`; returns `[]` if no slot exists
+  - `400 Bad Request`: `from` > `to`, or invalid `from`, `to` or `limit`
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
 
 ### PATCH /reservations/:reservationId - Update a reservation
