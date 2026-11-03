@@ -7,6 +7,8 @@ import { Account } from '../models/entities/account';
 import { Booking } from '../models/entities/booking';
 import { SeatedAt } from '../models/entities/seated_at';
 import { AppError } from '../models/errors/app-error';
+import type { Assignment } from '../dao/booking-dao';  
+import {AvailableTableDTO, GetAvailabilityResponseDTO} from "../models/dto/slot-dto";
 
 /**
  * Maps an operational AppError or a generic internal error into an ErrorDTO instance.
@@ -58,4 +60,20 @@ export const bookingDataToCreateReservationResponseDTO = (
     const partySize = seatings.reduce((sum, s) => sum + s.assigned_seats, 0);
     const seatingDTOs = seatings.map((s) => new SeatingDTO(s.table_number, s.assigned_seats));
     return new CreateReservationResponseDTO(booking.id, date, start_time, partySize, seatingDTOs);
+};
+
+/**
+ * Converts a proposed assignment into the public availability response.
+ */
+export const assignmentsToAvailabilityResponseDTO = (
+    assignments: Assignment[] | null
+): GetAvailabilityResponseDTO => {
+    const available = (assignments ?? []).map(
+        (assignment) => new AvailableTableDTO(
+            assignment.table_number,
+            assignment.assigned_seats
+        )
+    );
+
+    return new GetAvailabilityResponseDTO(available);
 };

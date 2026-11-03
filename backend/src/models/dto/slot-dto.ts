@@ -50,3 +50,40 @@ export const GetSlotsRequestSchema = z.object({
  * Data Transfer Object for Slot query parameters, inferred from the schema.
  */
 export type GetSlotsRequestDTO = z.infer<typeof GetSlotsRequestSchema>;
+
+/**
+ * Validation schema for GetAvailability query parameters.
+ * Used in GET /slots/availability
+ */
+export const GetAvailabilityRequestSchema = z.object({
+    date: DateSchema,
+    slot: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    partySize: z.coerce.number().int().positive(),
+});
+
+export type GetAvailabilityRequestDTO = z.infer<typeof GetAvailabilityRequestSchema>;
+
+/**
+ * Proposed seats for one table.
+ */
+export class AvailableTableDTO {
+    public tableId: number;
+    public assignedSeats: number;
+
+    constructor(tableId: number, assignedSeats: number) {
+        this.tableId = tableId;
+        this.assignedSeats = assignedSeats;
+    }
+}
+
+/**
+ * A possible arrangement for the entire party.
+ * An empty array means that the party cannot be accommodated.
+ */
+export class GetAvailabilityResponseDTO {
+    public available: AvailableTableDTO[];
+
+    constructor(available: AvailableTableDTO[]) {
+        this.available = available;
+    }
+}
