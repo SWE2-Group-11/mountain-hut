@@ -37,18 +37,22 @@ Base URL: `http://localhost:3000/api/v1`
 
 ### GET /slots/configurations - Get saved slots configurations
 
-- **Description:** returns the saved configurations that can be reused
+- **Description:** returns the table configurations of existing slots, so that they can be reused through `copyFrom` when creating a slot
 - **Authentication:** required
 - **Permissions:** employee, warden
-- - **Query parameters:**
+- **Query parameters:**
   - `from`: optional inclusive start date, formatted `YYYY-MM-DD`
   - `to`: optional inclusive end date, formatted `YYYY-MM-DD`
   - `limit`: optional positive integer; defaults to 20, maximum 100
-- **Ordering:** most recent dates first, with configuration ID
-  as a secondary ordering criterion
+- **Ordering:** most recent dates first, with the latest start time first within the same date
 - **Responses:**
-  - `200 OK`: returns the list of configurations, including identifiers, tables and seat capacity; returns `[]` if no configuration exists
-  - `400 Bad Request`: `from` > `to`, `limit` or `offset` invalid
+  - `200 OK`: returns the list of configurations; returns `[]` if no configuration exists. Each configuration contains:
+    - `date`: date of the slot, formatted `YYYY-MM-DD`
+    - `startTime`: start time of the slot, formatted `HH:mm`
+    - `endTime`: end time of the slot, formatted `HH:mm`
+    - `tables`: array of objects, each containing `tableNumber` and `seats`
+    - `totalSeats`: sum of the seats of all the tables
+  - `400 Bad Request`: invalid `from`, `to` or `limit`, or `from` > `to`
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
