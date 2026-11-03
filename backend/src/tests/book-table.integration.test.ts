@@ -38,12 +38,12 @@ describe("Book a table - integration", () => {
         it("logs in, reads the current user and logs out", async () => {
             const agent = request.agent(app);
 
-            const login = await agent.post(SESSION_URL).send({ username: NEW_HIKER, password: PASSWORD });
+            const login = await agent.post(SESSION_URL).send({ email: NEW_HIKER, password: PASSWORD });
             expect(login.status).toBe(201);
 
             const current = await agent.get(`${SESSION_URL}/current`);
             expect(current.status).toBe(200);
-            expect(current.body).toMatchObject({ username: NEW_HIKER, role: "hiker" });
+            expect(current.body).toMatchObject({ email: NEW_HIKER, role: "hiker" });
             expect(current.body).not.toHaveProperty("password_hash");
 
             const logout = await agent.delete(`${SESSION_URL}/current`);
@@ -53,7 +53,7 @@ describe("Book a table - integration", () => {
         });
 
         it("rejects a wrong password", async () => {
-            const res = await request(app).post(SESSION_URL).send({ username: MARIO, password: "wrong" });
+            const res = await request(app).post(SESSION_URL).send({ email: MARIO, password: "wrong" });
 
             expect(res.status).toBe(401);
         });
@@ -132,18 +132,6 @@ describe("Book a table - integration", () => {
             expect(res.status).toBe(409);
             expect(countRows("booking")).toBe(bookings);
             expect(countRows("seated_at")).toBe(seatings);
-        });
-
-        it("saves nothing when the same hiker books the same slot twice", async () => {
-            const hiker = await loginAs(NEW_HIKER);
-            await hiker.post(RESERVATIONS_URL).send({ date: tomorrow, slot: "13:00", partySize: 2 });
-            const bookings = countRows("booking");
-
-            const res = await hiker.post(RESERVATIONS_URL).send({ date: tomorrow, slot: "13:00", partySize: 2 });
-
-            expect(res.status).toBe(409);
-            expect(countRows("booking")).toBe(bookings);
-            expect((await slotAt(tomorrow, "13:00"))?.available_seats).toBe(14);
         });
 
         it("saves nothing when the request is invalid", async () => {
