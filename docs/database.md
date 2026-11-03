@@ -6,6 +6,9 @@ SQLite, accessed with `better-sqlite3`. The DB file path comes from the `DB_PATH
 
 ![Core schema](img/schema-core.png)
 
+The diagram was drawn with [designER](https://designer.designerdb.io/).
+The editable source is [`img/schema-core.er`](img/schema-core.er): load it in the tool to change the diagram, then export it again as `img/schema-core.png`.
+
 ## Logical schema
 
 Primary keys in **bold**, `*` = nullable.
