@@ -1,14 +1,15 @@
 import { ErrorDTO } from '../models/dto/error-dto';
 import { AccountResponseDTO } from '../models/dto/account-dto';
-import { SlotDTO } from '../models/dto/slot-dto';
+import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotDTO, SlotTableDTO } from '../models/dto/slot-dto';
 import { CreateReservationResponseDTO, SeatingDTO } from '../models/dto/reservation-dto';
-import { SlotAvailability } from '../dao/slot-dao';
+import { SlotAvailability, SlotConfiguration } from '../dao/slot-dao';
 import { Account } from '../models/entities/account';
 import { Booking } from '../models/entities/booking';
 import { SeatedAt } from '../models/entities/seated_at';
+import { Slot } from '../models/entities/slot';
 import { AppError } from '../models/errors/app-error';
-import type { Assignment } from '../dao/booking-dao';  
-import {AvailableTableDTO, GetAvailabilityResponseDTO} from "../models/dto/slot-dto";
+import type { Assignment } from '../dao/booking-dao';
+import { minutesToTime, timeToMinutes } from './date-service';
 
 /**
  * Maps an operational AppError or a generic internal error into an ErrorDTO instance.
@@ -46,6 +47,16 @@ export const accountEntityToResponseDTO = (account: Account): AccountResponseDTO
  */
 export const slotAvailabilityToSlotDTO = ({ slot, total_seats, available_seats }: SlotAvailability): SlotDTO => {
     return new SlotDTO(slot.date, slot.start_time, slot.duration, total_seats, available_seats);
+};
+
+/**
+ * Maps a slot with its tables into a client-ready SlotConfigurationDTO instance.
+ */
+export const slotConfigurationToDTO = ({ slot, tables }: SlotConfiguration): SlotConfigurationDTO => {
+    const tableDTOs = tables.map((t) => new SlotTableDTO(t.table_number, t.seats));
+    const totalSeats = tables.reduce((sum, t) => sum + t.seats, 0);
+    const endTime = minutesToTime(timeToMinutes(slot.start_time) + slot.duration);
+    return new SlotConfigurationDTO(slot.date, slot.start_time, endTime, tableDTOs, totalSeats);
 };
 
 /**
