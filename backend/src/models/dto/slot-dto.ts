@@ -58,8 +58,10 @@ export type GetSlotsRequestDTO = z.infer<typeof GetSlotsRequestSchema>;
 export const GetAvailabilityRequestSchema = z.object({
     date: DateSchema,
     slot: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-    partySize: z.string().regex(/^[1-9]\d*$/, "partySize must be a positive integer").transform(Number)
-    .pipe(z.number().int().positive().max(Number.MAX_SAFE_INTEGER, "partySize is too large")),
+    partySize: z.string({ error: "partySize must be a positive integer" })
+        .regex(/^[1-9]\d*$/, "partySize must be a positive integer")
+        .transform(Number)
+        .pipe(z.number().int().positive().max(Number.MAX_SAFE_INTEGER, "partySize is too large")),
 });
 
 export type GetAvailabilityRequestDTO = z.infer<typeof GetAvailabilityRequestSchema>;
