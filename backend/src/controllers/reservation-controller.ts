@@ -32,7 +32,7 @@ export const createReservation = (
             `Reservations are allowed up to ${BOOKING_CUTOFF_HOURS} hours before the slot starts`
         );
     }
-
+  
     const result = saveBooking(hiker_id, slot.date, slot.start_time, request.partySize);
     if (!result) {
         throw new ConflictError("The requested capacity is no longer available");
