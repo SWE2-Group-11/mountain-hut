@@ -4,7 +4,7 @@ export type Role = 'hiker' | 'employee' | 'warden';
 
 export interface User {
   id: number;
-  username: string;
+  email: string;
   role: Role;
 }
 

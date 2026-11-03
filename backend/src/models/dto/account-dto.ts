@@ -3,18 +3,18 @@ import { Role } from "../entities/account";
 
 export class AccountResponseDTO {
     public id: number;
-    public username: string;
+    public email: string;
     public role: Role;
 
-    constructor(id: number, username: string, role: Role) {
+    constructor(id: number, email: string, role: Role) {
         this.id = id;
-        this.username = username;
+        this.email = email;
         this.role = role;
     }
 }
 
 export const AccountLoginRequestSchema = z.object({
-    username: z.string().min(1),
+    email: z.email(),
     password: z.string().min(1),
 });
 
