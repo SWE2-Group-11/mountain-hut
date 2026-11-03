@@ -37,67 +37,66 @@ Base URL: `http://localhost:3000/api/v1`
 
 ### GET /slots/configurations - Get saved slots configurations
 
-- **Description:** returns the saved configurations that can be reused
+- **Description:** returns the table configurations of existing slots, so that they can be reused through `copyFrom` when creating a slot
 - **Authentication:** required
 - **Permissions:** employee, warden
-- - **Query parameters:**
+- **Query parameters:**
   - `from`: optional inclusive start date, formatted `YYYY-MM-DD`
   - `to`: optional inclusive end date, formatted `YYYY-MM-DD`
   - `limit`: optional positive integer; defaults to 20, maximum 100
-- **Ordering:** most recent dates first, with configuration ID
-  as a secondary ordering criterion
+- **Ordering:** most recent dates first, with the latest start time first within the same date
 - **Responses:**
-  - `200 OK`: returns the list of configurations, including identifiers, tables and seat capacity; returns `[]` if no configuration exists
-  - `400 Bad Request`: `from` > `to`, `limit` or `offset` invalid
+  - `200 OK`: returns the list of configurations; returns `[]` if no configuration exists. Each configuration contains:
+    - `date`: date of the slot, formatted `YYYY-MM-DD`
+    - `startTime`: start time of the slot, formatted `HH:mm`
+    - `endTime`: end time of the slot, formatted `HH:mm`
+    - `tables`: array of objects, each containing `tableNumber` and `seats`
+    - `totalSeats`: sum of the seats of all the tables
+  - `400 Bad Request`: invalid `from`, `to` or `limit`, or `from` > `to`
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
 
 ### POST /slots - Create a slot
 
-- **Description:** creates a slot for a specific date and time
-  interval, with its table and seat configuration
+- **Description:** creates a slot for a specific date and time interval, with its table and seat configuration
 - **Authentication:** required
 - **Permissions:** employee or warden
 - **Request body:**
   - `date`: required, formatted as `YYYY-MM-DD`
   - `startTime`: required, formatted as `HH:mm`
-  - `endTime`: required, formatted as `HH:mm`
-  - `configuration`: a new table and seat configuration
-    - `tables`: required non-empty array of objects
-      - `tableId`: required integer; identifier of an existing table
-      - `seats`: required positive integer; configured seat capacity
-  - `configurationId`: identifier of a saved configuration
-  - Exactly one of `configuration` and `configurationId` is required
+  - `endTime`: required, formatted as `HH:mm`; must be after `startTime`, so a slot always ends on the same day it starts
+  - `tables`: a new table and seat configuration; non-empty array of objects
+    - `tableNumber`: required positive integer; unique within the array
+    - `seats`: required positive integer; configured seat capacity
+  - `copyFrom`: an existing slot whose tables are copied into the new one
+    - `date`: required, formatted as `YYYY-MM-DD`
+    - `startTime`: required, formatted as `HH:mm`
+  - Exactly one of `tables` and `copyFrom` is required
 - **Possible responses:**
-  - `201 Created`: returns the created slot, including its identifier
-  - `400 Bad Request`: missing fields, invalid values or both
-    configuration options provided
+  - `201 Created`: returns the created slot, with the same shape as an element of `GET /slots/configurations`
+  - `400 Bad Request`: missing fields, invalid values, `endTime` not after `startTime`, duplicate `tableNumber`, both or neither of `tables` and `copyFrom` provided, or the slot referenced by `copyFrom` has no tables
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
-  - `404 Not Found`: a referenced configuration or table does not exist
-  - `409 Conflict`: the slot conflicts with an existing one,
-    according to the agreed scheduling rules
+  - `404 Not Found`: the slot referenced by `copyFrom` does not exist
+  - `409 Conflict`: the slot overlaps an existing slot of the same day
   - `500 Internal Server Error`: unexpected server error
 
-### GET /slots/:slotId/availability — Check booking availability
+### GET /slots/availability — Check booking availability
 
 - **Description:** checks whether the selected slot can accommodate the requested party size
 - **Authentication:** not required
-- **Path parameters:**
-  - `slotId`: required identifier of the selected slot
 - **Query parameters:**
+  - `date`: required date, formatted `YYYY-MM-DD`
+  - `slot`: required slot start time, formatted `HH:mm`, expressed in `Europe/Rome`
   - `partySize`: required positive integer
 - **Possible responses:**
   - `200 OK`: returns an object containing `available`, an array describing one possible table arrangement for the entire party
     - `tableId`: integer; identifier of the proposed table
-    - `assignedSeats`: positive integer; number of party members
-    assigned to that table
+    - `assignedSeats`: positive integer; number of party members assigned to that table
     - The sum of `assignedSeats` equals the requested `partySize`
-    - `available` is empty if the entire party cannot be accommodated
-    or the slot is closed
-  - `400 Bad Request`: invalid slot identifier or missing,
-    invalid or non-positive party size
+    - `available` is empty if the entire party cannot be accommodated or the slot is closed
+  - `400 Bad Request`: missing or invalid date, slot time or party size
   - `404 Not Found`: the slot does not exist
   - `500 Internal Server Error`: unexpected server error
 
