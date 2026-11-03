@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { db } from "../database/database";
-import { getTablesAvailability, saveBooking } from "../dao/booking-dao";
+import { getBookingAvailability, getTablesAvailability, saveBooking } from "../dao/booking-dao";
 import { Booking } from "../models/entities/booking";
 import { SeatedAt } from "../models/entities/seated_at";
 
@@ -152,5 +152,45 @@ describe("saveBooking (unit)", () => {
         });
 
         expect(() => book(2)).toThrow(boom);
+    });
+});
+
+describe("getBookingAvailability: non-integer party size (fix MH-55)", () => {
+    const check = (party_size: number) => getBookingAvailability(DATE, START, party_size);
+
+    it("returns null for a party of 2.5 people, even when there are enough seats", () => {
+        // half a person cannot be seated: before the fix the DAO proposed 0.5 seats
+        // Arrange
+        statement.all.mockReturnValue([table(1, 4)]);
+
+        // Act
+        const result = check(2.5);
+
+        // Assert
+        expect(result).toBeNull();
+    });
+
+    it("returns null for a party of 1.5 people", () => {
+        // a second decimal value, to show it is not a special case of 2.5
+        // Arrange
+        statement.all.mockReturnValue([table(1, 4)]);
+
+        // Act
+        const result = check(1.5);
+
+        // Assert
+        expect(result).toBeNull();
+    });
+
+    it("still proposes a table for a whole party size, as before the fix", () => {
+        // the new check must reject decimals only, not valid parties
+        // Arrange
+        statement.all.mockReturnValue([table(1, 4)]);
+
+        // Act
+        const result = check(2);
+
+        // Assert
+        expect(result).toEqual([{ table_number: 1, assigned_seats: 2 }]);
     });
 });
