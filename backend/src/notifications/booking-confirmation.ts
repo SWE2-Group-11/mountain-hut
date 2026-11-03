@@ -17,8 +17,7 @@ export type BookingConfirmation = {
 
 type BookingRow = {
     id: number;
-    first_name: string;
-    last_name: string;
+    full_name: string;
     email: string;
     slot_date: string;
     slot_start_time: string;
@@ -69,17 +68,11 @@ export const formatSlot = (start_time: string, duration: number): string => {
 
 // TODO: move to a requirements DAO once MH-60 adds one
 const getRequirements = (db: Database.Database, bookingId: number): BookingConfirmationData["requirements"] => {
-    try {
-        const sql = "SELECT allergy_flag, description FROM dietary_requirement WHERE booking_id = ? ORDER BY id";
-        return db
-            .prepare<[number], RequirementRow>(sql)
-            .all(bookingId)
-            .map((r) => ({ allergies: r.allergy_flag === 1, description: r.description }));
-    } catch (err) {
-        // The requirements table belongs to MH-60 and may not exist in every database yet
-        if (err instanceof Error && err.message.includes("no such table")) return [];
-        throw err;
-    }
+    const sql = "SELECT allergy_flag, description FROM dietary_requirement WHERE booking_id = ? ORDER BY id";
+    return db
+        .prepare<[number], RequirementRow>(sql)
+        .all(bookingId)
+        .map((r) => ({ allergies: r.allergy_flag === 1, description: r.description }));
 };
 
 /**
@@ -92,11 +85,12 @@ const getRequirements = (db: Database.Database, bookingId: number): BookingConfi
 export const buildBookingConfirmationData = (db: Database.Database, bookingId: number): BookingConfirmation | null => {
     // All seated_at rows of a booking refer to the same slot, so any row gives its date and start time
     const sql = `
-        SELECT b.id, a.first_name, a.last_name, a.email,
+        SELECT b.id, h.full_name, a.email,
                sa.slot_date, sa.slot_start_time, s.duration,
                SUM(sa.assigned_seats) AS party_size
         FROM booking b
-        JOIN account a ON a.id = b.hiker_id
+        JOIN hiker h ON h.account_id = b.hiker_id
+        JOIN account a ON a.id = h.account_id
         JOIN seated_at sa ON sa.booking_id = b.id
         JOIN slot s ON s.date = sa.slot_date AND s.start_time = sa.slot_start_time
         WHERE b.id = ?
@@ -108,7 +102,7 @@ export const buildBookingConfirmationData = (db: Database.Database, bookingId: n
         to: row.email,
         data: {
             bookingReference: formatBookingReference(row.id),
-            hikerName: `${row.first_name} ${row.last_name}`,
+            hikerName: row.full_name,
             date: formatSlotDate(row.slot_date),
             slot: formatSlot(row.slot_start_time, row.duration),
             partySize: row.party_size,
