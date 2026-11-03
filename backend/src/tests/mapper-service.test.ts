@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { type Assignment } from "../dao/booking-dao";
 import { type SlotAvailability } from "../dao/slot-dao";
+import { AvailableTableDTO, GetAvailabilityResponseDTO } from "../models/dto/slot-dto";
 import { Booking } from "../models/entities/booking";
 import { SeatedAt } from "../models/entities/seated_at";
 import { Slot } from "../models/entities/slot";
@@ -8,6 +10,7 @@ import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
 import {
     appErrorToDTO,
+    assignmentsToAvailabilityResponseDTO,
     bookingDataToCreateReservationResponseDTO,
     slotAvailabilityToSlotDTO,
 } from "../services/mapper-service";
@@ -64,6 +67,43 @@ describe("response mappers", () => {
                 { table_number: 2, assigned_seats: 2 },
             ],
         });
+    });
+
+    it("maps every proposed assignment to the public availability fields, in order", () => {
+        // Why: the table split shown to the user must match the DAO's proposal
+        const assignments: Assignment[] = [
+            { table_number: 3, assigned_seats: 6 },
+            { table_number: 1, assigned_seats: 2 },
+        ];
+
+        const response = assignmentsToAvailabilityResponseDTO(assignments);
+
+        expect(response).toEqual({
+            available: [
+                { tableId: 3, assignedSeats: 6 },
+                { tableId: 1, assignedSeats: 2 },
+            ],
+        });
+    });
+
+    it.each([
+        { label: "null (the party cannot be seated)", assignments: null },
+        { label: "an empty list", assignments: [] },
+    ])("maps $label to an empty arrangement", ({ assignments }) => {
+        // Why: the client always gets a list, never null
+        expect(assignmentsToAvailabilityResponseDTO(assignments)).toEqual({ available: [] });
+    });
+
+    it("returns DTO instances without database field names", () => {
+        // Why: the API returns DTOs, never DAO data
+        const response = assignmentsToAvailabilityResponseDTO([
+            { table_number: 1, assigned_seats: 4 },
+        ]);
+
+        expect(response).toBeInstanceOf(GetAvailabilityResponseDTO);
+        expect(response.available[0]).toBeInstanceOf(AvailableTableDTO);
+        expect(response.available[0]).not.toHaveProperty("table_number");
+        expect(response.available[0]).not.toHaveProperty("assigned_seats");
     });
 });
 
