@@ -1,11 +1,21 @@
 PRAGMA foreign_keys = ON;
 
--- Accounts (password: "password")
-INSERT INTO account (id, first_name, last_name, email, password_salt, password_hash, role) VALUES
-    (1, 'Anna',  'Ferrari', 'warden@mountainhut.test',   'ba90e4ccae4b2d60', '422771328d5f09477d7bcaeb33e65659', 'warden'),
-    (2, 'Luca',  'Colombo', 'employee@mountainhut.test', '32bc1ea706a6fcb2', '9d8a588be066c253b4090f6d94d7e5fe', 'employee'),
-    (3, 'Mario', 'Rossi',   'mario@mountainhut.test',    '6dfb19971958c63d', '8ceee6d6f296bdf0be2041664771e1ef', 'hiker'),
-    (4, 'Laura', 'Bianchi', 'laura@mountainhut.test',    'cea709af16746052', 'b80eff3f480d40a8e927fe3d84227acb', 'hiker');
+-- Accounts
+INSERT INTO account (id, email, password_salt, password_hash) VALUES
+    (1, 'warden@mountainhut.test',   'a1b2c3d4e5f60718', '33322a2ed866a9b3c2ca5411a8f734cc'),
+    (2, 'employee@mountainhut.test', '1827364554637281', '1ca13f2ba419d1d5573fb0ea08cdbf15'),
+    (3, 'mario@mountainhut.test',    '9f8e7d6c5b4a3921', '260948108aae67a766b978b99e11fb72'),
+    (4, 'laura@mountainhut.test',    '0a1b2c3d4e5f6a7b', '6a40925313901ee3eb369b84e4335cb2');
+
+-- Staff
+INSERT INTO staff (account_id, name, role) VALUES
+    (1, 'Anna', 'warden'),
+    (2, 'Luca', 'employee');
+
+-- Hikers
+INSERT INTO hiker (account_id, full_name, mobile_number, notes, emergency_contact) VALUES
+    (3, 'Mario Rossi',   '+39 333 123 4567', 'Registered mountain guide', 'Giulia Rossi, +39 333 765 4321'),
+    (4, 'Laura Bianchi', '+39 347 987 6543', NULL, NULL);
 
 -- Slots
 INSERT INTO slot (date, start_time, duration) VALUES
@@ -45,6 +55,6 @@ INSERT INTO seated_at (booking_id, slot_date, slot_start_time, table_number, ass
 
 -- Dietary requirements
 INSERT INTO dietary_requirement (booking_id, allergy_flag, description) VALUES
-    (2, 1, '1 person: peanut allergy'),
-    (2, 0, '2 people: vegetarian'),
-    (3, 0, '1 person: vegan');
+    (2, 1, '1 vegan, peanut allergy'),
+    (2, 0, '2 vegetarians'),
+    (3, 1, '1 shellfish allergy');

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DateSchema, GetSlotsRequestSchema } from "../models/dto/slot-dto";
+import {
+    DateSchema,
+    GetAvailabilityRequestSchema,
+    GetSlotsRequestSchema,
+} from "../models/dto/slot-dto";
 
 const DAY = "2030-06-15";
 
@@ -58,5 +62,91 @@ describe("GET /slots — GetSlotsRequestSchema", () => {
         expect(GetSlotsRequestSchema.safeParse({
             date: [DAY, "2030-06-16"],
         }).success).toBe(false);
+    });
+});
+
+describe("GetAvailabilityRequestSchema: strict partySize (fix MH-55)", () => {
+    const CLEAR_MESSAGE = "partySize must be a positive integer";
+    const query = (partySize: unknown) => ({ date: DAY, slot: "12:00", partySize });
+
+    it.each(["0x10", "1e2", " 7 ", "07", "4.0"])(
+        "rejects the partySize %j, which is not written as plain digits",
+        (partySize) => {
+            // before the fix, Number() turned these into valid numbers (16, 100, 7, 7, 4)
+            // Arrange
+            const input = query(partySize);
+
+            // Act
+            const result = GetAvailabilityRequestSchema.safeParse(input);
+
+            // Assert
+            expect(result.success).toBe(false);
+        },
+    );
+
+    it("rejects a repeated partySize represented as an array", () => {
+        // ?partySize=4&partySize=5 arrives as an array: before the fix ["4"] became 4
+        // Arrange
+        const input = query(["4"]);
+
+        // Act
+        const result = GetAvailabilityRequestSchema.safeParse(input);
+
+        // Assert
+        expect(result.success).toBe(false);
+    });
+
+    it("rejects a partySize given as a number", () => {
+        // query values always arrive as strings, so a number means the input is not a query
+        // Arrange
+        const input = query(4);
+
+        // Act
+        const result = GetAvailabilityRequestSchema.safeParse(input);
+
+        // Assert
+        expect(result.success).toBe(false);
+    });
+
+    it("rejects a missing partySize with the clear message", () => {
+        // the user must read a helpful message, not "received NaN"
+        // Arrange
+        const input = { date: DAY, slot: "12:00" };
+
+        // Act
+        const result = GetAvailabilityRequestSchema.safeParse(input);
+
+        // Assert
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0].message).toBe(CLEAR_MESSAGE);
+    });
+
+    it.each([
+        ["1", 1],
+        ["12", 12],
+    ])("accepts the partySize %j and turns it into the number %d", (partySize, expected) => {
+        // the controller and the DAO work with a number, not with a string
+        // Arrange
+        const input = query(partySize);
+
+        // Act
+        const result = GetAvailabilityRequestSchema.safeParse(input);
+
+        // Assert
+        expect(result.success).toBe(true);
+        expect(result.data?.partySize).toBe(expected);
+        expect(typeof result.data?.partySize).toBe("number");
+    });
+
+    it("rejects a partySize above the safe integer range", () => {
+        // "99999999999999999999" is only digits, but as a number it can't be stored exactly (it becomes 1e20)
+        // Arrange
+        const input = query("99999999999999999999");
+
+        // Act
+        const result = GetAvailabilityRequestSchema.safeParse(input);
+
+        // Assert
+        expect(result.success).toBe(false);
     });
 });
