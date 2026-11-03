@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import request from "supertest";
-import { app } from "../app";
+import { app } from "../../app";
 import {
     resetTestDatabase, dayFromToday, huTime, loginAs, createHikerWithoutBookings,
     MARIO, LAURA, EMPLOYEE, NEW_HIKER,
-} from "./helpers";
+} from "../helpers";
 
 const RESERVATIONS_URL = "/api/v1/reservations";
 const SLOTS_URL = "/api/v1/slots";

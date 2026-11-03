@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import request from "supertest";
-import { app } from "../app";
-import { resetTestDatabase, dayFromToday, huTime, loginAs, MARIO } from "./helpers";
+import { app } from "../../app";
+import { resetTestDatabase, dayFromToday, huTime, loginAs, MARIO } from "../helpers";
 
 const SLOTS_URL = "/api/v1/slots";
 

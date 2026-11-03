@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { db } from "../database/database";
+import { db } from "../../database/database";
 import {
     getSlot,
     getAvailableSlotsByDate,
@@ -8,9 +8,9 @@ import {
     saveSlot,
     SlotAvailability,
     SlotConfiguration,
-} from "../dao/slot-dao";
-import { Slot } from "../models/entities/slot";
-import { SlotTable } from "../models/entities/slot_table";
+} from "../../dao/slot-dao";
+import { Slot } from "../../models/entities/slot";
+import { SlotTable } from "../../models/entities/slot_table";
 
 /*
 UNIT tests for slot-dao.
@@ -18,7 +18,7 @@ The database is mocked: we check the parameters passed to the query and how rows
 The SQL itself is covered by the integration tests.
 */
 
-vi.mock("../database/database", () => ({ db: { prepare: vi.fn(), transaction: vi.fn() } }));
+vi.mock("../../database/database", () => ({ db: { prepare: vi.fn(), transaction: vi.fn() } }));
 
 const statement = { get: vi.fn(), all: vi.fn(), run: vi.fn() };
 
