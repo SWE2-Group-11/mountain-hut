@@ -3,12 +3,25 @@ PRAGMA foreign_keys = ON;
 -- Accounts
 CREATE TABLE account (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    first_name    TEXT    NOT NULL,
-    last_name     TEXT    NOT NULL,
     email         TEXT    NOT NULL UNIQUE,
     password_salt TEXT    NOT NULL,
-    password_hash TEXT    NOT NULL,
-    role          TEXT    NOT NULL CHECK (role IN ('hiker', 'employee', 'warden'))
+    password_hash TEXT    NOT NULL
+);
+
+-- Hikers
+CREATE TABLE hiker (
+    account_id        INTEGER PRIMARY KEY REFERENCES account(id) ON DELETE CASCADE,
+    full_name         TEXT    NOT NULL,
+    mobile_number     TEXT    NOT NULL,
+    notes             TEXT,
+    emergency_contact TEXT
+);
+
+-- Staff
+CREATE TABLE staff (
+    account_id INTEGER PRIMARY KEY REFERENCES account(id) ON DELETE CASCADE,
+    name       TEXT    NOT NULL,
+    role       TEXT    NOT NULL CHECK (role IN ('employee', 'warden'))
 );
 
 -- Meal slots
@@ -27,13 +40,13 @@ CREATE TABLE slot_table (
     seats           INTEGER NOT NULL CHECK (seats > 0),
     PRIMARY KEY (slot_date, slot_start_time, table_number),
     FOREIGN KEY (slot_date, slot_start_time)
-        REFERENCES slot(date, start_time)
+        REFERENCES slot(date, start_time) ON UPDATE CASCADE
 );
 
 -- Bookings
 CREATE TABLE booking (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    hiker_id INTEGER NOT NULL REFERENCES account(id)
+    hiker_id INTEGER NOT NULL REFERENCES hiker(account_id)
 );
 
 -- Seats assigned to a booking at each table
@@ -45,7 +58,7 @@ CREATE TABLE seated_at (
     assigned_seats  INTEGER NOT NULL CHECK (assigned_seats >= 1),
     PRIMARY KEY (booking_id, slot_date, slot_start_time, table_number),
     FOREIGN KEY (slot_date, slot_start_time, table_number)
-        REFERENCES slot_table(slot_date, slot_start_time, table_number)
+        REFERENCES slot_table(slot_date, slot_start_time, table_number) ON UPDATE CASCADE
 );
 
 -- Dietary requirements of a booking
