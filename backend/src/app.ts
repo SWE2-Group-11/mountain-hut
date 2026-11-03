@@ -39,7 +39,10 @@ app.use((req: Request, res: Response) => {
 });
 
 // Unhandled errors (e.g. malformed JSON) → ErrorDTO format
-app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) {
+        return next(err);
+    }
     if (err instanceof SyntaxError && "body" in err) {
         return sendBadRequestError("Malformed JSON body", res);
     }
