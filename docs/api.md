@@ -53,7 +53,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
 
-## POST /slots - Create a slot
+### POST /slots - Create a slot
 
 - **Description:** creates a slot for a specific date and time interval, with the tables and seats available in it
 - **Authentication:** required
@@ -78,7 +78,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `409 Conflict`: the slot overlaps an existing slot on the same date (slots that only touch, such as 12:00-13:00 and 13:00-14:00, do not overlap)
   - `500 Internal Server Error`: unexpected server error
 
-## GET /slots/configurations - Get reusable table configurations
+### GET /slots/configurations - Get reusable table configurations
 
 - **Description:** returns the table and seat configurations of existing slots, so that they can be reused through `copyFrom`
 - **Authentication:** required
