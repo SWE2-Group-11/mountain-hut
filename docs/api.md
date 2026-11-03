@@ -82,24 +82,21 @@ Base URL: `http://localhost:3000/api/v1`
   - `409 Conflict`: the slot overlaps an existing slot of the same day
   - `500 Internal Server Error`: unexpected server error
 
-### GET /slots/:slotId/availability — Check booking availability
+### GET /slots/availability — Check booking availability
 
 - **Description:** checks whether the selected slot can accommodate the requested party size
 - **Authentication:** not required
-- **Path parameters:**
-  - `slotId`: required identifier of the selected slot
 - **Query parameters:**
+  - `date`: required date, formatted `YYYY-MM-DD`
+  - `slot`: required slot start time, formatted `HH:mm`, expressed in `Europe/Rome`
   - `partySize`: required positive integer
 - **Possible responses:**
   - `200 OK`: returns an object containing `available`, an array describing one possible table arrangement for the entire party
     - `tableId`: integer; identifier of the proposed table
-    - `assignedSeats`: positive integer; number of party members
-    assigned to that table
+    - `assignedSeats`: positive integer; number of party members assigned to that table
     - The sum of `assignedSeats` equals the requested `partySize`
-    - `available` is empty if the entire party cannot be accommodated
-    or the slot is closed
-  - `400 Bad Request`: invalid slot identifier or missing,
-    invalid or non-positive party size
+    - `available` is empty if the entire party cannot be accommodated or the slot is closed
+  - `400 Bad Request`: missing or invalid date, slot time or party size
   - `404 Not Found`: the slot does not exist
   - `500 Internal Server Error`: unexpected server error
 
