@@ -31,10 +31,6 @@ export const loginAs = async (email: string) => {
     return agent;
 };
 
-/**
- * Adds a hiker without bookings (the seeded hikers already have a 12:00 booking tomorrow).
- * It reuses Mario's password hash, so the password is the same.
- */
 export const createHikerWithoutBookings = (email: string = NEW_HIKER): void => {
     const { lastInsertRowid } = db.prepare(
         `INSERT INTO account (email, password_salt, password_hash)
