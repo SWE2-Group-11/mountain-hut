@@ -6,6 +6,7 @@ import { ROUTES, CLIENT_ORIGIN, SESSION_SECRET } from "./config/config";
 import { sendAppError, sendNotFoundError, sendBadRequestError } from "./services/error-service";
 import { authenticateSession } from "./services/auth-service";
 import authRouter from "./routes/auth-route";
+import reservationRouter from "./routes/reservation-route";
 import slotRouter from "./routes/slot-route";
 
 // Init express
@@ -31,6 +32,7 @@ app.use(authenticateSession);
 
 // Routes
 app.use(ROUTES.V1_AUTH, authRouter);
+app.use(ROUTES.V1_RESERVATIONS, reservationRouter);
 app.use(ROUTES.V1_SLOTS, slotRouter);
 
 // Unknown routes → 404 in ErrorDTO format
@@ -39,7 +41,10 @@ app.use((req: Request, res: Response) => {
 });
 
 // Unhandled errors (e.g. malformed JSON) → ErrorDTO format
-app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) {
+        return next(err);
+    }
     if (err instanceof SyntaxError && "body" in err) {
         return sendBadRequestError("Malformed JSON body", res);
     }

@@ -1,6 +1,6 @@
 import { ErrorDTO } from '../models/dto/error-dto';
 import { AccountResponseDTO } from '../models/dto/account-dto';
-import { SlotConfigurationDTO, SlotDTO, SlotTableDTO } from '../models/dto/slot-dto';
+import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotDTO, SlotTableDTO } from '../models/dto/slot-dto';
 import { CreateReservationResponseDTO, SeatingDTO } from '../models/dto/reservation-dto';
 import { SlotAvailability, SlotConfiguration } from '../dao/slot-dao';
 import { Account } from '../models/entities/account';
@@ -8,6 +8,7 @@ import { Booking } from '../models/entities/booking';
 import { SeatedAt } from '../models/entities/seated_at';
 import { Slot } from '../models/entities/slot';
 import { AppError } from '../models/errors/app-error';
+import type { Assignment } from '../dao/booking-dao';
 import { minutesToTime, timeToMinutes } from './date-service';
 
 /**
@@ -70,4 +71,20 @@ export const bookingDataToCreateReservationResponseDTO = (
     const partySize = seatings.reduce((sum, s) => sum + s.assigned_seats, 0);
     const seatingDTOs = seatings.map((s) => new SeatingDTO(s.table_number, s.assigned_seats));
     return new CreateReservationResponseDTO(booking.id, date, start_time, partySize, seatingDTOs);
+};
+
+/**
+ * Converts a proposed assignment into the public availability response.
+ */
+export const assignmentsToAvailabilityResponseDTO = (
+    assignments: Assignment[] | null
+): GetAvailabilityResponseDTO => {
+    const available = (assignments ?? []).map(
+        (assignment) => new AvailableTableDTO(
+            assignment.table_number,
+            assignment.assigned_seats
+        )
+    );
+
+    return new GetAvailabilityResponseDTO(available);
 };

@@ -24,6 +24,27 @@ e2e/        End-to-end tests: full user flows across frontend and backend
 docs/       Project documentation
 ```
 
+## Running with Docker
+
+```bash
+docker compose up --build
+```
+
+This starts two containers:
+
+| Service | URL | Description |
+|---|---|---|
+| `frontend` | `http://localhost:5173` | Production bundle served by `vite preview`, proxies `/api` to the backend |
+| `backend` | `http://localhost:3000` | REST API |
+
+The SQLite database is stored in the `db-data` volume. It is created and seeded on the first start and kept on later starts. To reset it:
+
+```bash
+RESET_DB=true docker compose up
+```
+
+or remove the volume with `docker compose down -v`.
+
 ## Backend
 
 ### Tech stack
@@ -34,7 +55,7 @@ docs/       Project documentation
 | `cors` | Allows the frontend origin to call the API |
 | `better-sqlite3` | SQLite database (synchronous driver) |
 | `express-session` | Session cookies |
-| `passport`, `passport-local` | Login with username and password |
+| `passport`, `passport-local` | Login with email and password |
 | `typescript` | Type checking and compilation (pinned to v6) |
 | `tsx` | Runs TypeScript directly in development, with auto-restart |
 | `oxlint` | Linting |
