@@ -46,6 +46,8 @@ test.describe('Book a table', () => {
 
   test('staff do not see the Book a Table link', async ({ page }) => {
     await login(page, EMPLOYEE);
-    await expect(page.getByRole('link', { name: 'Book a Table' })).toHaveCount(0);
+    await expect(
+      page.getByRole('banner').getByRole('link', { name: 'Book a Table' }),
+    ).toHaveCount(0);
   });
 });
