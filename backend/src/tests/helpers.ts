@@ -24,7 +24,7 @@ export const huTime = (date: string, time: string): Date =>
 /** Returns a supertest agent that keeps the session cookie after logging in. */
 export const loginAs = async (email: string) => {
     const agent = request.agent(app);
-    const res = await agent.post("/api/v1/session").send({ username: email, password: PASSWORD });
+    const res = await agent.post("/api/v1/session").send({ email, password: PASSWORD });
     if (res.status !== 201) {
         throw new Error(`Login failed for ${email}: ${res.status} ${JSON.stringify(res.body)}`);
     }
@@ -36,8 +36,11 @@ export const loginAs = async (email: string) => {
  * It reuses Mario's password hash, so the password is the same.
  */
 export const createHikerWithoutBookings = (email: string = NEW_HIKER): void => {
-    db.prepare(
-        `INSERT INTO account (first_name, last_name, email, password_salt, password_hash, role)
-         SELECT 'New', 'Hiker', ?, password_salt, password_hash, role FROM account WHERE email = ?`
+    const { lastInsertRowid } = db.prepare(
+        `INSERT INTO account (email, password_salt, password_hash)
+         SELECT ?, password_salt, password_hash FROM account WHERE email = ?`
     ).run(email, MARIO);
+    db.prepare(
+        `INSERT INTO hiker (account_id, full_name, mobile_number) VALUES (?, 'New Hiker', '+39 300 000 0000')`
+    ).run(lastInsertRowid);
 };
