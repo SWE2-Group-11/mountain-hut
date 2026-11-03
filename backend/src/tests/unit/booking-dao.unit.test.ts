@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { db } from "../database/database";
-import { getBookingAvailability, getTablesAvailability, saveBooking } from "../dao/booking-dao";
-import { Booking } from "../models/entities/booking";
-import { SeatedAt } from "../models/entities/seated_at";
+import { db } from "../../database/database";
+import { getBookingAvailability, getTablesAvailability, saveBooking } from "../../dao/booking-dao";
+import { Booking } from "../../models/entities/booking";
+import { SeatedAt } from "../../models/entities/seated_at";
 
 /*
 UNIT tests for booking-dao.
@@ -10,7 +10,7 @@ The database is mocked: we check how a party is seated on the tables and what ge
 The SQL itself and the rollback of the transaction are covered by the integration tests.
 */
 
-vi.mock("../database/database", () => ({
+vi.mock("../../database/database", () => ({
     db: { prepare: vi.fn(), transaction: vi.fn() },
 }));
 

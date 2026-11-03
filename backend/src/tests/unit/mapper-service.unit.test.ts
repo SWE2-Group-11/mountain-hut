@@ -1,19 +1,21 @@
+import { SlotTable } from "../../models/entities/slot_table";
 import { describe, expect, it } from "vitest";
-import { type Assignment } from "../dao/booking-dao";
-import { type SlotAvailability } from "../dao/slot-dao";
-import { AvailableTableDTO, GetAvailabilityResponseDTO } from "../models/dto/slot-dto";
-import { Booking } from "../models/entities/booking";
-import { SeatedAt } from "../models/entities/seated_at";
-import { Slot } from "../models/entities/slot";
-import { AppError } from "../models/errors/app-error";
-import { BadRequestError } from "../models/errors/badrequest-error";
-import { ConflictError } from "../models/errors/conflict-error";
+import { type Assignment } from "../../dao/booking-dao";
+import { type SlotConfiguration, type SlotAvailability } from "../../dao/slot-dao";
+import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotTableDTO } from "../../models/dto/slot-dto";
+import { Booking } from "../../models/entities/booking";
+import { SeatedAt } from "../../models/entities/seated_at";
+import { Slot } from "../../models/entities/slot";
+import { AppError } from "../../models/errors/app-error";
+import { BadRequestError } from "../../models/errors/badrequest-error";
+import { ConflictError } from "../../models/errors/conflict-error";
 import {
+    slotConfigurationToDTO,
     appErrorToDTO,
     assignmentsToAvailabilityResponseDTO,
     bookingDataToCreateReservationResponseDTO,
     slotAvailabilityToSlotDTO,
-} from "../services/mapper-service";
+} from "../../services/mapper-service";
 
 const DAY = "2030-06-15";
 const START_TIME = "12:00";
@@ -128,6 +130,59 @@ describe("ErrorDTO mapping — HTTP status values, not HTTP integration", () => 
             code: 500,
             name: "InternalServerError",
             message: "An unexpected error occurred",
+        });
+    });
+});
+
+const CAPACITY_DAY = "2030-06-15";
+const CAPACITY_TABLES = [{ tableNumber: 3, seats: 4 }, { tableNumber: 7, seats: 6 }];
+
+function capacityConfiguration(
+    date = CAPACITY_DAY,
+    startTime = "12:15",
+    duration = 105,
+    tables: [number, number][] = [[3, 4], [7, 6]],
+): SlotConfiguration {
+    return {
+        slot: new Slot(date, startTime, duration),
+        tables: tables.map(([number, seats]) => new SlotTable(date, startTime, number, seats)),
+    };
+}
+
+describe("slotConfigurationToDTO", () => {
+    it("maps entities to DTOs, sums configured seats and hides persistence fields", () => {
+        const response = slotConfigurationToDTO(capacityConfiguration());
+        expect(response).toEqual({
+            date: CAPACITY_DAY, startTime: "12:15", endTime: "14:00", tables: CAPACITY_TABLES, totalSeats: 10,
+        });
+        expect(response).toBeInstanceOf(SlotConfigurationDTO);
+        for (const table of response.tables) {
+            expect(table).toBeInstanceOf(SlotTableDTO);
+            expect(Object.keys(table).sort()).toEqual(["seats", "tableNumber"]);
+        }
+        expect(Object.keys(response).sort()).toEqual(["date", "endTime", "startTime", "tables", "totalSeats"]);
+    });
+
+    it.each([
+        { startTime: "00:00", duration: 1, endTime: "00:01" },
+        { startTime: "09:50", duration: 75, endTime: "11:05" },
+        { startTime: "23:00", duration: 59, endTime: "23:59" },
+    ])("formats the end of $startTime + $duration minutes as $endTime", ({ startTime, duration, endTime }) => {
+        expect(slotConfigurationToDTO(capacityConfiguration(CAPACITY_DAY, startTime, duration)).endTime).toBe(endTime);
+    });
+
+    it("preserves table order and does not mutate or share input table objects", () => {
+        const input = capacityConfiguration(CAPACITY_DAY, "12:15", 105, [[9, 8], [2, 3]]);
+        const snapshot = structuredClone(input);
+        const response = slotConfigurationToDTO(input);
+        expect(response.tables).toEqual([{ tableNumber: 9, seats: 8 }, { tableNumber: 2, seats: 3 }]);
+        response.tables[0].seats = 99;
+        expect(input).toEqual(snapshot);
+    });
+
+    it("maps an existing configuration without tables to zero configured seats", () => {
+        expect(slotConfigurationToDTO(capacityConfiguration(CAPACITY_DAY, "12:00", 60, []))).toEqual({
+            date: CAPACITY_DAY, startTime: "12:00", endTime: "13:00", tables: [], totalSeats: 0,
         });
     });
 });

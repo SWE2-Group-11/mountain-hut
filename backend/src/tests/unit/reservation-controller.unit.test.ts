@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createReservation } from "../controllers/reservation-controller";
-import { getSlot } from "../dao/slot-dao";
-import { saveBooking } from "../dao/booking-dao";
-import { type CreateReservationRequestDTO } from "../models/dto/reservation-dto";
-import { Booking } from "../models/entities/booking";
-import { SeatedAt } from "../models/entities/seated_at";
-import { Slot } from "../models/entities/slot";
-import { BadRequestError } from "../models/errors/badrequest-error";
-import { ConflictError } from "../models/errors/conflict-error";
+import { createReservation } from "../../controllers/reservation-controller";
+import { getSlot } from "../../dao/slot-dao";
+import { saveBooking } from "../../dao/booking-dao";
+import { type CreateReservationRequestDTO } from "../../models/dto/reservation-dto";
+import { Booking } from "../../models/entities/booking";
+import { SeatedAt } from "../../models/entities/seated_at";
+import { Slot } from "../../models/entities/slot";
+import { BadRequestError } from "../../models/errors/badrequest-error";
+import { ConflictError } from "../../models/errors/conflict-error";
 
 // Isolate persistence; keep real booking rules and response mapping
-vi.mock("../dao/slot-dao", () => ({ getSlot: vi.fn() }));
-vi.mock("../dao/booking-dao", () => ({ saveBooking: vi.fn() }));
+vi.mock("../../dao/slot-dao", () => ({ getSlot: vi.fn() }));
+vi.mock("../../dao/booking-dao", () => ({ saveBooking: vi.fn() }));
 
 const DAY = "2030-06-15";
 const START_TIME = "12:00";
