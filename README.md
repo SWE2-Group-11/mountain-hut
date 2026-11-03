@@ -30,12 +30,13 @@ docs/       Project documentation
 docker compose up --build
 ```
 
-This starts two containers:
+This starts three containers:
 
 | Service | URL | Description |
 |---|---|---|
 | `frontend` | `http://localhost:5173` | Production bundle served by `vite preview`, proxies `/api` to the backend |
 | `backend` | `http://localhost:3000` | REST API |
+| `mailpit` | `http://localhost:8025` | Development inbox: catches every email the backend sends |
 
 The SQLite database is stored in the `db-data` volume. It is created and seeded on the first start and kept on later starts. To reset it:
 
@@ -44,6 +45,18 @@ RESET_DB=true docker compose up
 ```
 
 or remove the volume with `docker compose down -v`.
+
+### Email in development
+
+Booking confirmations are sent over SMTP. With `docker compose up`, the `mailpit` service catches every email: open `http://localhost:8025` to read them. No real email is ever sent.
+
+Without Docker (for example with `npm run dev`), start Mailpit on its own:
+
+```bash
+docker run --rm -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.27.0
+```
+
+Settings: `SMTP_HOST` (default `localhost`), `SMTP_PORT` (default `1025`) and `MAIL_FROM`. See `backend/.env.example`.
 
 ## Backend
 
