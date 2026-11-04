@@ -1,10 +1,9 @@
-// models/dto/reservation-dto.ts
 import { z } from "zod";
-import { DateSchema, TimeSchema } from "./slot-dto";
+import { DateSchema } from "./slot-dto";
 
 /**
  * Data Transfer Object for the seats assigned at a table.
- * Used in POST /reservations
+ * Used in POST /reservation
  */
 export class SeatingDTO {
     public table_number: number;
@@ -17,22 +16,8 @@ export class SeatingDTO {
 }
 
 /**
- * Data Transfer Object for the dietary requirements of a subset of the party.
- * Used in POST /reservations
- */
-export class RequirementDTO {
-    public hasAllergies: boolean;
-    public details: string;
-
-    constructor(hasAllergies: boolean, details: string) {
-        this.hasAllergies = hasAllergies;
-        this.details = details;
-    }
-}
-
-/**
  * Data Transfer Object for Reservation response payloads.
- * Used in POST /reservations
+ * Used in POST /reservation
  */
 export class CreateReservationResponseDTO {
     public id: number;
@@ -40,43 +25,24 @@ export class CreateReservationResponseDTO {
     public slot: string;         // HH:MM
     public partySize: number;
     public seatings: SeatingDTO[];
-    public requirements: RequirementDTO[];
 
-    constructor(
-        id: number,
-        date: string,
-        slot: string,
-        partySize: number,
-        seatings: SeatingDTO[],
-        requirements: RequirementDTO[]
-    ) {
+    constructor(id: number, date: string, slot: string, partySize: number, seatings: SeatingDTO[]) {
         this.id = id;
         this.date = date;
         this.slot = slot;
         this.partySize = partySize;
         this.seatings = seatings;
-        this.requirements = requirements;
     }
 }
 
 /**
- * Validation schema for the dietary requirements of a subset of the party.
- * Both fields are mandatory; the details must have at least one non-space character.
- */
-const RequirementSchema = z.object({
-    hasAllergies: z.boolean(),
-    details: z.string().trim().min(1),
-});
-
-/**
  * Validation schema for Reservation request payloads.
- * Used in POST /reservations
+ * Used in POST /reservation
  */
 export const CreateReservationRequestSchema = z.object({
     date: DateSchema,
-    slot: TimeSchema,
+    slot: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     partySize: z.number().int().positive(),
-    requirements: z.array(RequirementSchema).optional(),
 });
 
 /**
