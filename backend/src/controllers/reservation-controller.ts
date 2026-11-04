@@ -6,6 +6,7 @@ import { ConflictError } from "../models/errors/conflict-error";
 import { bookingDataToCreateReservationResponseDTO } from "../services/mapper-service";
 import { isBookingOpen } from "../services/booking-rules";
 import { BOOKING_CUTOFF_HOURS } from "../config/config";
+import { notifyBookingCreated } from "../notifications/booking-confirmation";
 
 /**
  * Creates a reservation for the authenticated hiker, seating the party
@@ -13,6 +14,7 @@ import { BOOKING_CUTOFF_HOURS } from "../config/config";
  * @param hiker_id The ID of the authenticated hiker.
  * @param request The request payload containing date, slot and party size.
  * @returns The created booking with the tables assigned.
+ * Sends the booking confirmation email in the background once the booking is saved.
  * @throws BadRequestError if the slot does not exist or starts in less than
  *         BOOKING_CUTOFF_HOURS hours.
  * @throws ConflictError if the requested capacity is no longer available.
@@ -35,6 +37,8 @@ export const createReservation = (
     if (!result) {
         throw new ConflictError("The requested capacity is no longer available");
     }
+
+    notifyBookingCreated(result.booking.id);
 
     return bookingDataToCreateReservationResponseDTO(result.booking, result.seatings, slot.date, slot.start_time);
 };
