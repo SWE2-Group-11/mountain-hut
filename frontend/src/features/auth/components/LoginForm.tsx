@@ -36,7 +36,7 @@ export const LoginForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // Calls POST /api/v1/session with { username: email, password } via AuthContext
+      // Calls POST /api/v1/session with { email, password } via AuthContext
       await login(email.trim(), password);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {

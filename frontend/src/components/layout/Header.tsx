@@ -89,7 +89,7 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-4 pl-4 border-l border-[#EFEADF]">
             <div className="flex items-center gap-2 text-xs text-[#5A6865]">
               <UserIcon className="w-4 h-4 text-[#234E39]" />
-              <span className="font-semibold text-[#1C2826]">{user.username}</span>
+              <span className="font-semibold text-[#1C2826]">{user.email}</span>
             </div>
             <button
               type="button"
@@ -167,7 +167,7 @@ export const Header: React.FC = () => {
             <div className="pt-4 border-t border-[#EFEADF] flex flex-col gap-3">
               <div className="flex items-center gap-2 text-xs text-[#5A6865]">
                 <UserIcon className="w-4 h-4 text-[#234E39]" />
-                <span className="font-semibold text-[#1C2826]">{user.username}</span>
+                <span className="font-semibold text-[#1C2826]">{user.email}</span>
                 <span className="bg-white px-2 py-0.5 rounded text-[10px] text-[#7C8885] uppercase border border-[#EFEADF]">
                   {user.role}
                 </span>

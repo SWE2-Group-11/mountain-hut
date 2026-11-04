@@ -53,7 +53,7 @@ export default function HomePage() {
               onClick={logout} 
               className="text-xs text-gray-400 hover:text-white transition-colors underline cursor-pointer"
             >
-              Logout ({user.username})
+              Logout ({user.email})
             </button>
           ) : (
             <Link 
