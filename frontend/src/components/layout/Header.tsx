@@ -15,6 +15,7 @@ export const Header: React.FC = () => {
   const isHomeActive = currentPath === '/';
   const isBookActive = currentPath === '/book-table';
   const isSlotsActive = currentPath === '/staff/slots';
+  const isAvailabilityActive = currentPath === '/availability';
 
   // Visitors and hikers see the link; staff do not book tables.
   // A visitor who clicks it is sent to /login by ProtectedRoute.
