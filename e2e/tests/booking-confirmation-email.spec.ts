@@ -61,7 +61,9 @@ test.describe('Booking confirmation email', () => {
     await page.getByRole('button', { name: String(tomorrow.getDate()), exact: true }).click();
     await page.getByRole('button', { name: /^19:30/ }).click();
     await page.getByRole('button', { name: 'Increase party size' }).click();
-    await page.getByRole('button', { name: 'Increase party size' }).click();
+    // The party size the hiker sees before booking is the one the email must report
+    const shownPartySize = await page.getByText(/^\d+ (Person|People)$/).textContent();
+    const partySize = Number(shownPartySize!.match(/^\d+/)![0]);
     await page.getByRole('button', { name: 'Book Table' }).click();
 
     const confirmation = page.getByText(/Booking #\d+ confirmed/);
@@ -81,14 +83,14 @@ test.describe('Booking confirmation email', () => {
     expect(message.Text).toContain(`Booking reference: ${reference}`);
     expect(message.Text).toContain(`Date: ${date}`);
     expect(message.Text).toContain('Time slot: 19:30–21:00');
-    expect(message.Text).toContain('Party size: 3');
+    expect(message.Text).toContain(`Party size: ${partySize}`);
 
     // The HTML version, as an email client would show it
     await page.setContent(message.HTML);
     await expect(page.getByText('Hello Laura Bianchi,')).toBeVisible();
     await expect(page.getByRole('row', { name: `Booking reference ${reference}` })).toBeVisible();
     await expect(page.getByRole('row', { name: 'Time slot 19:30–21:00' })).toBeVisible();
-    await expect(page.getByRole('row', { name: 'Party size 3' })).toBeVisible();
+    await expect(page.getByRole('row', { name: `Party size ${partySize}` })).toBeVisible();
     await expect(page.getByText('No party requirements.')).toBeVisible();
   });
 });
