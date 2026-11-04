@@ -6,21 +6,21 @@ Base URL: `http://localhost:3000/api/v1`
 
 ### POST /reservations - Create a reservation
 
-- **Description:** create the reservation to book a table for an authenticated user
+- **Description:** create the reservation to book a table for an authenticated hiker, optionally declaring the dietary requirements of the party
 - **Authentication:** required
-- **Permissions:** user
-- **Request Body:**
-  - `date`: required date, formatted `YYYY-MM-DD`
-  - `slot`: required slot
+- **Permissions:** hiker
+- **Request body:**
+  - `date`: required, formatted `YYYY-MM-DD`
+  - `slot`: required, start time of the slot, formatted `HH:mm`
   - `partySize`: required positive integer
-  - `requirements`: optional list of objects, each containing dietary requirements; if omitted, no dietary requirements are declared
-    - `numPeople`: required integer representing the number of people this sub-set is made of
-    - `hasAllergies`: optional boolean
-    - `details`: optional string describing dietary restrictions or preferences; required and not empty when `hasAllergies` is true
+  - `requirements`: optional list of objects, each describing the dietary requirements of a subset of the party; if omitted, no dietary requirements are declared
+    - `hasAllergies`: required boolean
+    - `details`: required string with at least one non-space character, describing the people of the subset and their dietary restrictions or allergies (e.g. `"2 vegetarians"`)
 - **Responses:**
-  - `201 Created`: booking created; returns the booking details, including any declared dietary requirements
-  - `400 Bad Request`: missing or invalid request fields, including missing allergy details when `hasAllergies` is true
+  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`)
+  - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement), slot that does not exist, or slot that starts in less than 2 hours
   - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
   - `409 Conflict`: the requested capacity is no longer available
   - `500 Internal Server Error`: unexpected server error
 
@@ -110,17 +110,17 @@ Base URL: `http://localhost:3000/api/v1`
   - `date`: optional date, formatted `YYYY-MM-DD`
   - `slot`: optional slot identifier
   - `partySize`: optional positive integer
-  - `requirements`: optional dietary requirements object;
-    when provided, replaces the previous requirements
+  - `requirements`: optional list of objects; when provided, replaces all the previous requirements (an empty list removes them)
+    - `hasAllergies`: required boolean
+    - `details`: required string describing dietary restrictions or preferences
   - At least one field must be provided
 - **Responses:**
   - `200 OK`: returns the updated reservation
-  - `400 Bad Request`: empty body, invalid fields or inconsistent date and slot
+  - `400 Bad Request`: empty body, invalid fields or inconsistent date and slot or the reservation cannot be modified under the applicable business rules
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: the reservation belongs to another user
   - `404 Not Found`: the reservation or requested slot does not exist
-  - `409 Conflict`: insufficient availability or the reservation
-    cannot be modified under the applicable business rules
+  - `409 Conflict`: insufficient availability
   - `500 Internal Server Error`: unexpected server error
 
 ### GET /reservations — Get the authenticated user's reservations
@@ -129,7 +129,6 @@ Base URL: `http://localhost:3000/api/v1`
 - **Authentication:** required
 - **Permissions:** user
 - **Responses:**
-  - `200 OK`: returns the reservations ordered by start date and time;
-    returns `[]` if no reservations match
+  - `200 OK`: returns only reservations whose slot has not started yet ordered by start date and time; returns `[]` if no reservations match
   - `401 Unauthorized`: user is not authenticated
   - `500 Internal Server Error`: unexpected server error

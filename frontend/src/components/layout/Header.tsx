@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoImage from '../../assets/logo.jpeg';
-import { Menu, X, LogOut, User as UserIcon} from 'lucide-react';
+import { Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../features/auth/useAuth';
 
 export const Header: React.FC = () => {
@@ -15,6 +15,7 @@ export const Header: React.FC = () => {
   const isHomeActive = currentPath === '/';
   const isBookActive = currentPath === '/book-table';
   const isSlotsActive = currentPath === '/staff/slots';
+  const isAvailabilityActive = currentPath === '/availability';
 
   // Visitors and hikers see the link; staff do not book tables.
   // A visitor who clicks it is sent to /login by ProtectedRoute.
@@ -58,15 +59,19 @@ export const Header: React.FC = () => {
         >
           Home
         </Link>
-
+        <Link
+          to="/availability"
+          className={`hover:text-[#1C2826] transition-colors ${isAvailabilityActive ? 'font-bold text-[#1C2826]' : ''}`}
+        >
+          Check availability
+        </Link>
         {canSeeBooking && (
           <Link
             to="/book-table"
-            className={`flex items-center gap-1.5 transition-colors ${
-              isBookActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'
-            }`}
+            className={`flex items-center gap-1.5 transition-colors ${isBookActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'
+              }`}
           >
-           
+
             Book a Table
           </Link>
         )}
@@ -74,9 +79,8 @@ export const Header: React.FC = () => {
         {canManageSlots && (
           <Link
             to="/staff/slots"
-            className={`transition-colors ${
-              isSlotsActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'
-            }`}
+            className={`transition-colors ${isSlotsActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'
+              }`}
           >
             Manage slots
           </Link>
@@ -103,9 +107,8 @@ export const Header: React.FC = () => {
         ) : (
           <Link
             to="/login"
-            className={`text-xs transition-colors border-l border-[#EFEADF] pl-6 ${
-              isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#7C8885] hover:text-[#1C2826]'
-            }`}
+            className={`text-xs transition-colors border-l border-[#EFEADF] pl-6 ${isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#7C8885] hover:text-[#1C2826]'
+              }`}
           >
             Login
           </Link>
@@ -129,22 +132,28 @@ export const Header: React.FC = () => {
           <Link
             to="/"
             onClick={handleNavClick}
-            className={`text-base font-medium py-2 transition-colors ${
-              isHomeActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
-            }`}
+            className={`text-base font-medium py-2 transition-colors ${isHomeActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
+              }`}
           >
             Home
+          </Link>
+          <Link
+            to="/availability"
+            onClick={handleNavClick}
+            className={`text-base font-medium py-2 transition-colors ${isAvailabilityActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
+              }`}
+          >
+            Check availability
           </Link>
 
           {canSeeBooking && (
             <Link
               to="/book-table"
               onClick={handleNavClick}
-              className={`text-base font-medium py-2 transition-colors flex items-center gap-2 ${
-                isBookActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
-              }`}
+              className={`text-base font-medium py-2 transition-colors flex items-center gap-2 ${isBookActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
+                }`}
             >
-            
+
               Book a Table
             </Link>
           )}
@@ -188,9 +197,8 @@ export const Header: React.FC = () => {
             <Link
               to="/login"
               onClick={handleNavClick}
-              className={`text-base font-medium py-2 transition-colors border-t border-[#EFEADF] pt-4 ${
-                isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
-              }`}
+              className={`text-base font-medium py-2 transition-colors border-t border-[#EFEADF] pt-4 ${isLoginActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
+                }`}
             >
               Login
             </Link>
