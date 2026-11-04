@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     CreateReservationRequestSchema,
     type CreateReservationRequestDTO,
-} from "../models/dto/reservation-dto";
+} from "../../models/dto/reservation-dto";
 
 const VALID_REQUEST: CreateReservationRequestDTO = {
     date: "2030-06-15",

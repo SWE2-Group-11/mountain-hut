@@ -15,7 +15,6 @@ export const Header: React.FC = () => {
   const isHomeActive = currentPath === '/';
   const isBookActive = currentPath === '/book-table';
   const isSlotsActive = currentPath === '/staff/slots';
-  const isAvailabilityActive = currentPath === '/availability';
 
   // Visitors and hikers see the link; staff do not book tables.
   // A visitor who clicks it is sent to /login by ProtectedRoute.
@@ -162,8 +161,9 @@ export const Header: React.FC = () => {
             <Link
               to="/staff/slots"
               onClick={handleNavClick}
-              className={`text-base font-medium py-2 transition-colors ${isSlotsActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
-                }`}
+              className={`text-base font-medium py-2 transition-colors ${
+                isSlotsActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
+              }`}
             >
               Manage slots
             </Link>
