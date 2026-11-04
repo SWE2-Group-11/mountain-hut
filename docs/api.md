@@ -6,21 +6,22 @@ Base URL: `http://localhost:3000/api/v1`
 
 ### POST /reservations - Create a reservation
 
-- **Description:** create the reservation to book a table for an authenticated user
+- **Description:** create the reservation to book a table for an authenticated hiker, optionally declaring the dietary requirements of the party
 - **Authentication:** required
-- **Permissions:** user
-- **Request Body:**
-  - `date`: required date, formatted `YYYY-MM-DD`
-  - `slot`: required slot
+- **Permissions:** hiker
+- **Request body:**
+  - `date`: required, formatted `YYYY-MM-DD`
+  - `slot`: required, start time of the slot, formatted `HH:mm`
   - `partySize`: required positive integer
-  - `requirements`: optional list of objects, each containing dietary requirements; if omitted, no dietary requirements are declared
+  - `requirements`: optional list of objects, each describing the dietary requirements of a subset of the party; if omitted, no dietary requirements are declared
     - `hasAllergies`: required boolean
-    - `details`: required string describing dietary restrictions or preferences
+    - `details`: required string with at least one non-space character, describing the people of the subset and their dietary restrictions or allergies (e.g. `"2 vegetarians"`)
 - **Responses:**
-  - `201 Created`: booking created; returns the booking details, including any declared dietary requirements
-  - `400 Bad Request`: missing or invalid request fields or the reservation cannot be created under the applicable business rules
+  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`)
+  - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement), slot that does not exist, or slot that starts in less than 2 hours
   - `401 Unauthorized`: user is not authenticated
-  - `409 Conflict`: insufficient availability
+  - `403 Forbidden`: user does not have the required permissions
+  - `409 Conflict`: the requested capacity is no longer available
   - `500 Internal Server Error`: unexpected server error
 
 ### GET /slots - Get slots for the selected date
