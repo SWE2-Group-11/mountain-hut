@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction  } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import session from "express-session";
 import morgan from "morgan";
 import cors from "cors";
@@ -23,9 +23,9 @@ app.use(cors({
 app.use(express.json());
 
 app.use(session({
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false
 }));
 
 app.use(authenticateSession);
