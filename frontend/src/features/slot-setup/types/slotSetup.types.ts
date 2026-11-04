@@ -1,20 +1,21 @@
 export interface TableSetup {
-  tableId: number;
+  tableNumber: number;
   seats: number;
 }
 
-// A saved set of tables and seats returned by GET /slots/configurations
+// An existing slot and its tables, from GET /slots/configurations. It has no id.
 export interface SlotConfiguration {
-  id: number;
-  date: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
   tables: TableSetup[];
   totalSeats: number;
 }
 
 // Exactly one of the two is sent to POST /slots
 export type ConfigurationChoice =
-  | { configurationId: number }
-  | { configuration: { tables: TableSetup[] } };
+  | { copyFrom: { date: string; startTime: string } }
+  | { tables: TableSetup[] };
 
 export type CreateSlotPayload = {
   date: string;
@@ -22,19 +23,12 @@ export type CreateSlotPayload = {
   endTime: string;
 } & ConfigurationChoice;
 
-export interface CreatedSlot {
-  id: number | null;
-  date: string;
-  startTime: string;
-  endTime: string;
-  tables: TableSetup[];
-  totalSeats: number;
-}
+// POST /slots answers with the same shape as a configuration
+export type CreatedSlot = SlotConfiguration;
 
-// Table row as typed in the form (strings, so the field can be empty while editing)
 export interface TableRow {
   key: number;
-  tableId: string;
+  tableNumber: string;
   seats: string;
 }
 

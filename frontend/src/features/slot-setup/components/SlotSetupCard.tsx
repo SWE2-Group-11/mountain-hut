@@ -133,8 +133,8 @@ export const SlotSetupCard: React.FC = () => {
             configurations={s.configurations}
             loading={s.configsLoading}
             error={s.configsError}
-            selectedId={s.selectedConfigId}
-            onSelect={s.setSelectedConfigId}
+            selectedKey={s.selectedConfigKey}
+            onSelect={s.setSelectedConfigKey}
             onEdit={s.editFromConfiguration}
             onRetry={s.reloadConfigurations}
           />
@@ -173,16 +173,13 @@ export const SlotSetupCard: React.FC = () => {
           <ul className="space-y-2">
             {s.created.map((slot, i) => (
               <li
-                key={`${slot.id ?? 'new'}-${slot.date}-${slot.startTime}-${i}`}
+                key={`${slot.date}-${slot.startTime}-${i}`}
                 className="flex items-start gap-3 rounded-2xl bg-[#F1F6F2] border border-[#D9E6DC] p-4"
               >
                 <CheckCircle2 className="w-5 h-5 text-[#234E39] shrink-0" />
                 <div className="text-xs text-[#1C2826]">
                   <p className="font-semibold">
                     {slot.date} · {slot.startTime}-{slot.endTime}
-                    {slot.id !== null && (
-                      <span className="font-normal text-[#7C8885]"> · slot #{slot.id}</span>
-                    )}
                   </p>
                   <p className="text-[#5A6865]">
                     {slot.tables.length} tables · {slot.totalSeats} seats

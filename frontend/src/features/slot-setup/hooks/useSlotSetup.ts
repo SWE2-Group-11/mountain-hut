@@ -10,22 +10,23 @@ import type {
   TableSetup,
 } from '../types/slotSetup.types';
 import {
+  configKey,
   formatLocalDate,
   overlaps,
   parseTableRows,
   validateTimes,
 } from '../utils/slotSetup.utils';
 
-const emptyRow = (key: number): TableRow => ({ key, tableId: '', seats: '' });
+const emptyRow = (key: number): TableRow => ({ key, tableNumber: '', seats: '' });
 
 const toRows = (tables: TableSetup[], nextKey: () => number): TableRow[] =>
-  tables.map((t) => ({ key: nextKey(), tableId: String(t.tableId), seats: String(t.seats) }));
+  tables.map((t) => ({ key: nextKey(), tableNumber: String(t.tableNumber), seats: String(t.seats) }));
 
 const errorMessage = (err: unknown): string => {
   if (err instanceof ApiError) {
     if (err.status === 401) return 'Your session has expired. Please log in again.';
     if (err.status === 403) return 'Only the hut staff can set up slots.';
-    if (err.status === 404) return err.message || 'The chosen setup or one of its tables no longer exists.';
+    if (err.status === 404) return err.message || 'The chosen setup no longer exists.';
     if (err.status === 400 || err.status === 409) return err.message;
   }
   return 'Something went wrong. Please try again.';
@@ -44,7 +45,7 @@ export function useSlotSetup() {
 
   const [mode, setMode] = useState<SetupMode>('new');
   const [rows, setRows] = useState<TableRow[]>(() => [emptyRow(0)]);
-  const [selectedConfigId, setSelectedConfigId] = useState<number | null>(null);
+  const [selectedConfigKey, setSelectedConfigKey] = useState<string | null>(null);
 
   const [configurations, setConfigurations] = useState<SlotConfiguration[]>([]);
   const [configsLoading, setConfigsLoading] = useState(true);
@@ -83,13 +84,13 @@ export function useSlotSetup() {
     setRefreshKey((k) => k + 1);
   };
 
-  const selectedConfig = configurations.find((c) => c.id === selectedConfigId) ?? null;
+  const selectedConfig = configurations.find((c) => configKey(c) === selectedConfigKey) ?? null;
 
   // --- table rows -----------------------------------------------------------
   const addRow = () => setRows((prev) => [...prev, emptyRow(nextKey())]);
   const removeRow = (key: number) =>
     setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.key !== key) : prev));
-  const updateRow = (key: number, field: 'tableId' | 'seats', value: string) => {
+  const updateRow = (key: number, field: 'tableNumber' | 'seats', value: string) => {
     setFormError(null);
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, [field]: value } : r)));
   };
@@ -127,21 +128,23 @@ export function useSlotSetup() {
     }
 
     let payload: CreateSlotPayload;
-    let tables: TableSetup[];
     if (mode === 'previous') {
       if (!selectedConfig) return setFormError('Choose one of the previous setups.');
-      tables = selectedConfig.tables;
-      payload = { date, startTime, endTime, configurationId: selectedConfig.id };
+      payload = {
+        date,
+        startTime,
+        endTime,
+        copyFrom: { date: selectedConfig.date, startTime: selectedConfig.startTime },
+      };
     } else {
       const parsed = parseTableRows(rows);
       if (parsed.error !== null) return setFormError(parsed.error);
-      tables = parsed.tables;
-      payload = { date, startTime, endTime, configuration: { tables } };
+      payload = { date, startTime, endTime, tables: parsed.tables };
     }
 
     setIsSubmitting(true);
     try {
-      const slot = await createSlot(payload, tables);
+      const slot = await createSlot(payload);
       setCreated((prev) => [slot, ...prev]);
       // Keep date and tables: a service often has several slots (12-13, 13-14...)
       setStartTime(endTime);
@@ -164,7 +167,7 @@ export function useSlotSetup() {
     configurations,
     configsLoading,
     configsError,
-    selectedConfigId,
+    selectedConfigKey,
     selectedConfig,
     created,
     isSubmitting,
@@ -182,9 +185,9 @@ export function useSlotSetup() {
       setFormError(null);
       setEndTime(v);
     },
-    setSelectedConfigId: (id: number) => {
+    setSelectedConfigKey: (key: string) => {
       setFormError(null);
-      setSelectedConfigId(id);
+      setSelectedConfigKey(key);
     },
     changeMode,
     addRow,

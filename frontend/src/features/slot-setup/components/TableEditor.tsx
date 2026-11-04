@@ -7,7 +7,7 @@ interface Props {
   rows: TableRow[];
   onAdd: () => void;
   onRemove: (key: number) => void;
-  onChange: (key: number, field: 'tableId' | 'seats', value: string) => void;
+  onChange: (key: number, field: 'tableNumber' | 'seats', value: string) => void;
 }
 
 const inputClass =
@@ -17,7 +17,7 @@ export const TableEditor: React.FC<Props> = ({ rows, onAdd, onRemove, onChange }
   const total = sumSeats(
     rows
       .filter((r) => /^[1-9]\d*$/.test(r.seats.trim()))
-      .map((r) => ({ tableId: 0, seats: Number(r.seats) })),
+      .map((r) => ({ tableNumber: 0, seats: Number(r.seats) })),
   );
 
   return (
@@ -35,8 +35,8 @@ export const TableEditor: React.FC<Props> = ({ rows, onAdd, onRemove, onChange }
             min={1}
             step={1}
             inputMode="numeric"
-            value={row.tableId}
-            onChange={(e) => onChange(row.key, 'tableId', e.target.value)}
+            value={row.tableNumber}
+            onChange={(e) => onChange(row.key, 'tableNumber', e.target.value)}
             aria-label={`Table number, row ${index + 1}`}
             placeholder="e.g. 1"
             className={inputClass}

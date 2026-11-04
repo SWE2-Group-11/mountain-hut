@@ -47,47 +47,55 @@ export const parseTableRows = (
   const seen = new Set<number>();
   for (const [index, row] of rows.entries()) {
     const label = `Row ${index + 1}`;
-    if (!isPositiveInt(row.tableId)) {
+    if (!isPositiveInt(row.tableNumber)) {
       return { tables: null, error: `${label}: the table number must be a positive whole number.` };
     }
     if (!isPositiveInt(row.seats)) {
       return { tables: null, error: `${label}: the seats must be a positive whole number.` };
     }
-    const tableId = Number(row.tableId);
-    if (seen.has(tableId)) {
-      return { tables: null, error: `Table ${tableId} appears more than once.` };
+    const tableNumber = Number(row.tableNumber);
+    if (seen.has(tableNumber)) {
+      return { tables: null, error: `Table ${tableNumber} appears more than once.` };
     }
-    seen.add(tableId);
-    tables.push({ tableId, seats: Number(row.seats) });
+    seen.add(tableNumber);
+    tables.push({ tableNumber, seats: Number(row.seats) });
   }
   return { tables, error: null };
 };
 
-const toInt = (value: unknown): number | null => {
-  const n = typeof value === 'string' ? Number(value) : value;
-  return typeof n === 'number' && Number.isInteger(n) ? n : null;
-};
+/** A slot has no id: date + start time identify it (this is also what copyFrom needs). */
+export const configKey = (c: { date: string; startTime: string }): string =>
+  `${c.date}|${c.startTime}`;
 
-/** Reads the server answer defensively: the contract only promises ids, tables and seats. */
+const toInt = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isInteger(value) ? value : null;
+
+/** Reads one item of the server answer; returns null if it does not have the documented shape. */
 export const normaliseConfiguration = (raw: unknown): SlotConfiguration | null => {
   if (typeof raw !== 'object' || raw === null) return null;
   const r = raw as Record<string, unknown>;
-  const id = toInt(r.id ?? r.configurationId);
-  if (id === null || !Array.isArray(r.tables)) return null;
+  if (
+    typeof r.date !== 'string' ||
+    typeof r.startTime !== 'string' ||
+    typeof r.endTime !== 'string' ||
+    !Array.isArray(r.tables)
+  ) {
+    return null;
+  }
 
   const tables: TableSetup[] = [];
   for (const t of r.tables) {
-    const row = t as Record<string, unknown>;
-    const tableId = toInt(row?.tableId ?? row?.table_number);
+    const row = t as Record<string, unknown> | null;
+    const tableNumber = toInt(row?.tableNumber);
     const seats = toInt(row?.seats);
-    if (tableId === null || seats === null) return null;
-    tables.push({ tableId, seats });
+    if (tableNumber === null || seats === null) return null;
+    tables.push({ tableNumber, seats });
   }
-  const total = toInt(r.totalSeats ?? r.total_seats);
   return {
-    id,
-    date: typeof r.date === 'string' ? r.date : null,
+    date: r.date,
+    startTime: r.startTime,
+    endTime: r.endTime,
     tables,
-    totalSeats: total ?? sumSeats(tables),
+    totalSeats: toInt(r.totalSeats) ?? sumSeats(tables),
   };
 };

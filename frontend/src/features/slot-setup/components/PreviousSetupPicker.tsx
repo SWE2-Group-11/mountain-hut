@@ -1,13 +1,14 @@
 import React from 'react';
 import { Check, Pencil, RefreshCw } from 'lucide-react';
 import type { SlotConfiguration } from '../types/slotSetup.types';
+import { configKey } from '../utils/slotSetup.utils';
 
 interface Props {
   configurations: SlotConfiguration[];
   loading: boolean;
   error: string | null;
-  selectedId: number | null;
-  onSelect: (id: number) => void;
+  selectedKey: string | null;
+  onSelect: (key: string) => void;
   onEdit: (config: SlotConfiguration) => void;
   onRetry: () => void;
 }
@@ -23,7 +24,7 @@ export const PreviousSetupPicker: React.FC<Props> = ({
   configurations,
   loading,
   error,
-  selectedId,
+  selectedKey,
   onSelect,
   onEdit,
   onRetry,
@@ -65,9 +66,10 @@ export const PreviousSetupPicker: React.FC<Props> = ({
   return (
     <ul className="space-y-3" role="radiogroup" aria-label="Previous setups">
       {configurations.map((config) => {
-        const selected = config.id === selectedId;
+        const key = configKey(config);
+        const selected = key === selectedKey;
         return (
-          <li key={config.id}>
+          <li key={key}>
             <div
               className={`rounded-2xl border p-4 transition-colors ${
                 selected ? 'border-[#234E39] bg-[#F1F6F2]' : 'border-[#EFEADF] bg-white'
@@ -78,17 +80,15 @@ export const PreviousSetupPicker: React.FC<Props> = ({
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  onClick={() => onSelect(config.id)}
+                  onClick={() => onSelect(key)}
                   className="flex-1 text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-2 text-sm font-semibold text-[#1C2826]">
                     {selected && <Check className="w-4 h-4 text-[#234E39]" />}
-                    Setup #{config.id}
-                    {config.date && (
-                      <span className="text-xs font-normal text-[#7C8885]">
-                        · used {formatDate(config.date)}
-                      </span>
-                    )}
+                    {formatDate(config.date)}
+                    <span className="text-xs font-normal text-[#7C8885]">
+                      · {config.startTime}-{config.endTime}
+                    </span>
                   </div>
                   <p className="mt-1 text-xs text-[#5A6865]">
                     {config.tables.length} tables · {config.totalSeats} seats
@@ -96,10 +96,10 @@ export const PreviousSetupPicker: React.FC<Props> = ({
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {config.tables.map((t) => (
                       <span
-                        key={t.tableId}
+                        key={t.tableNumber}
                         className="rounded-lg border border-[#EFEADF] bg-[#FAF6EE] px-2 py-0.5 text-[11px] text-[#3C4A47]"
                       >
-                        T{t.tableId}: {t.seats}
+                        T{t.tableNumber}: {t.seats}
                       </span>
                     ))}
                   </div>
