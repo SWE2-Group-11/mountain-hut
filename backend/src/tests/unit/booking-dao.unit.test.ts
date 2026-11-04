@@ -1,8 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { db } from "../../database/database";
-import { getBookingAvailability, getTablesAvailability, saveBooking } from "../../dao/booking-dao";
+import {
+    deleteSeatings,
+    getActiveBookingsByHiker,
+    getBooking,
+    getBookingAvailability,
+    getSeatingsByBooking,
+    getTablesAvailability,
+    insertSeatings,
+    saveBooking,
+} from "../../dao/booking-dao";
 import { Booking } from "../../models/entities/booking";
 import { SeatedAt } from "../../models/entities/seated_at";
+import { getDietaryRequirementsByBooking } from "../../dao/dietary-requirement-dao";
+import { DietaryRequirement } from "../../models/entities/dietary_requirement";
 
 /*
 UNIT tests for booking-dao.
@@ -14,12 +25,18 @@ vi.mock("../../database/database", () => ({
     db: { prepare: vi.fn(), transaction: vi.fn() },
 }));
 
+vi.mock("../../dao/dietary-requirement-dao", () => ({
+    getDietaryRequirementsByBooking: vi.fn(),
+}));
+
 const DATE = "2026-11-02";
 const START = "19:00";
 const HIKER_ID = 5;
 const BOOKING_ID = 42;
+const NOW = "2026-11-02 12:00";
 
-const statement = { all: vi.fn(), run: vi.fn() };
+// get is needed by getBooking, which reads a single row
+const statement = { all: vi.fn(), run: vi.fn(), get: vi.fn() };
 
 const table = (table_number: number, seats: number, free_seats = seats) => ({ table_number, seats, free_seats });
 
@@ -35,8 +52,12 @@ const check = (party_size: number) => getBookingAvailability(DATE, START, party_
 const split = (party_size: number) =>
     check(party_size)!.map((a) => [a.table_number, a.assigned_seats]);
 
+const seating = (table_number: number, assigned_seats: number, booking_id = BOOKING_ID, date = DATE, start = START) =>
+    new SeatedAt(booking_id, date, start, table_number, assigned_seats);
+
 beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(getDietaryRequirementsByBooking).mockReturnValue([]);
     vi.mocked(db.prepare).mockReturnValue(statement as any);
     vi.mocked(db.transaction).mockImplementation(((callback: () => unknown) => callback) as any);
     statement.run.mockReturnValue({ changes: 1, lastInsertRowid: BOOKING_ID });
@@ -408,5 +429,383 @@ describe("getBookingAvailability: non-integer party size (fix MH-55)", () => {
 
         // Assert
         expect(result).toEqual([{ table_number: 1, assigned_seats: 2 }]);
+    });
+});
+
+
+describe("deleteSeatings (unit)", () => {
+    it("deletes the seats of the booking and nothing else", () => {
+        // the booking itself must stay: only its seats are released
+        // Act
+        deleteSeatings(BOOKING_ID);
+
+        // Assert
+        const sql = vi.mocked(db.prepare).mock.calls[0][0] as string;
+        expect(sql).toMatch(/DELETE FROM seated_at/);
+        expect(sql).not.toMatch(/DELETE FROM booking/);
+    });
+
+    it("releases the seats of the given booking only", () => {
+        // a different id than the usual one, to show the parameter is passed through
+        // Act
+        deleteSeatings(7);
+
+        // Assert
+        expect(statement.run).toHaveBeenCalledTimes(1);
+        expect(statement.run).toHaveBeenCalledWith(7);
+    });
+
+    it("returns nothing", () => {
+        // Act
+        const result = deleteSeatings(BOOKING_ID);
+
+        // Assert
+        expect(result).toBeUndefined();
+    });
+
+    it("lets a database failure through instead of swallowing it", () => {
+        // Arrange
+        const boom = new Error("SQLITE_BUSY: database is locked");
+        statement.run.mockImplementation(() => {
+            throw boom;
+        });
+
+        // Act
+        const act = () => deleteSeatings(BOOKING_ID);
+
+        // Assert
+        expect(act).toThrow(boom);
+    });
+});
+
+describe("insertSeatings (unit)", () => {
+    it("saves one seating per table and returns them in the same order", () => {
+        // Arrange
+        const assignment = [
+            { table_number: 2, assigned_seats: 6 },
+            { table_number: 1, assigned_seats: 3 },
+        ];
+
+        // Act
+        const result = insertSeatings(BOOKING_ID, DATE, START, assignment);
+
+        // Assert
+        expect(statement.run).toHaveBeenCalledTimes(2);
+        expect(statement.run).toHaveBeenNthCalledWith(1, BOOKING_ID, DATE, START, 2, 6);
+        expect(statement.run).toHaveBeenNthCalledWith(2, BOOKING_ID, DATE, START, 1, 3);
+        expect(result).toEqual([seating(2, 6), seating(1, 3)]);
+    });
+
+    it("returns SeatedAt entities of the given booking", () => {
+        // the booking already exists: no new booking must be created, only its seats
+        // Act
+        const result = insertSeatings(99, DATE, START, [{ table_number: 1, assigned_seats: 2 }]);
+
+        // Assert
+        expect(result[0]).toBeInstanceOf(SeatedAt);
+        expect(result[0].booking_id).toBe(99);
+        expect(statement.run).toHaveBeenCalledTimes(1);
+    });
+
+    it("saves nothing for an empty assignment", () => {
+        // Act
+        const result = insertSeatings(BOOKING_ID, DATE, START, []);
+
+        // Assert
+        expect(result).toEqual([]);
+        expect(statement.run).not.toHaveBeenCalled();
+    });
+
+    it("lets a database failure through instead of swallowing it", () => {
+        // e.g. a table that does not exist in the slot breaks the foreign key
+        // Arrange
+        const boom = new Error("FOREIGN KEY constraint failed");
+        statement.run.mockImplementation(() => {
+            throw boom;
+        });
+
+        // Act
+        const act = () => insertSeatings(BOOKING_ID, DATE, START, [{ table_number: 9, assigned_seats: 2 }]);
+
+        // Assert
+        expect(act).toThrow(boom);
+    });
+});
+
+describe("getSeatingsByBooking (unit)", () => {
+    it("returns the seatings found by the query", () => {
+        // Arrange
+        const rows = [seating(1, 3), seating(2, 6)];
+        statement.all.mockReturnValue(rows);
+
+        // Act
+        const result = getSeatingsByBooking(BOOKING_ID);
+
+        // Assert
+        expect(result).toEqual(rows);
+    });
+
+    it("queries the requested booking", () => {
+        // the seats must be read for this booking, not for another one
+        // Arrange
+        statement.all.mockReturnValue([]);
+
+        // Act
+        getSeatingsByBooking(BOOKING_ID);
+
+        // Assert
+        expect(statement.all).toHaveBeenCalledWith(BOOKING_ID);
+    });
+
+    it("returns an empty list when the booking has no seatings", () => {
+        // Arrange
+        statement.all.mockReturnValue([]);
+
+        // Act
+        const result = getSeatingsByBooking(BOOKING_ID);
+
+        // Assert
+        expect(result).toEqual([]);
+    });
+
+    it("lets a database failure through instead of swallowing it", () => {
+        // Arrange
+        const boom = new Error("SQLITE_BUSY: database is locked");
+        statement.all.mockImplementation(() => {
+            throw boom;
+        });
+
+        // Act
+        const act = () => getSeatingsByBooking(BOOKING_ID);
+
+        // Assert
+        expect(act).toThrow(boom);
+    });
+});
+
+describe("getBooking (unit)", () => {
+    const REQUIREMENTS = [
+        new DietaryRequirement(1, BOOKING_ID, true, "1 shellfish allergy"),
+        new DietaryRequirement(2, BOOKING_ID, false, "2 vegetarians"),
+    ];
+
+    const givenBooking = (seatings: SeatedAt[]) => {
+        statement.get.mockReturnValue({ id: BOOKING_ID, hiker_id: HIKER_ID });
+        statement.all.mockReturnValue(seatings);
+    };
+
+    it("returns the booking with its slot, party size, seatings and dietary requirements", () => {
+        // the party size is not stored: it is the sum of the seats of all the tables
+        // Arrange
+        const seatings = [seating(1, 3), seating(2, 6)];
+        givenBooking(seatings);
+        vi.mocked(getDietaryRequirementsByBooking).mockReturnValue(REQUIREMENTS);
+
+        // Act
+        const result = getBooking(BOOKING_ID);
+
+        // Assert
+        expect(result).toEqual({
+            booking: new Booking(BOOKING_ID, HIKER_ID),
+            date: DATE,
+            start_time: START,
+            party_size: 9,
+            seatings,
+            dietary_requirements: REQUIREMENTS,
+        });
+        expect(result!.booking).toBeInstanceOf(Booking);
+    });
+
+    it("returns no dietary requirements when none were declared", () => {
+        // Arrange
+        givenBooking([seating(1, 2)]);
+
+        // Act
+        const result = getBooking(BOOKING_ID);
+
+        // Assert
+        expect(result!.dietary_requirements).toEqual([]);
+    });
+
+    it("asks for the requirements of the same booking", () => {
+        // Arrange
+        givenBooking([seating(1, 2)]);
+
+        // Act
+        getBooking(BOOKING_ID);
+
+        // Assert
+        expect(getDietaryRequirementsByBooking).toHaveBeenCalledWith(BOOKING_ID);
+    });
+
+    it("queries the requested booking", () => {
+        // Arrange
+        givenBooking([seating(1, 2)]);
+
+        // Act
+        getBooking(BOOKING_ID);
+
+        // Assert
+        expect(statement.get).toHaveBeenCalledWith(BOOKING_ID);
+        expect(statement.all).toHaveBeenCalledWith(BOOKING_ID);
+    });
+
+    it("returns null when the booking does not exist", () => {
+        // nothing else must be read for a booking that is not there
+        // Arrange
+        statement.get.mockReturnValue(undefined);
+
+        // Act
+        const result = getBooking(BOOKING_ID);
+
+        // Assert
+        expect(result).toBeNull();
+        expect(statement.all).not.toHaveBeenCalled();
+        expect(getDietaryRequirementsByBooking).not.toHaveBeenCalled();
+    });
+
+    it("returns null when the booking has no seatings", () => {
+        // without seats the slot of the booking cannot be known, so it is not a valid reservation
+        // Arrange
+        givenBooking([]);
+
+        // Act
+        const result = getBooking(BOOKING_ID);
+
+        // Assert
+        expect(result).toBeNull();
+        expect(getDietaryRequirementsByBooking).not.toHaveBeenCalled();
+    });
+
+    it("lets a database failure through instead of swallowing it", () => {
+        // a broken database must give an error, not look like "booking not found"
+        // Arrange
+        const boom = new Error("SQLITE_BUSY: database is locked");
+        statement.get.mockImplementation(() => {
+            throw boom;
+        });
+
+        // Act
+        const act = () => getBooking(BOOKING_ID);
+
+        // Assert
+        expect(act).toThrow(boom);
+    });
+});
+
+describe("getActiveBookingsByHiker (unit)", () => {
+    const LATER = "2026-11-03";
+
+    // The ids come from a query with 2 parameters (hiker, now); each booking is then loaded with getBooking,
+    // whose queries have 1 parameter (the booking id)
+    const givenActiveBookings = (seatingsByBooking: Record<number, SeatedAt[]>) => {
+        statement.all.mockImplementation(((...params: unknown[]) =>
+            params.length === 2
+                ? Object.keys(seatingsByBooking).map((id) => ({ id: Number(id) }))
+                : seatingsByBooking[params[0] as number]) as any);
+        statement.get.mockImplementation(((id: number) => ({ id, hiker_id: HIKER_ID })) as any);
+    };
+
+    it("returns the reservations of the hiker in the order of the query", () => {
+        // Arrange
+        givenActiveBookings({
+            10: [seating(1, 4, 10)],
+            11: [seating(2, 6, 11, LATER, "12:00"), seating(3, 2, 11, LATER, "12:00")],
+        });
+
+        // Act
+        const result = getActiveBookingsByHiker(HIKER_ID, NOW);
+
+        // Assert
+        expect(result.map((r) => r.booking.id)).toEqual([10, 11]);
+        expect(result[0]).toMatchObject({ date: DATE, start_time: START, party_size: 4 });
+        expect(result[1]).toMatchObject({ date: LATER, start_time: "12:00", party_size: 8 });
+    });
+
+    it("queries the bookings of the hiker that start after the given date-time", () => {
+        // the hiker and the current time must reach the query, otherwise past or other people's bookings are listed
+        // Arrange
+        statement.all.mockReturnValue([]);
+
+        // Act
+        getActiveBookingsByHiker(HIKER_ID, NOW);
+
+        // Assert
+        expect(statement.all).toHaveBeenCalledWith(HIKER_ID, NOW);
+    });
+
+    it("returns an empty list when the hiker has no active bookings", () => {
+        // Arrange
+        statement.all.mockReturnValue([]);
+
+        // Act
+        const result = getActiveBookingsByHiker(HIKER_ID, NOW);
+
+        // Assert
+        expect(result).toEqual([]);
+        expect(statement.get).not.toHaveBeenCalled();
+        expect(getDietaryRequirementsByBooking).not.toHaveBeenCalled();
+    });
+
+    it("leaves out a booking that has no seatings", () => {
+        // such a booking is not a valid reservation: it must not break the whole list
+        // Arrange
+        givenActiveBookings({
+            10: [],
+            11: [seating(2, 6, 11)],
+        });
+
+        // Act
+        const result = getActiveBookingsByHiker(HIKER_ID, NOW);
+
+        // Assert
+        expect(result.map((r) => r.booking.id)).toEqual([11]);
+    });
+
+    it("includes the dietary requirements of each reservation", () => {
+        // each reservation gets its own requirements, not the ones of another booking
+        // Arrange
+        givenActiveBookings({
+            10: [seating(1, 4, 10)],
+            11: [seating(2, 6, 11)],
+        });
+        const forEleven = [new DietaryRequirement(5, 11, true, "1 peanut allergy")];
+        vi.mocked(getDietaryRequirementsByBooking).mockImplementation((id: number) => (id === 11 ? forEleven : []));
+
+        // Act
+        const result = getActiveBookingsByHiker(HIKER_ID, NOW);
+
+        // Assert
+        expect(result[0].dietary_requirements).toEqual([]);
+        expect(result[1].dietary_requirements).toEqual(forEleven);
+    });
+
+    it("lets a database failure through instead of swallowing it", () => {
+        // Arrange
+        const boom = new Error("SQLITE_BUSY: database is locked");
+        statement.all.mockImplementation(() => {
+            throw boom;
+        });
+
+        // Act
+        const act = () => getActiveBookingsByHiker(HIKER_ID, NOW);
+
+        // Assert
+        expect(act).toThrow(boom);
+    });
+});
+
+describe("saveBooking: non-integer party size (fix MH-55)", () => {
+    it("returns null and saves nothing for a party of 2.5 people", () => {
+        // the same rule of getBookingAvailability must hold when booking
+        // Arrange
+        statement.all.mockReturnValue([table(1, 4)]);
+
+        // Act
+        const result = book(2.5);
+
+        // Assert
+        expect(result).toBeNull();
+        expect(statement.run).not.toHaveBeenCalled();
     });
 });
