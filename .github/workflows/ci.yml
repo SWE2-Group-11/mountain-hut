@@ -61,7 +61,7 @@ jobs:
         run: npx tsc -b --noEmit
 
   e2e-ci:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: ./e2e
