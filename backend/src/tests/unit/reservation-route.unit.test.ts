@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import reservationRouter from "../../routes/reservation-route";
@@ -7,6 +7,7 @@ import { sendAppError } from "../../services/error-service";
 import { BadRequestError } from "../../models/errors/badrequest-error";
 import { ConflictError } from "../../models/errors/conflict-error";
 import type { CreateReservationResponseDTO } from "../../models/dto/reservation-dto";
+import * as errorService from "../../services/error-service";
 
 
 vi.mock("../../controllers/reservation-controller", () => ({ createReservation: vi.fn() }));
@@ -39,15 +40,15 @@ app.use((req, _res, next) => {
     next();
 });
 app.use(URL, reservationRouter);
-app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    sendAppError(err, res);
-});
 
 beforeEach(() => {
     vi.resetAllMocks();
+    vi.spyOn(errorService, "sendAppError");;
     currentUser = HIKER;
     vi.mocked(createReservation).mockReturnValue(CREATED);
 });
+
+afterEach(() => vi.resetAllMocks());
 
 describe("POST /reservations — route", () => {
     describe("access control", () => {
@@ -114,6 +115,7 @@ describe("POST /reservations — route", () => {
 
             expect(res.status).toBe(201);
             expect(res.body).toEqual(CREATED);
+            expect(errorService.sendAppError).not.toHaveBeenCalled();
         });
     });
 
@@ -130,15 +132,22 @@ describe("POST /reservations — route", () => {
 
             expect(res.status).toBe(code);
             expect(res.body).toEqual({ code, name: error.name, message: error.message });
+            expect(errorService.sendAppError).toHaveBeenCalledExactlyOnceWith(error, expect.any(Object));
         });
 
         it("answers 500 without leaking the message of an unexpected error", async () => {
             vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+            const error = new Error("SQLITE_BUSY: secret details");
+
             vi.mocked(createReservation).mockImplementation(() => {
-                throw new Error("SQLITE_BUSY: secret details");
+                throw error;
             });
 
             const res = await request(app).post(URL).send(VALID_BODY);
+
+            expect(errorService.sendAppError)
+                .toHaveBeenCalledExactlyOnceWith(error, expect.any(Object));
 
             expect(res.status).toBe(500);
             expect(res.body.code).toBe(500);
