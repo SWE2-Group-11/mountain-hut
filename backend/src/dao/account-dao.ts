@@ -1,27 +1,48 @@
 import crypto from "node:crypto";
 import { db } from "../database/database";
-import { Account } from "../models/entities/account";
-import { PASSWORD_KEY_LENGTH } from "../config/config";
+import { Account, Hiker, Staff, StaffRole } from "../models/entities/account";
 import { hashPassword } from "../services/password-service";
+
+type AccountRow = { id: number; email: string; password_salt: string; password_hash: string };
+type HikerRow = { full_name: string; mobile_number: string; notes: string | null; emergency_contact: string | null };
+type StaffRow = { name: string; role: StaffRole };
 
 /**
  * Retrieves an account and checks its password.
- * @returns The Account if the credentials are valid, or null otherwise.
+ * @returns A Hiker or Staff if the credentials are valid, or null otherwise.
  */
-export const getAccountByCredentials = (username: string, password: string): Account | null => {
-    const sql = "SELECT id, username, salt, hash, role FROM account WHERE username = ?";
-    const row = db.prepare<[string], Account>(sql).get(username);
-    if (!row) {
+export const getAccountByCredentials = (email: string, password: string): Account | null => {
+    const account = db
+        .prepare<[string], AccountRow>("SELECT id, email, password_salt, password_hash FROM account WHERE email = ?")
+        .get(email);
+    if (!account) {
         return null;
     }
 
-    const account = new Account(row.id, row.username, row.salt, row.hash, row.role);
-    const storedHash = Buffer.from(account.hash, "hex");
-    const hashedPassword = Buffer.from(hashPassword(password, account.salt), "hex");
+    const storedHash = Buffer.from(account.password_hash, "hex");
+    const hashedPassword = Buffer.from(hashPassword(password, account.password_salt), "hex");
 
     // timingSafeEqual throws if the lengths differ: check them first
     if (storedHash.length !== hashedPassword.length || !crypto.timingSafeEqual(storedHash, hashedPassword)) {
         return null;
     }
-    return account;
+
+    const hiker = db
+        .prepare<[number], HikerRow>("SELECT full_name, mobile_number, notes, emergency_contact FROM hiker WHERE account_id = ?")
+        .get(account.id);
+    if (hiker) {
+        return new Hiker(account.id, account.email, account.password_salt, account.password_hash,
+            hiker.full_name, hiker.mobile_number, hiker.notes, hiker.emergency_contact);
+    }
+
+    const staff = db
+        .prepare<[number], StaffRow>("SELECT name, role FROM staff WHERE account_id = ?")
+        .get(account.id);
+    if (staff) {
+        return new Staff(account.id, account.email, account.password_salt, account.password_hash,
+            staff.name, staff.role);
+    }
+
+    // Neither hiker nor staff: violates the (t,e) rule
+    throw new Error(`Account ${account.id} has no hiker or staff profile`);
 };

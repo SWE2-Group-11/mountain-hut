@@ -1,0 +1,213 @@
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { apiClient, ApiError } from '../../../api/client';
+import type { ReservationState, Slot, Reservation, RequirementRow } from '../types/reservation.types';
+import { rowError, toRequirements,peopleMentioned } from '../utils/requirements';
+
+export const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export function useReservation() {
+  const defaultTomorrow = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const [state, setState] = useState<ReservationState>({
+    selectedDate: defaultTomorrow,
+    selectedTime: null,
+    partySize: 2,
+  });
+
+  // Dietary requirements: a list, each row for a subset of the party (optional)
+  const keyCounter = useRef(0);
+  const [requirementRows, setRequirementRows] = useState<RequirementRow[]>([]);
+
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+
+  // Load the bookable slots whenever the date changes (or a refresh is requested)
+  useEffect(() => {
+    if (!state.selectedDate) return;
+    let cancelled = false;
+    const date = formatLocalDate(state.selectedDate);
+
+    async function loadSlots() {
+      setSlotsLoading(true);
+      setSlotsError(null);
+      try {
+        const data: Slot[] = await apiClient.get(`/slots?date=${date}`);
+        if (cancelled) return;
+        setSlots(data);
+        // Drop the selected time if the slot is gone or full
+        setState((prev) =>
+          prev.selectedTime && !data.some((s) => s.start_time === prev.selectedTime)
+            ? { ...prev, selectedTime: null }
+            : prev
+        );
+      } catch (err) {
+        if (cancelled) return;
+        setSlots([]);
+        setSlotsError(
+          err instanceof ApiError && err.status === 400
+            ? 'Please choose a valid date.'
+            : 'Could not load the available times. Please try again.'
+        );
+      } finally {
+        if (!cancelled) setSlotsLoading(false);
+      }
+    }
+
+    loadSlots();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.selectedDate, refreshKey]);
+
+  const selectedSlot = useMemo(
+    () => slots.find((s) => s.start_time === state.selectedTime) ?? null,
+    [slots, state.selectedTime]
+  );
+  const maxAvailableSeats = selectedSlot?.available_seats ?? 0;
+
+  const setSelectedDate = useCallback((date: Date) => {
+    setState((prev) => ({ ...prev, selectedDate: date, selectedTime: null }));
+    setBookingError(null);
+  }, []);
+
+  const setSelectedTime = useCallback(
+    (time: string) => {
+      const slot = slots.find((s) => s.start_time === time);
+      const available = slot?.available_seats ?? 0;
+      setState((prev) => ({
+        ...prev,
+        selectedTime: time,
+        partySize: available > 0 ? Math.min(prev.partySize, available) : 1,
+      }));
+      setBookingError(null);
+    },
+    [slots]
+  );
+
+  const setPartySize = useCallback(
+    (size: number) => {
+      setState((prev) => ({
+        ...prev,
+        partySize: Math.max(1, Math.min(size, maxAvailableSeats || 1)),
+      }));
+      setBookingError(null);
+    },
+    [maxAvailableSeats]
+  );
+
+  const addRequirement = useCallback(() => {
+    const key = ++keyCounter.current; 
+setRequirementRows((prev) => [...prev, { key, count: 1, tags: [], extra: '', hasAllergies: false }]);
+    setBookingError(null);
+  }, []);
+
+  const removeRequirement = useCallback((key: number) => {
+    setRequirementRows((prev) => prev.filter((row) => row.key !== key));
+  }, []);
+
+  const updateRequirement = useCallback(
+   (key: number, changes: Partial<Omit<RequirementRow, 'key'>>) => {
+      setRequirementRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...changes } : row)));
+      setBookingError(null);
+    },
+    []
+  );
+
+   // Every allergy is described, and the notes do not talk about more people than the party has
+  const requirementsValid =
+    requirementRows.every((row) => rowError(row) === null) &&
+    peopleMentioned(requirementRows) <= state.partySize;
+
+  const isFormValid = Boolean(
+    requirementsValid &&
+    state.selectedDate &&
+    state.selectedTime &&
+    state.partySize > 0 &&
+    state.partySize <= maxAvailableSeats &&
+    !isSubmitting
+  );
+
+  const confirmReservation = async (): Promise<boolean> => {
+    if (!state.selectedDate || !state.selectedTime) {
+      setBookingError('Please select an available date and time slot.');
+      return false;
+    }
+    if (isSubmitting) return false;
+    if (!requirementsValid) {
+            setBookingError('Please check the food needs: describe every allergy and do not list more people than your party.');
+      return false;
+    }
+
+    setIsSubmitting(true);
+    setBookingError(null);
+    try {
+      const requirements = toRequirements(requirementRows);
+      const created: Reservation = await apiClient.post('/reservations', {
+        date: formatLocalDate(state.selectedDate),
+        slot: state.selectedTime,
+        partySize: state.partySize,
+        ...(requirements.length > 0 ? { requirements } : {}),
+      });
+      setReservation(created);
+      return true;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setBookingError('Please log in to book a table.');
+        } else if (err.status === 403) {
+          setBookingError('Only hiker accounts can book a table.');
+        } else if (err.status === 409 || err.status === 400) {
+          // The server says why: already booked this slot, seats gone, 2-hour rule...
+          setBookingError(err.message);
+          setRefreshKey((k) => k + 1); // reload the slots
+        } else {
+          setBookingError('Something went wrong. Please try again.');
+        }
+      } else {
+        setBookingError('Something went wrong. Please try again.');
+      }
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const clearError = useCallback(() => setBookingError(null), []);
+
+  return {
+    ...state,
+    slots,
+    slotsLoading,
+    slotsError,
+    maxAvailableSeats,
+    isFormValid,
+    isSubmitting,
+    bookingError,
+    reservation,
+    setSelectedDate,
+    setSelectedTime,
+    setPartySize,
+    requirementRows,
+    addRequirement,
+    removeRequirement,
+    updateRequirement,
+    confirmReservation,
+    clearError,
+  };
+}

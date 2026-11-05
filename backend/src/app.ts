@@ -3,11 +3,11 @@ import session from "express-session";
 import morgan from "morgan";
 import cors from "cors";
 import { ROUTES, CLIENT_ORIGIN, SESSION_SECRET } from "./config/config";
-import { authenticateSession, requireRole } from "./services/auth-service";
-import authRouter from "./routes/auth-route";
-import servicesRoute from "./routes/services-route";
-import ticketsRoute from "./routes/tickets-route";
 import { sendAppError, sendNotFoundError, sendBadRequestError } from "./services/error-service";
+import { authenticateSession } from "./services/auth-service";
+import authRouter from "./routes/auth-route";
+import reservationRouter from "./routes/reservation-route";
+import slotRouter from "./routes/slot-route";
 
 // Init express
 export const app = express();
@@ -23,12 +23,17 @@ app.use(cors({
 app.use(express.json());
 
 app.use(session({
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false
 }));
 
 app.use(authenticateSession);
+
+// Routes
+app.use(ROUTES.V1_AUTH, authRouter);
+app.use(ROUTES.V1_RESERVATIONS, reservationRouter);
+app.use(ROUTES.V1_SLOTS, slotRouter);
 
 // Unknown routes → 404 in ErrorDTO format
 app.use((req: Request, res: Response) => {
@@ -37,6 +42,9 @@ app.use((req: Request, res: Response) => {
 
 // Unhandled errors (e.g. malformed JSON) → ErrorDTO format
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) {
+        return next(err);
+    }
     if (err instanceof SyntaxError && "body" in err) {
         return sendBadRequestError("Malformed JSON body", res);
     }

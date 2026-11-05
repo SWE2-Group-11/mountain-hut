@@ -33,11 +33,13 @@ flowchart TD
 | `routes/` | Map each path to a controller; send the response or the error JSON |
 | `controllers/` | Business logic and validation; throw `AppError` |
 | `dao/` | SQL queries only; return entities |
+| `domain/` | Pure business rules; importable by any layer |
 | `models/entities/` | Shape of DB rows |
 | `models/dto/` | Shape of API payloads |
 | `models/errors/` | `AppError` and subclasses |
 | `services/` | Helpers: entity → DTO mapping, error → response, authentication |
 | `database/` | DB connection (`database.ts`) and SQL scripts (`sql/`) |
+| `notifications/` | Outgoing emails: templates, building their data, sending (fire-and-forget) |
 | `config/` | Configuration from environment variables |
 | `tests/` | Vitest + Supertest tests |
 

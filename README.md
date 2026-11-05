@@ -7,13 +7,58 @@
 - [Database](docs/database.md): schema, rules and SQL scripts
 - [Working agreement](docs/working-agreement.md): branches, commits, pull requests
 
+## License motivations
+
+We want our project to be used commercially by mountain huts.
+We want to be credited when the code gets modified and redistributed.
+We are free to use any license based on npm packages used to build this project.
+
+Considering these main motivations, we choose to adopt the EUPL-1.2 license, included in the root directory of the repository inside the [LICENSE](LICENSE) file
+
 ## Repository layout
 
 ```
 backend/    Server: REST API and database
 frontend/   Client: web user interface
+e2e/        End-to-end tests: full user flows across frontend and backend
 docs/       Project documentation
 ```
+
+## Running with Docker
+
+```bash
+docker compose up --build
+```
+
+This starts three containers:
+
+| Service | URL | Description |
+|---|---|---|
+| `frontend` | `http://localhost:5173` | Production bundle served by `vite preview`, proxies `/api` to the backend |
+| `backend` | `http://localhost:3000` | REST API |
+| `mailpit` | `http://localhost:8025` | Development inbox: catches every email the backend sends |
+
+The SQLite database is stored in the `db-data` volume. It is created and seeded on the first start and kept on later starts. To reset it:
+
+```bash
+RESET_DB=true docker compose up
+```
+
+or remove the volume with `docker compose down -v`.
+
+### Email in development
+
+Booking confirmations are sent over SMTP. With `docker compose up`, the `mailpit` service catches every email: open `http://localhost:8025` to read them. No real email is ever sent.
+
+Without Docker (for example with `npm run dev`), start Mailpit on its own:
+
+```bash
+docker run --rm -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.27.0
+```
+
+Settings: `SMTP_HOST` (default `localhost`), `SMTP_PORT` (default `1025`) and `MAIL_FROM`. See `backend/.env.example`.
+
+The end-to-end tests (`cd e2e && npm test`) read the confirmation emails from Mailpit: Playwright starts it with Docker, or reuses one already listening on port 8025.
 
 ## Backend
 
@@ -25,7 +70,7 @@ docs/       Project documentation
 | `cors` | Allows the frontend origin to call the API |
 | `better-sqlite3` | SQLite database (synchronous driver) |
 | `express-session` | Session cookies |
-| `passport`, `passport-local` | Login with username and password |
+| `passport`, `passport-local` | Login with email and password |
 | `typescript` | Type checking and compilation (pinned to v6) |
 | `tsx` | Runs TypeScript directly in development, with auto-restart |
 | `oxlint` | Linting |
@@ -66,7 +111,14 @@ The server listens on `http://localhost:3000`.
 
 ### Demo accounts
 
+All demo accounts have the password `password`.
 
+| Email | Role |
+|---|---|
+| `warden@mountainhut.test` | Warden |
+| `employee@mountainhut.test` | Employee |
+| `mario@mountainhut.test` | Hiker |
+| `laura@mountainhut.test` | Hiker |
 
 ## Frontend
 

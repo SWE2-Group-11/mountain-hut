@@ -14,11 +14,11 @@ declare global {
     }
 }
 
-passport.use(new LocalStrategy((username, password, cb) => {
+passport.use(new LocalStrategy({ usernameField: "email" }, (email, password, cb) => {
     try {
-        const account = getAccountByCredentials(username, password);
+        const account = getAccountByCredentials(email, password);
         if (!account) {
-            return cb(null, false, { message: "Incorrect username or password" });
+            return cb(null, false, { message: "Incorrect email or password" });
         }
         return cb(null, accountEntityToResponseDTO(account));
     } catch (err) {
