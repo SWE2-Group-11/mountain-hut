@@ -1,10 +1,11 @@
 import { ErrorDTO } from '../models/dto/error-dto';
 import { AccountResponseDTO } from '../models/dto/account-dto';
 import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotDTO, SlotTableDTO } from '../models/dto/slot-dto';
-import { CreateReservationResponseDTO, SeatingDTO } from '../models/dto/reservation-dto';
+import { CreateReservationResponseDTO, RequirementDTO, SeatingDTO } from '../models/dto/reservation-dto';
 import { SlotAvailability, SlotConfiguration } from '../dao/slot-dao';
 import { Account } from '../models/entities/account';
 import { Booking } from '../models/entities/booking';
+import { DietaryRequirement } from '../models/entities/dietary_requirement';
 import { SeatedAt } from '../models/entities/seated_at';
 import { Slot } from '../models/entities/slot';
 import { AppError } from '../models/errors/app-error';
@@ -60,17 +61,19 @@ export const slotConfigurationToDTO = ({ slot, tables }: SlotConfiguration): Slo
 };
 
 /**
- * Maps a newly created Booking and its seatings into a client-ready CreateReservationResponseDTO instance.
+ * Maps a newly created Booking, its seatings and its dietary requirements into a client-ready CreateReservationResponseDTO instance.
  */
 export const bookingDataToCreateReservationResponseDTO = (
     booking: Booking,
     seatings: SeatedAt[],
+    requirements: DietaryRequirement[],
     date: string,
     start_time: string
 ): CreateReservationResponseDTO => {
     const partySize = seatings.reduce((sum, s) => sum + s.assigned_seats, 0);
     const seatingDTOs = seatings.map((s) => new SeatingDTO(s.table_number, s.assigned_seats));
-    return new CreateReservationResponseDTO(booking.id, date, start_time, partySize, seatingDTOs);
+    const requirementDTOs = requirements.map((r) => new RequirementDTO(r.allergy_flag, r.description));
+    return new CreateReservationResponseDTO(booking.id, date, start_time, partySize, seatingDTOs, requirementDTOs);
 };
 
 /**
