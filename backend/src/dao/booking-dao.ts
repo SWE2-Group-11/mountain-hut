@@ -1,5 +1,6 @@
 import { db } from "../database/database";
 import { Booking } from "../models/entities/booking";
+import { replaceRequirements, type RequirementInput } from "./dietary-requirement-dao";
 import { SeatedAt } from "../models/entities/seated_at";
 import { DietaryRequirement } from "../models/entities/dietary_requirement";
 import { getDietaryRequirementsByBooking } from "./dietary-requirement-dao";
@@ -37,19 +38,22 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
 };
 
 /**
- * Persists a new booking and the seats assigned to it, atomically.
+ * Persists a new booking with the seats assigned to it and its dietary requirements, atomically.
  * @param hiker_id The account of the hiker making the reservation.
  * @param date The day of the slot (YYYY-MM-DD).
  * @param start_time The start time of the slot (HH:MM).
  * @param party_size The number of people to seat.
- * @returns The new booking with its seatings, or null if the capacity is no longer available.
+ * @param requirements The dietary requirements of the party, validated by the caller (none if omitted).
+ * @returns The new booking with its seatings and dietary requirements,
+ * or null if the capacity is no longer available.
  */
 export const saveBooking = (
     hiker_id: number,
     date: string,
     start_time: string,
-    party_size: number
-): { booking: Booking; seatings: SeatedAt[] } | null =>
+    party_size: number,
+    requirements: RequirementInput[] = []
+): { booking: Booking; seatings: SeatedAt[]; dietary_requirements: DietaryRequirement[] } | null =>
     db.transaction(() => {
         const assignment = getBookingAvailability(date, start_time, party_size);
         if (!assignment || (Array.isArray(assignment) && assignment.length === 0)) return null;
@@ -66,7 +70,11 @@ export const saveBooking = (
             insert.run(booking.id, date, start_time, a.table_number, a.assigned_seats);
             seatings.push(new SeatedAt(booking.id, date, start_time, a.table_number, a.assigned_seats));
         }
-        return { booking, seatings };
+
+        const dietary_requirements = requirements.length > 0
+            ? replaceRequirements(booking.id, requirements)
+            : [];
+        return { booking, seatings, dietary_requirements };
     })();
 
 /** 

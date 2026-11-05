@@ -134,6 +134,7 @@ describe("POST /api/v1/reservations", () => {
                 slot: "13:00",
                 partySize: 2,
                 seatings: [{ table_number: 4, assigned_seats: 2 }], // smallest table that fits
+                requirements: [],
             });
         });
 

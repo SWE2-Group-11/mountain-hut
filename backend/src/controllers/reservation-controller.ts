@@ -12,8 +12,9 @@ import { notifyBookingCreated } from "../notifications/booking-confirmation";
  * Creates a reservation for the authenticated hiker, seating the party
  * on as few tables as possible.
  * @param hiker_id The ID of the authenticated hiker.
- * @param request The request payload containing date, slot and party size.
- * @returns The created booking with the tables assigned.
+ * @param request The request payload containing date, slot, party size and the
+ *        optional dietary requirements of the party.
+ * @returns The created booking with the tables assigned and the declared requirements.
  * Sends the booking confirmation email in the background once the booking is saved.
  * @throws BadRequestError if the slot does not exist or starts in less than BOOKING_CUTOFF_HOURS hours.
  * @throws ConflictError if the requested capacity is no longer available.
@@ -37,12 +38,18 @@ export const createReservation = (
         throw new ConflictError("You already have a booking for this date and time");
     }
   
-    const result = saveBooking(hiker_id, slot.date, slot.start_time, request.partySize);
+    const requirements = (request.requirements ?? []).map((r) => ({
+        allergy_flag: r.hasAllergies,
+        description: r.details,
+    }));
+    const result = saveBooking(hiker_id, slot.date, slot.start_time, request.partySize, requirements);
     if (!result) {
         throw new ConflictError("The requested capacity is no longer available");
     }
 
     notifyBookingCreated(result.booking.id);
 
-    return bookingDataToCreateReservationResponseDTO(result.booking, result.seatings, slot.date, slot.start_time);
+    return bookingDataToCreateReservationResponseDTO(
+        result.booking, result.seatings, result.dietary_requirements, slot.date, slot.start_time
+    );
 };

@@ -47,7 +47,8 @@ describe("POST /reservations — createReservation controller", () => {
             makeSeating(table, seats));
         vi.mocked(saveBooking).mockReturnValue({
             booking: new Booking(BOOKING_ID, HIKER_ID),
-            seatings,
+            seatings: seatings,
+            dietary_requirements: [],
         });
 
         const response = createReservation(HIKER_ID, { ...VALID_REQUEST });
@@ -56,7 +57,7 @@ describe("POST /reservations — createReservation controller", () => {
         expect(getSlot).toHaveBeenCalledWith(DAY, START_TIME);
         expect(saveBooking).toHaveBeenCalledTimes(1);
         expect(saveBooking).toHaveBeenCalledWith(
-            HIKER_ID, DAY, START_TIME, VALID_REQUEST.partySize,
+            HIKER_ID, DAY, START_TIME, VALID_REQUEST.partySize, []
         );
         expect(response).toEqual({
             id: BOOKING_ID,
@@ -66,6 +67,7 @@ describe("POST /reservations — createReservation controller", () => {
             seatings: assignment.map(([table_number, assigned_seats]) => ({
                 table_number, assigned_seats,
             })),
+            requirements: [],
         });
         expect(response).not.toHaveProperty("hiker_id");
         expect(response.seatings[0]).not.toHaveProperty("booking_id");
@@ -100,6 +102,7 @@ describe("POST /reservations — createReservation controller", () => {
         vi.mocked(saveBooking).mockReturnValue({
             booking: new Booking(BOOKING_ID, HIKER_ID),
             seatings: [makeSeating(1, 4)],
+            dietary_requirements: [],
         });
 
         expect(createReservation(HIKER_ID, VALID_REQUEST).id).toBe(BOOKING_ID);

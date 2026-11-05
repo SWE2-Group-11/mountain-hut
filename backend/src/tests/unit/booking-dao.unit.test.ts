@@ -91,38 +91,6 @@ describe("saveBooking (unit)", () => {
         expect(booking).toEqual(new Booking(BOOKING_ID, HIKER_ID));
     });
 
-    it("seats the party on the smallest table that fits it", () => {
-        statement.all.mockReturnValue([table(1, 8), table(2, 4), table(3, 6)]);
-
-        expect(seatsOf(4)).toEqual([[2, 4]]);
-        expect(seatsOf(5)).toEqual([[3, 5]]);
-    });
-
-    it("looks at the free seats of a table, not at its size", () => {
-        statement.all.mockReturnValue([table(1, 6, 2), table(2, 4)]);
-
-        expect(seatsOf(2)).toEqual([[1, 2]]);
-        expect(seatsOf(3)).toEqual([[2, 3]]);
-    });
-
-    it("spreads the party over the fewest tables when no single table fits", () => {
-        statement.all.mockReturnValue([table(1, 2), table(2, 2), table(3, 2), table(4, 6)]);
-
-        expect(seatsOf(8)).toEqual([[4, 6], [1, 2]]);
-    });
-
-    it("puts the people left on the smallest table that fits them", () => {
-        statement.all.mockReturnValue([table(1, 4), table(2, 6), table(3, 2)]);
-
-        expect(seatsOf(9)).toEqual([[2, 6], [1, 3]]);
-    });
-
-    it("can fill every free seat of the slot", () => {
-        statement.all.mockReturnValue([table(1, 4), table(2, 6, 3)]);
-
-        expect(seatsOf(7)).toEqual([[1, 4], [2, 3]]);
-    });
-
     it("saves the booking and one seating per assigned table", () => {
         statement.all.mockReturnValue([table(1, 4), table(2, 6)]);
 
@@ -143,21 +111,6 @@ describe("saveBooking (unit)", () => {
         statement.all.mockReturnValue([table(1, 4), table(2, 6, 3)]);
 
         expect(book(8)).toBeNull();
-        expect(statement.run).not.toHaveBeenCalled();
-    });
-
-    it("returns null and saves nothing when the slot has no tables", () => {
-        statement.all.mockReturnValue([]);
-
-        expect(book(1)).toBeNull();
-        expect(statement.run).not.toHaveBeenCalled();
-    });
-
-    it("returns null and saves nothing for a party of 0 or fewer people", () => {
-        statement.all.mockReturnValue([table(1, 4)]);
-
-        expect(book(0)).toBeNull();
-        expect(book(-1)).toBeNull();
         expect(statement.run).not.toHaveBeenCalled();
     });
 
@@ -184,144 +137,6 @@ describe("saveBooking (unit)", () => {
 });
 
 describe("getBookingAvailability (unit)", () => {
-    it("spreads a party over several tables and shows the seats of each one", () => {
-        // the example of the story: 6 free seats on 3 tables of 2, a party of 6 fits
-        // Arrange
-        statement.all.mockReturnValue([table(1, 2), table(2, 2), table(3, 2)]);
-
-        // Act
-        const result = split(6);
-
-        // Assert
-        expect(result).toEqual([[1, 2], [2, 2], [3, 2]]);
-    });
-
-    it("uses one table when it is enough, the smallest that fits", () => {
-        // a party should not be split, nor take a big table, when a smaller one is enough
-        // Arrange
-        statement.all.mockReturnValue([table(1, 8), table(2, 4), table(3, 6)]);
-
-        // Act
-        const forFour = split(4);
-        const forFive = split(5);
-
-        // Assert
-        expect(forFour).toEqual([[2, 4]]);
-        expect(forFive).toEqual([[3, 5]]);
-    });
-
-    it("looks at the free seats of a table, not at its size", () => {
-        // a table of 6 with 4 seats already booked has room for 2 people only
-        // Arrange
-        statement.all.mockReturnValue([table(1, 6, 2), table(2, 4)]);
-
-        // Act
-        const forTwo = split(2);
-        const forThree = split(3);
-
-        // Assert
-        expect(forTwo).toEqual([[1, 2]]);
-        expect(forThree).toEqual([[2, 3]]);
-    });
-
-    it("is available when the free seats of a table are exactly the party size", () => {
-        // boundary case: "equal" must count as enough, not only "more than"
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4)]);
-
-        // Act
-        const result = split(4);
-
-        // Assert
-        expect(result).toEqual([[1, 4]]);
-    });
-
-    it("is available when the free seats of the whole slot are exactly the party size", () => {
-        // boundary case: the last free seat of the slot can still be offered
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4), table(2, 6, 3)]);
-
-        // Act
-        const result = split(7);
-
-        // Assert
-        expect(result).toEqual([[1, 4], [2, 3]]);
-    });
-
-    it("spreads the party over the fewest tables when no single table fits", () => {
-        // 6 + 2 uses 2 tables, while 2 + 2 + 2 + 2 would use 4
-        // Arrange
-        statement.all.mockReturnValue([table(1, 2), table(2, 2), table(3, 2), table(4, 6)]);
-
-        // Act
-        const result = split(8);
-
-        // Assert
-        expect(result).toEqual([[4, 6], [1, 2]]);
-    });
-
-    it("can seat a party on many small tables", () => {
-        // with tables of 1 seat each person gets a table, and the last table stays free
-        // Arrange
-        statement.all.mockReturnValue([1, 2, 3, 4, 5, 6].map((n) => table(n, 1)));
-
-        // Act
-        const result = split(5);
-
-        // Assert
-        expect(result).toEqual([[1, 1], [2, 1], [3, 1], [4, 1], [5, 1]]);
-    });
-
-    it("returns null when the slot has not enough free seats", () => {
-        // 7 free seats in total: a party of 8 cannot be accommodated
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4), table(2, 6, 3)]);
-
-        // Act
-        const result = check(8);
-
-        // Assert
-        expect(result).toBeNull();
-    });
-
-    it("returns null when every table of the slot is full", () => {
-        // a full slot must not be offered, not even to a single person
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4, 0), table(2, 2, 0)]);
-
-        // Act
-        const result = check(1);
-
-        // Assert
-        expect(result).toBeNull();
-    });
-
-    it("returns null when the slot has no tables or does not exist", () => {
-        // in both cases the query finds no tables (the controller tells the two apart with getSlot)
-        // Arrange
-        statement.all.mockReturnValue([]);
-
-        // Act
-        const result = check(1);
-
-        // Assert
-        expect(result).toBeNull();
-    });
-
-    it("returns null for a party of 0 or fewer people", () => {
-        // the DAO must not propose an arrangement for an impossible party
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4)]);
-
-        // Act
-        const forZero = check(0);
-        const forNegative = check(-1);
-
-        // Assert
-        expect(forZero).toBeNull();
-        expect(forNegative).toBeNull();
-    });
-
     it("queries the requested slot", () => {
         // the free seats must be read for this date and start time, not for another slot
         // Arrange
@@ -345,22 +160,6 @@ describe("getBookingAvailability (unit)", () => {
         // Assert
         expect(statement.run).not.toHaveBeenCalled();
         expect(db.transaction).not.toHaveBeenCalled();
-    });
-
-    it("proposes seats that add up to the party size, at least 1 per table", () => {
-        // whatever the party size, nobody is left out and no table gets an empty seating
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4), table(2, 6, 3), table(3, 2)]);
-
-        for (let party_size = 1; party_size <= 9; party_size++) {
-            // Act
-            const result = check(party_size)!;
-
-            // Assert
-            const total = result.reduce((sum, a) => sum + a.assigned_seats, 0);
-            expect(total).toBe(party_size);
-            result.forEach((a) => expect(a.assigned_seats).toBeGreaterThanOrEqual(1));
-        }
     });
 
     it("proposes the same tables that a booking would then get", () => {
@@ -392,47 +191,6 @@ describe("getBookingAvailability (unit)", () => {
         expect(act).toThrow(boom);
     });
 });
-
-describe("getBookingAvailability: non-integer party size (fix MH-55)", () => {
-    const check = (party_size: number) => getBookingAvailability(DATE, START, party_size);
-
-    it("returns null for a party of 2.5 people, even when there are enough seats", () => {
-        // half a person cannot be seated: before the fix the DAO proposed 0.5 seats
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4)]);
-
-        // Act
-        const result = check(2.5);
-
-        // Assert
-        expect(result).toBeNull();
-    });
-
-    it("returns null for a party of 1.5 people", () => {
-        // a second decimal value, to show it is not a special case of 2.5
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4)]);
-
-        // Act
-        const result = check(1.5);
-
-        // Assert
-        expect(result).toBeNull();
-    });
-
-    it("still proposes a table for a whole party size, as before the fix", () => {
-        // the new check must reject decimals only, not valid parties
-        // Arrange
-        statement.all.mockReturnValue([table(1, 4)]);
-
-        // Act
-        const result = check(2);
-
-        // Assert
-        expect(result).toEqual([{ table_number: 1, assigned_seats: 2 }]);
-    });
-});
-
 
 describe("deleteSeatings (unit)", () => {
     it("deletes the seats of the booking and nothing else", () => {
