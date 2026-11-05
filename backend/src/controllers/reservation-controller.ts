@@ -23,7 +23,7 @@ import {
     bookingDataToCreateReservationResponseDTO,
     reservationToResponseDTO,
 } from "../services/mapper-service";
-import { isBookingOpen } from "../services/booking-rules";
+import { isBookingOpen } from "../domain/booking-rules";
 import { BOOKING_CUTOFF_HOURS, HUT_TIMEZONE, CHANGE_BOOKING_CUTOFF_HOURS } from "../config/config";
 import { notifyBookingCreated } from "../notifications/booking-confirmation";
 import {DateTime} from "luxon";
@@ -175,7 +175,7 @@ export const updateReservation = (
         );
     }
 
-    const requirements = request.requirements === undefined ? reservation.dietary_requirements : replaceRequirements(
+    const requirements = request.requirements === undefined ? reservation.dietary_requirements: replaceRequirements(
             reservation_id,
             request.requirements.map((requirement) => ({
                 allergy_flag: requirement.hasAllergies,

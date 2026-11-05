@@ -134,6 +134,7 @@ describe("POST /api/v1/reservations", () => {
                 slot: "13:00",
                 partySize: 2,
                 seatings: [{ table_number: 4, assigned_seats: 2 }], // smallest table that fits
+                requirements: [],
             });
         });
 
@@ -193,17 +194,17 @@ describe("POST /api/v1/reservations", () => {
 
     describe("capacity (409)", () => {
         it("rejects a party larger than the free seats", async () => {
-            const mario = await loginAs(MARIO);
+            const hiker = await loginAs(NEW_HIKER);
 
-            const res = await mario.post(RESERVATIONS_URL).send(book("12:00", 8)); // only 7 free
+            const res = await hiker.post(RESERVATIONS_URL).send(book("12:00", 8)); // only 7 free
 
             expect(res.status).toBe(409);
             expect(res.body).toMatchObject({ code: 409, message: expect.any(String) });
         });
 
         it("does not save anything when the booking is rejected", async () => {
-            const mario = await loginAs(MARIO);
-            await mario.post(RESERVATIONS_URL).send(book("12:00", 8));
+            const hiker = await loginAs(NEW_HIKER);
+            await hiker.post(RESERVATIONS_URL).send(book("12:00", 8));
 
             const slots = await request(app).get(SLOTS_URL).query({ date: tomorrow });
 
@@ -222,5 +223,49 @@ describe("POST /api/v1/reservations", () => {
         });
     });
 
-   
+    describe("one booking per slot (409)", () => {
+        it("rejects a second booking of the same hiker in a slot", async () => {
+            const mario = await loginAs(MARIO); // already booked 12:00 tomorrow
+
+            const res = await mario.post(RESERVATIONS_URL).send(book("12:00", 1));
+
+            expect(res.status).toBe(409);
+            expect(res.body).toMatchObject({ code: 409, message: expect.stringMatching(/already have a booking/i) });
+        });
+
+        it("rejects a second booking made through the API in the same slot", async () => {
+            const hiker = await loginAs(NEW_HIKER);
+            expect((await hiker.post(RESERVATIONS_URL).send(book("13:00", 2))).status).toBe(201);
+
+            const res = await hiker.post(RESERVATIONS_URL).send(book("13:00", 2));
+
+            expect(res.status).toBe(409);
+        });
+
+        it("does not save anything when the second booking is rejected", async () => {
+            const mario = await loginAs(MARIO);
+            await mario.post(RESERVATIONS_URL).send(book("12:00", 1));
+
+            const slots = await request(app).get(SLOTS_URL).query({ date: tomorrow });
+
+            const slot = slots.body.find((s: { start_time: string }) => s.start_time === "12:00");
+            expect(slot.available_seats).toBe(7);
+        });
+
+        it("lets the same hiker book a different slot", async () => {
+            const mario = await loginAs(MARIO);
+
+            const res = await mario.post(RESERVATIONS_URL).send(book("13:00", 2));
+
+            expect(res.status).toBe(201);
+        });
+
+        it("does not block other hikers from the same slot", async () => {
+            const hiker = await loginAs(NEW_HIKER);
+
+            const res = await hiker.post(RESERVATIONS_URL).send(book("12:00", 2));
+
+            expect(res.status).toBe(201);
+        });
+    });
 });

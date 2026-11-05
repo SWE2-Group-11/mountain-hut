@@ -1,17 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createReservation } from "../../controllers/reservation-controller";
 import { getSlot } from "../../dao/slot-dao";
-import { saveBooking } from "../../dao/booking-dao";
+import { saveBooking, hasBookingInSlot } from "../../dao/booking-dao";
 import { type CreateReservationRequestDTO } from "../../models/dto/reservation-dto";
 import { Booking } from "../../models/entities/booking";
 import { SeatedAt } from "../../models/entities/seated_at";
 import { Slot } from "../../models/entities/slot";
 import { BadRequestError } from "../../models/errors/badrequest-error";
 import { ConflictError } from "../../models/errors/conflict-error";
+import { notifyBookingCreated } from "../../notifications/booking-confirmation";
 
 // Isolate persistence; keep real booking rules and response mapping
 vi.mock("../../dao/slot-dao", () => ({ getSlot: vi.fn() }));
-vi.mock("../../dao/booking-dao", () => ({ saveBooking: vi.fn() }));
+vi.mock("../../dao/booking-dao", () => ({ hasBookingInSlot: vi.fn(), saveBooking: vi.fn() }));
+vi.mock("../../notifications/booking-confirmation", () => ({ notifyBookingCreated: vi.fn() }));
 
 const DAY = "2030-06-15";
 const START_TIME = "12:00";
@@ -31,7 +33,9 @@ beforeEach(() => {
     vi.resetAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2030-06-15T07:00:00Z"));
+    vi.mocked(notifyBookingCreated).mockResolvedValue(undefined);
     vi.mocked(getSlot).mockReturnValue(new Slot(DAY, START_TIME, 60));
+    vi.mocked(hasBookingInSlot).mockReturnValue(false);
     vi.mocked(saveBooking).mockReturnValue(null);
 });
 
@@ -46,7 +50,8 @@ describe("POST /reservations — createReservation controller", () => {
             makeSeating(table, seats));
         vi.mocked(saveBooking).mockReturnValue({
             booking: new Booking(BOOKING_ID, HIKER_ID),
-            seatings,
+            seatings: seatings,
+            dietary_requirements: [],
         });
 
         const response = createReservation(HIKER_ID, { ...VALID_REQUEST });
@@ -55,7 +60,7 @@ describe("POST /reservations — createReservation controller", () => {
         expect(getSlot).toHaveBeenCalledWith(DAY, START_TIME);
         expect(saveBooking).toHaveBeenCalledTimes(1);
         expect(saveBooking).toHaveBeenCalledWith(
-            HIKER_ID, DAY, START_TIME, VALID_REQUEST.partySize,
+            HIKER_ID, DAY, START_TIME, VALID_REQUEST.partySize, []
         );
         expect(response).toEqual({
             id: BOOKING_ID,
@@ -65,9 +70,11 @@ describe("POST /reservations — createReservation controller", () => {
             seatings: assignment.map(([table_number, assigned_seats]) => ({
                 table_number, assigned_seats,
             })),
+            requirements: [],
         });
         expect(response).not.toHaveProperty("hiker_id");
         expect(response.seatings[0]).not.toHaveProperty("booking_id");
+        expect(notifyBookingCreated).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
     });
 
     it("rejects an unknown date/time with BadRequestError and does not save", () => {
@@ -99,10 +106,21 @@ describe("POST /reservations — createReservation controller", () => {
         vi.mocked(saveBooking).mockReturnValue({
             booking: new Booking(BOOKING_ID, HIKER_ID),
             seatings: [makeSeating(1, 4)],
+            dietary_requirements: [],
         });
 
         expect(createReservation(HIKER_ID, VALID_REQUEST).id).toBe(BOOKING_ID);
         expect(saveBooking).toHaveBeenCalledTimes(1);
+        expect(notifyBookingCreated).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
+    });
+
+    it("rejects a second booking of the same hiker in the slot without saving", () => {
+        vi.mocked(hasBookingInSlot).mockReturnValue(true);
+
+        expect(() => createReservation(HIKER_ID, VALID_REQUEST))
+            .toThrow(ConflictError);
+        expect(hasBookingInSlot).toHaveBeenCalledWith(HIKER_ID, DAY, START_TIME);
+        expect(saveBooking).not.toHaveBeenCalled();
     });
 
     it("throws ConflictError if capacity has become unavailable", () => {
@@ -126,5 +144,53 @@ describe("POST /reservations — createReservation controller", () => {
         vi.mocked(saveBooking).mockImplementation(() => { throw failure; });
 
         expect(() => createReservation(HIKER_ID, VALID_REQUEST)).toThrow(failure);
+    });
+
+    it("notifies only after saveBooking has returned successfully", () => {
+        let saved = false;
+
+        vi.mocked(saveBooking).mockImplementation(() => {
+            saved = true;
+            return {
+                booking: new Booking(BOOKING_ID, HIKER_ID),
+                seatings: [makeSeating(1, 4)],
+            };
+        });
+
+        vi.mocked(notifyBookingCreated).mockImplementation(() => {
+            expect(saved).toBe(true);
+            return Promise.resolve();
+        });
+
+        createReservation(HIKER_ID, VALID_REQUEST);
+
+        expect(notifyBookingCreated).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
+    });
+
+    it("returns the reservation without waiting for the notification promise", async () => {
+        vi.mocked(saveBooking).mockReturnValue({
+            booking: new Booking(BOOKING_ID, HIKER_ID),
+            seatings: [makeSeating(1, 4)],
+        });
+
+        let finishNotification!: () => void;
+
+        const notification = new Promise<void>((resolve) => {
+            finishNotification = resolve;
+        });
+
+        vi.mocked(notifyBookingCreated).mockReturnValue(notification);
+
+        const response = createReservation(HIKER_ID, VALID_REQUEST);
+
+        expect(response).toMatchObject({
+            id: BOOKING_ID,
+            partySize: 4,
+        });
+
+        expect(notifyBookingCreated).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
+
+        finishNotification();
+        await notification;
     });
 });
