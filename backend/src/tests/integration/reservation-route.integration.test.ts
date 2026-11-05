@@ -312,6 +312,9 @@ describe("POST /api/v1/reservations", () => {
 
             expect(res.status).toBe(409);
             expect(res.body).toMatchObject({ code: 409, message: expect.any(String) });
+        });
+    });
+    
     describe("one booking per slot (409)", () => {
         it("rejects a second booking of the same hiker in a slot", async () => {
             const mario = await loginAs(MARIO); // already booked 12:00 tomorrow
