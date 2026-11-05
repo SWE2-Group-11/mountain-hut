@@ -58,6 +58,8 @@ docker run --rm -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.2
 
 Settings: `SMTP_HOST` (default `localhost`), `SMTP_PORT` (default `1025`) and `MAIL_FROM`. See `backend/.env.example`.
 
+The end-to-end tests (`cd e2e && npm test`) read the confirmation emails from Mailpit: Playwright starts it with Docker, or reuses one already listening on port 8025.
+
 ## Backend
 
 ### Tech stack
