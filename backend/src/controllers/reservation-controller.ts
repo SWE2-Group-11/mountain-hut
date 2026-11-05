@@ -6,6 +6,7 @@ import {
     getBookingAvailability,
     insertSeatings,
     saveBooking,
+    hasBookingInSlot,
 } from "../dao/booking-dao";
 import { replaceRequirements } from "../dao/dietary-requirement-dao";
 import { inTransaction } from "../database/database";
@@ -23,7 +24,7 @@ import {
     bookingDataToCreateReservationResponseDTO,
     reservationToResponseDTO,
 } from "../services/mapper-service";
-import { isBookingOpen } from "../domain/booking-rules";
+import { isBookingOpen} from "../domain/booking-rules";
 import { BOOKING_CUTOFF_HOURS, HUT_TIMEZONE, CHANGE_BOOKING_CUTOFF_HOURS } from "../config/config";
 import { notifyBookingCreated } from "../notifications/booking-confirmation";
 import {DateTime} from "luxon";
@@ -53,6 +54,11 @@ export const createReservation = (
             `Reservations are allowed up to ${BOOKING_CUTOFF_HOURS} hours before the slot starts`
         );
     }
+    if (hasBookingInSlot(hiker_id, slot.date, slot.start_time)) {
+    throw new ConflictError(
+        "You already have a booking for this date and time"
+    );
+}
   
     const requirements = (request.requirements ?? []).map((r) => ({
         allergy_flag: r.hasAllergies,
