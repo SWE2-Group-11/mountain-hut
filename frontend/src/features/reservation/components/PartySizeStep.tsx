@@ -1,6 +1,7 @@
 import React from 'react';
 import { Minus, Plus, Users } from 'lucide-react';
 
+
 interface PartySizeStepProps {
   partySize: number;
   onUpdatePartySize: (size: number) => void;
