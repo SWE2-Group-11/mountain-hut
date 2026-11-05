@@ -79,18 +79,26 @@ test.describe('Booking confirmation email', () => {
     }).formatToParts(tomorrow);
     const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)!.value;
     const date = `${part('weekday')} ${part('day')} ${part('month')} ${part('year')}`;
+    const party = `${partySize} ${partySize === 1 ? 'person' : 'people'}`;
+    expect(message.Text).toContain('Your booking is confirmed');
     expect(message.Text).toContain('Hello Laura Bianchi,');
     expect(message.Text).toContain(`Booking reference: ${reference}`);
     expect(message.Text).toContain(`Date: ${date}`);
     expect(message.Text).toContain('Time slot: 19:30–21:00');
-    expect(message.Text).toContain(`Party size: ${partySize}`);
+    expect(message.Text).toContain(`Party size: ${party}`);
 
-    // The HTML version, as an email client would show it
+    // The HTML version, as an email client would show it. Its layout tables are presentational,
+    // so each detail is read as the value right below its label.
     await page.setContent(message.HTML);
+    const detail = (label: string) =>
+      page.getByText(label, { exact: true }).locator('xpath=following-sibling::div[1]');
+    await expect(page.getByRole('heading', { name: 'Your booking is confirmed' })).toBeVisible();
     await expect(page.getByText('Hello Laura Bianchi,')).toBeVisible();
-    await expect(page.getByRole('row', { name: `Booking reference ${reference}` })).toBeVisible();
-    await expect(page.getByRole('row', { name: 'Time slot 19:30–21:00' })).toBeVisible();
-    await expect(page.getByRole('row', { name: `Party size ${partySize}` })).toBeVisible();
+    await expect(detail('Booking reference')).toHaveText(reference);
+    await expect(detail('Date')).toHaveText(date);
+    await expect(detail('Time slot')).toHaveText('19:30–21:00');
+    await expect(detail('Party size')).toHaveText(party);
+    await expect(page.getByRole('heading', { name: 'Party requirements' })).toBeVisible();
     await expect(page.getByText('No party requirements.')).toBeVisible();
   });
 });
