@@ -154,6 +154,7 @@ describe("POST /reservations — createReservation controller", () => {
             return {
                 booking: new Booking(BOOKING_ID, HIKER_ID),
                 seatings: [makeSeating(1, 4)],
+                dietary_requirements: [],
             };
         });
 
@@ -171,6 +172,7 @@ describe("POST /reservations — createReservation controller", () => {
         vi.mocked(saveBooking).mockReturnValue({
             booking: new Booking(BOOKING_ID, HIKER_ID),
             seatings: [makeSeating(1, 4)],
+            dietary_requirements: [],
         });
 
         let finishNotification!: () => void;

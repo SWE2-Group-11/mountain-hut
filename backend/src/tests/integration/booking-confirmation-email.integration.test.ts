@@ -84,7 +84,8 @@ describe("Booking confirmation email - integration", () => {
             expect(email.text).toContain("Time slot: 13:00–14:00");
             expect(email.text).toContain("Party size: 3");
             expect(email.text).toContain("No party requirements.");
-            expect(email.html).toContain(`<strong>${reference}</strong>`);
+            expect(email.html).toContain("Your booking is confirmed");
+            expect(email.html).toContain(reference);
         });
 
         it("shows the end time from the slot duration", async () => {
