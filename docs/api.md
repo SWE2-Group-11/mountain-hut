@@ -21,7 +21,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement), slot that does not exist, or slot that starts in less than 2 hours
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
-  - `409 Conflict`: the requested capacity is no longer available
+  - `409 Conflict`: the user already has a booking in the same slot (date and time), or the requested capacity is no longer available
   - `500 Internal Server Error`: unexpected server error
 
 ### GET /slots - Get slots for the selected date

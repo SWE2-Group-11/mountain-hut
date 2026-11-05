@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Slot } from "../../models/entities/slot";
-import { isBookingOpen } from "../../services/booking-rules";
+import { isBookingOpen } from "../../domain/booking-rules";
 
 const ORIGINAL_SERVER_TIMEZONE = process.env.TZ;
 

@@ -6,9 +6,8 @@ import { SlotAvailability, SlotConfiguration } from '../dao/slot-dao';
 import { Account } from '../models/entities/account';
 import { Booking } from '../models/entities/booking';
 import { SeatedAt } from '../models/entities/seated_at';
-import { Slot } from '../models/entities/slot';
 import { AppError } from '../models/errors/app-error';
-import type { Assignment } from '../dao/booking-dao';
+import type { Assignment } from '../domain/booking-rules';
 import { minutesToTime, timeToMinutes } from './date-service';
 
 /**

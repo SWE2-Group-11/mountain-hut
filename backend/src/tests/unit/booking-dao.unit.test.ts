@@ -9,6 +9,7 @@ import {
     getTablesAvailability,
     insertSeatings,
     saveBooking,
+    hasBookingInSlot,
 } from "../../dao/booking-dao";
 import { Booking } from "../../models/entities/booking";
 import { SeatedAt } from "../../models/entities/seated_at";
@@ -807,5 +808,25 @@ describe("saveBooking: non-integer party size (fix MH-55)", () => {
         // Assert
         expect(result).toBeNull();
         expect(statement.run).not.toHaveBeenCalled();
+    });
+});
+
+describe("hasBookingInSlot (unit)", () => {
+    it("returns true when the hiker has a booking in the slot", () => {
+        statement.get.mockReturnValue({ 1: 1 });
+
+        expect(hasBookingInSlot(HIKER_ID, DATE, START)).toBe(true);
+    });
+
+    it("returns false when the hiker has no booking in the slot", () => {
+        statement.get.mockReturnValue(undefined);
+
+        expect(hasBookingInSlot(HIKER_ID, DATE, START)).toBe(false);
+    });
+
+    it("queries the requested hiker and slot", () => {
+        hasBookingInSlot(HIKER_ID, DATE, START);
+
+        expect(statement.get).toHaveBeenCalledWith(HIKER_ID, DATE, START);
     });
 });

@@ -1,6 +1,6 @@
 import { SlotTable } from "../../models/entities/slot_table";
 import { describe, expect, it } from "vitest";
-import { type Assignment } from "../../dao/booking-dao";
+import { type Assignment } from "../../domain/booking-rules";
 import { type SlotConfiguration, type SlotAvailability } from "../../dao/slot-dao";
 import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotTableDTO } from "../../models/dto/slot-dto";
 import { Booking } from "../../models/entities/booking";

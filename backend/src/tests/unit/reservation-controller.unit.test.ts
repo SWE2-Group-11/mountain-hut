@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createReservation } from "../../controllers/reservation-controller";
 import { getSlot } from "../../dao/slot-dao";
-import { saveBooking } from "../../dao/booking-dao";
+import { saveBooking, hasBookingInSlot } from "../../dao/booking-dao";
 import { type CreateReservationRequestDTO } from "../../models/dto/reservation-dto";
 import { Booking } from "../../models/entities/booking";
 import { SeatedAt } from "../../models/entities/seated_at";
@@ -11,7 +11,7 @@ import { ConflictError } from "../../models/errors/conflict-error";
 
 // Isolate persistence; keep real booking rules and response mapping
 vi.mock("../../dao/slot-dao", () => ({ getSlot: vi.fn() }));
-vi.mock("../../dao/booking-dao", () => ({ saveBooking: vi.fn() }));
+vi.mock("../../dao/booking-dao", () => ({ hasBookingInSlot: vi.fn(), saveBooking: vi.fn() }));
 
 const DAY = "2030-06-15";
 const START_TIME = "12:00";
@@ -32,6 +32,7 @@ beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2030-06-15T07:00:00Z"));
     vi.mocked(getSlot).mockReturnValue(new Slot(DAY, START_TIME, 60));
+    vi.mocked(hasBookingInSlot).mockReturnValue(false);
     vi.mocked(saveBooking).mockReturnValue(null);
 });
 
@@ -103,6 +104,15 @@ describe("POST /reservations — createReservation controller", () => {
 
         expect(createReservation(HIKER_ID, VALID_REQUEST).id).toBe(BOOKING_ID);
         expect(saveBooking).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects a second booking of the same hiker in the slot without saving", () => {
+        vi.mocked(hasBookingInSlot).mockReturnValue(true);
+
+        expect(() => createReservation(HIKER_ID, VALID_REQUEST))
+            .toThrow(ConflictError);
+        expect(hasBookingInSlot).toHaveBeenCalledWith(HIKER_ID, DAY, START_TIME);
+        expect(saveBooking).not.toHaveBeenCalled();
     });
 
     it("throws ConflictError if capacity has become unavailable", () => {

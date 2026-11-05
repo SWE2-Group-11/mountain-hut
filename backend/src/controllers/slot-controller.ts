@@ -13,7 +13,7 @@ import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
 import { NotFoundError } from "../models/errors/notfound-error";
 import { assignmentsToAvailabilityResponseDTO, slotAvailabilityToSlotDTO, slotConfigurationToDTO } from "../services/mapper-service";
-import { isBookingOpen } from "../services/booking-rules";
+import { isBookingOpen } from "../domain/booking-rules";
 import { timeToMinutes } from "../services/date-service";
 
 /**
