@@ -87,10 +87,33 @@ test.describe('Booking confirmation email', () => {
 
     // The HTML version, as an email client would show it
     await page.setContent(message.HTML);
-    await expect(page.getByText('Hello Laura Bianchi,')).toBeVisible();
-    await expect(page.getByRole('row', { name: `Booking reference ${reference}` })).toBeVisible();
-    await expect(page.getByRole('row', { name: 'Time slot 19:30–21:00' })).toBeVisible();
-    await expect(page.getByRole('row', { name: `Party size ${partySize}` })).toBeVisible();
-    await expect(page.getByText('No party requirements.')).toBeVisible();
-  });
+
+    const detail = (label: string) =>
+        page
+            .getByText(label, { exact: true })
+            .locator('xpath=following-sibling::div[1]');
+
+    const party = `${partySize} ${partySize === 1 ? 'person' : 'people'}`;
+
+    await expect(
+        page.getByRole('heading', { name: 'Your booking is confirmed' })
+    ).toBeVisible();
+
+    await expect(
+        page.getByText('Hello Laura Bianchi,')
+    ).toBeVisible();
+
+    await expect(detail('Booking reference')).toHaveText(reference);
+    await expect(detail('Date')).toHaveText(date);
+    await expect(detail('Time slot')).toHaveText('19:30–21:00');
+    await expect(detail('Party size')).toHaveText(party);
+
+    await expect(
+        page.getByRole('heading', { name: 'Party requirements' })
+    ).toBeVisible();
+
+    await expect(
+        page.getByText('No party requirements.')
+    ).toBeVisible();
+      });
 });
