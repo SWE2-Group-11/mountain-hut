@@ -1,6 +1,6 @@
 import { SlotTable } from "../../models/entities/slot_table";
 import { describe, expect, it } from "vitest";
-import { type Assignment } from "../../dao/booking-dao";
+import { type Assignment } from "../../domain/booking-rules";
 import { type SlotConfiguration, type SlotAvailability } from "../../dao/slot-dao";
 import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotTableDTO } from "../../models/dto/slot-dto";
 import { Booking } from "../../models/entities/booking";
@@ -16,6 +16,7 @@ import {
     bookingDataToCreateReservationResponseDTO,
     slotAvailabilityToSlotDTO,
 } from "../../services/mapper-service";
+import { DietaryRequirement } from "../../models/entities/dietary_requirement";
 
 const DAY = "2030-06-15";
 const START_TIME = "12:00";
@@ -57,6 +58,7 @@ describe("response mappers", () => {
         expect(bookingDataToCreateReservationResponseDTO(
             new Booking(BOOKING_ID, HIKER_ID),
             [makeSeating(1, 3), makeSeating(2, 2)],
+            [],
             DAY,
             START_TIME,
         )).toEqual({
@@ -68,7 +70,18 @@ describe("response mappers", () => {
                 { table_number: 1, assigned_seats: 3 },
                 { table_number: 2, assigned_seats: 2 },
             ],
+            requirements: [],
         });
+    });
+
+    it("maps dietary requirements to the public fields without database keys", () => {
+        expect(bookingDataToCreateReservationResponseDTO(
+            new Booking(BOOKING_ID, HIKER_ID),
+            [makeSeating(1, 2)],
+            [new DietaryRequirement(1, BOOKING_ID, true, "Peanuts")],
+            DAY,
+            START_TIME,
+        ).requirements).toEqual([{ hasAllergies: true, details: "Peanuts" }]);
     });
 
     it("maps every proposed assignment to the public availability fields, in order", () => {
