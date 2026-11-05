@@ -13,7 +13,11 @@ import {
 } from "../../dao/booking-dao";
 import { Booking } from "../../models/entities/booking";
 import { SeatedAt } from "../../models/entities/seated_at";
-import { getDietaryRequirementsByBooking } from "../../dao/dietary-requirement-dao";
+import {
+    getDietaryRequirementsByBooking,
+    replaceRequirements,
+    type RequirementInput,
+} from "../../dao/dietary-requirement-dao";
 import { DietaryRequirement } from "../../models/entities/dietary_requirement";
 
 /*
@@ -28,8 +32,8 @@ vi.mock("../../database/database", () => ({
 
 vi.mock("../../dao/dietary-requirement-dao", () => ({
     getDietaryRequirementsByBooking: vi.fn(),
+    replaceRequirements: vi.fn(),
 }));
-
 const DATE = "2026-11-02";
 const START = "19:00";
 const HIKER_ID = 5;
@@ -41,7 +45,21 @@ const statement = { all: vi.fn(), run: vi.fn(), get: vi.fn() };
 
 const table = (table_number: number, seats: number, free_seats = seats) => ({ table_number, seats, free_seats });
 
-const book = (party_size: number) => saveBooking(HIKER_ID, DATE, START, party_size);
+const requirement = (allergy_flag: boolean, description: string): RequirementInput => ({ allergy_flag, description });
+
+// the example of the story: three requirements for three subsets of the party
+const STORY_REQUIREMENTS = [
+    requirement(true, "1 vegan, peanut allergy"),
+    requirement(true, "1 shellfish allergy"),
+    requirement(false, "2 vegetarians"),
+];
+
+// what replaceRequirements would return for the given requirements
+const saved = (inputs: RequirementInput[]) =>
+    inputs.map((r, i) => new DietaryRequirement(i + 1, BOOKING_ID, r.allergy_flag, r.description));
+
+const book = (party_size: number, requirements?: RequirementInput[]) =>
+    saveBooking(HIKER_ID, DATE, START, party_size, requirements);
 
 // [table_number, assigned_seats] of each seating, to keep the expectations short
 const seatsOf = (party_size: number) =>
@@ -57,6 +75,7 @@ const seating = (table_number: number, assigned_seats: number, booking_id = BOOK
     new SeatedAt(booking_id, date, start, table_number, assigned_seats);
 
 beforeEach(() => {
+    vi.mocked(replaceRequirements).mockReturnValue([]);
     vi.resetAllMocks();
     vi.mocked(getDietaryRequirementsByBooking).mockReturnValue([]);
     vi.mocked(db.prepare).mockReturnValue(statement as any);
@@ -586,5 +605,145 @@ describe("hasBookingInSlot (unit)", () => {
         hasBookingInSlot(HIKER_ID, DATE, START);
 
         expect(statement.get).toHaveBeenCalledWith(HIKER_ID, DATE, START);
+    });
+});
+
+
+describe("saveBooking: dietary requirements (MH-05)", () => {
+    it("saves the requirements of the party for the new booking", () => {
+        // the requirements belong to the booking just created, so they need its id
+        // Arrange
+        statement.all.mockReturnValue([table(1, 8)]);
+
+        // Act
+        book(4, STORY_REQUIREMENTS);
+
+        // Assert
+        expect(replaceRequirements).toHaveBeenCalledTimes(1);
+        expect(replaceRequirements).toHaveBeenCalledWith(BOOKING_ID, STORY_REQUIREMENTS);
+    });
+
+    it("returns the requirements as saved, one per subset of the party", () => {
+        // each subset keeps its own allergies flag and description
+        // Arrange
+        statement.all.mockReturnValue([table(1, 8)]);
+        const expected = saved(STORY_REQUIREMENTS);
+        vi.mocked(replaceRequirements).mockReturnValue(expected);
+
+        // Act
+        const result = book(4, STORY_REQUIREMENTS)!;
+
+        // Assert
+        expect(result.dietary_requirements).toEqual(expected);
+        expect(result.dietary_requirements.map((r) => r.allergy_flag)).toEqual([true, true, false]);
+    });
+
+    it("still returns the booking and its seatings when requirements are given", () => {
+        // the requirements are an addition: the rest of the result must not change
+        // Arrange
+        statement.all.mockReturnValue([table(1, 8)]);
+
+        // Act
+        const result = book(4, STORY_REQUIREMENTS)!;
+
+        // Assert
+        expect(result.booking).toEqual(new Booking(BOOKING_ID, HIKER_ID));
+        expect(result.seatings).toEqual([new SeatedAt(BOOKING_ID, DATE, START, 1, 4)]);
+    });
+
+    it("saves the requirements after the booking and its seats", () => {
+        // the booking must exist before anything refers to it
+        // Arrange
+        statement.all.mockReturnValue([table(1, 8)]);
+
+        // Act
+        book(4, STORY_REQUIREMENTS);
+
+        // Assert
+        const lastWrite = Math.max(...statement.run.mock.invocationCallOrder);
+        const requirementsWrite = vi.mocked(replaceRequirements).mock.invocationCallOrder[0];
+        expect(requirementsWrite).toBeGreaterThan(lastWrite);
+    });
+
+    it("does not touch the requirements when none are given", () => {
+        // a booking without dietary requirements is valid and has an empty list
+        // Arrange
+        statement.all.mockReturnValue([table(1, 4)]);
+
+        // Act
+        const result = book(2)!;
+
+        // Assert
+        expect(replaceRequirements).not.toHaveBeenCalled();
+        expect(result.dietary_requirements).toEqual([]);
+    });
+
+    it("does not touch the requirements for an empty list", () => {
+        // boundary case: an empty list means the same as no list
+        // Arrange
+        statement.all.mockReturnValue([table(1, 4)]);
+
+        // Act
+        const result = book(2, [])!;
+
+        // Assert
+        expect(replaceRequirements).not.toHaveBeenCalled();
+        expect(result.dietary_requirements).toEqual([]);
+    });
+
+    it("saves no requirements when the slot has not enough free seats", () => {
+        // without a booking there is nothing to attach the requirements to
+        // Arrange
+        statement.all.mockReturnValue([table(1, 4), table(2, 6, 3)]);
+
+        // Act
+        const result = book(8, STORY_REQUIREMENTS);
+
+        // Assert
+        expect(result).toBeNull();
+        expect(replaceRequirements).not.toHaveBeenCalled();
+    });
+
+    it("saves no requirements for a party of 0 or fewer people", () => {
+        // Arrange
+        statement.all.mockReturnValue([table(1, 4)]);
+
+        // Act
+        const forZero = book(0, STORY_REQUIREMENTS);
+        const forNegative = book(-1, STORY_REQUIREMENTS);
+
+        // Assert
+        expect(forZero).toBeNull();
+        expect(forNegative).toBeNull();
+        expect(replaceRequirements).not.toHaveBeenCalled();
+    });
+
+    it("saves the requirements inside the transaction", () => {
+        // the transaction never runs its callback: the requirements must not be saved outside of it
+        // Arrange
+        vi.mocked(db.transaction).mockReturnValue((() => null) as any);
+
+        // Act
+        book(2, STORY_REQUIREMENTS);
+
+        // Assert
+        expect(db.transaction).toHaveBeenCalledTimes(1);
+        expect(replaceRequirements).not.toHaveBeenCalled();
+    });
+
+    it("lets a failure while saving the requirements through instead of swallowing it", () => {
+        // the error must reach the transaction, which then undoes the booking (covered by the integration tests)
+        // Arrange
+        const boom = new Error("SQLITE_BUSY: database is locked");
+        statement.all.mockReturnValue([table(1, 4)]);
+        vi.mocked(replaceRequirements).mockImplementation(() => {
+            throw boom;
+        });
+
+        // Act
+        const act = () => book(2, STORY_REQUIREMENTS);
+
+        // Assert
+        expect(act).toThrow(boom);
     });
 });
