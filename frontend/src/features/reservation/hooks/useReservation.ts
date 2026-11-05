@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiClient, ApiError } from '../../../api/client';
-import type { ReservationState, Slot, Reservation } from '../types/reservation.types';
+import type { ReservationState, Slot, Reservation, RequirementRow } from '../types/reservation.types';
+import { rowError, toRequirements,peopleMentioned } from '../utils/requirements';
 
 export const formatLocalDate = (date: Date): string => {
   const year = date.getFullYear();
@@ -22,6 +23,10 @@ export function useReservation() {
     selectedTime: null,
     partySize: 2,
   });
+
+  // Dietary requirements: a list, each row for a subset of the party (optional)
+  const keyCounter = useRef(0);
+  const [requirementRows, setRequirementRows] = useState<RequirementRow[]>([]);
 
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -106,7 +111,31 @@ export function useReservation() {
     [maxAvailableSeats]
   );
 
+  const addRequirement = useCallback(() => {
+    const key = ++keyCounter.current; 
+setRequirementRows((prev) => [...prev, { key, count: 1, tags: [], extra: '', hasAllergies: false }]);
+    setBookingError(null);
+  }, []);
+
+  const removeRequirement = useCallback((key: number) => {
+    setRequirementRows((prev) => prev.filter((row) => row.key !== key));
+  }, []);
+
+  const updateRequirement = useCallback(
+   (key: number, changes: Partial<Omit<RequirementRow, 'key'>>) => {
+      setRequirementRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...changes } : row)));
+      setBookingError(null);
+    },
+    []
+  );
+
+   // Every allergy is described, and the notes do not talk about more people than the party has
+  const requirementsValid =
+    requirementRows.every((row) => rowError(row) === null) &&
+    peopleMentioned(requirementRows) <= state.partySize;
+
   const isFormValid = Boolean(
+    requirementsValid &&
     state.selectedDate &&
     state.selectedTime &&
     state.partySize > 0 &&
@@ -120,14 +149,20 @@ export function useReservation() {
       return false;
     }
     if (isSubmitting) return false;
+    if (!requirementsValid) {
+            setBookingError('Please check the food needs: describe every allergy and do not list more people than your party.');
+      return false;
+    }
 
     setIsSubmitting(true);
     setBookingError(null);
     try {
+      const requirements = toRequirements(requirementRows);
       const created: Reservation = await apiClient.post('/reservations', {
         date: formatLocalDate(state.selectedDate),
         slot: state.selectedTime,
         partySize: state.partySize,
+        ...(requirements.length > 0 ? { requirements } : {}),
       });
       setReservation(created);
       return true;
@@ -168,6 +203,10 @@ export function useReservation() {
     setSelectedDate,
     setSelectedTime,
     setPartySize,
+    requirementRows,
+    addRequirement,
+    removeRequirement,
+    updateRequirement,
     confirmReservation,
     clearError,
   };

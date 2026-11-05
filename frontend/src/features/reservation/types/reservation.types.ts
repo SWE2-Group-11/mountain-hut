@@ -25,4 +25,19 @@ export interface Reservation {
   slot: string;
   partySize: number;
   seatings: Seating[];
+  requirements?: Requirement[];
+}
+
+export interface Requirement {
+  hasAllergies: boolean;
+  details: string;
+}
+
+// A row of the form: how many people, what applies to them, and optional extra words
+export interface RequirementRow {
+  key: number;
+  count: number;
+  tags: string[];
+  extra: string;
+  hasAllergies: boolean;
 }

@@ -6,6 +6,7 @@ import { DatePickerStep } from './DatePickerStep';
 import { TimeSlotStep } from './TimeSlotStep';
 import { PartySizeStep } from './PartySizeStep';
 import { SummaryBox } from './SummaryBox';
+import { RequirementsStep } from './RequirementsStep';
 
 const formatLongDate = (date: Date) =>
   date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -23,6 +24,10 @@ export const ReservationCard: React.FC = () => {
     setSelectedTime,
     maxAvailableSeats,
     setPartySize,
+    requirementRows,
+    addRequirement,
+    removeRequirement,
+    updateRequirement,
     isFormValid,
     isSubmitting,
     bookingError,
@@ -101,6 +106,27 @@ export const ReservationCard: React.FC = () => {
                 {reservation.partySize} {reservation.partySize === 1 ? 'Guest' : 'Guests'}
               </span>
             </div>
+                        {/* Dietary requirements, as the server saved them */}
+            {reservation.requirements && reservation.requirements.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 border border-[#EFEADF] space-y-2">
+                <span className="font-bold text-[#234E39] block uppercase tracking-wider text-[10px]">
+                  Dietary needs
+                </span>
+                <ul className="space-y-1.5">
+                  {reservation.requirements.map((requirement, index) => (
+                    <li
+                      key={index}
+                      className={`px-3 py-1.5 rounded-xl ${
+                        requirement.hasAllergies ? 'bg-[#FDECEC] text-[#B00020] font-semibold' : 'bg-[#FAF6EE] text-[#1C2826]'
+                      }`}
+                    >
+                      {requirement.hasAllergies && 'Allergy: '}
+                      {requirement.details}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Table assignment decided by the server */}
             <div className="bg-white rounded-2xl p-4 border border-[#EFEADF] space-y-2">
@@ -164,7 +190,13 @@ export const ReservationCard: React.FC = () => {
             onUpdatePartySize={setPartySize}
             maxSeats={maxAvailableSeats}
           />
-
+          <RequirementsStep
+            rows={requirementRows}
+            partySize={partySize}
+            onAdd={addRequirement}
+            onRemove={removeRequirement}
+            onChange={updateRequirement}
+          />
           <SummaryBox
             selectedDate={selectedDate}
             selectedTime={selectedTime}
