@@ -4,17 +4,7 @@ import { replaceRequirements, type RequirementInput } from "./dietary-requiremen
 import { SeatedAt } from "../models/entities/seated_at";
 import { DietaryRequirement } from "../models/entities/dietary_requirement";
 import { getDietaryRequirementsByBooking } from "./dietary-requirement-dao";
-
-export type TableAvailability = {
-    table_number: number;
-    seats: number;
-    free_seats: number;
-};
-
-export type Assignment = {
-    table_number: number;
-    assigned_seats: number
-};
+import { assignSeats, type TableAvailability, type Assignment } from "../domain/booking-rules";
 
 export type Reservation = {
     booking: Booking;
@@ -45,38 +35,6 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
         WHERE st.slot_date = ? AND st.slot_start_time = ?
         ORDER BY st.table_number`;
     return db.prepare<[string, string], TableAvailability>(sql).all(date, start_time);
-};
-
-/**
- * Decides how to seat a party: it stays on one table if possible (the smallest
- * one that fits), otherwise it is spread over the fewest tables possible.
- * @param tables The tables of the slot with their free seats.
- * @param party_size The number of people to seat.
- * @returns The seats to assign per table, or null if the capacity is not enough
- * or the party_size is not an integer or is <= 0.
- */
-const assignSeats = (tables: TableAvailability[], party_size: number): Assignment[] | null => {
-    if (!Number.isInteger(party_size) || party_size <= 0) return null;
-    const free = tables.filter((t) => t.free_seats > 0);
-    if (free.reduce((sum, t) => sum + t.free_seats, 0) < party_size) return null;
-
-    const assignment: Assignment[] = [];
-    let remaining = party_size;
-    while (remaining > 0) {
-        const fitting = free
-            .filter((t) => t.free_seats >= remaining)
-            .sort((a, b) => a.free_seats - b.free_seats)[0];
-        if (fitting) {
-            assignment.push({ table_number: fitting.table_number, assigned_seats: remaining });
-            remaining = 0;
-        } else {
-            free.sort((a, b) => b.free_seats - a.free_seats);
-            const largest = free.shift()!;
-            assignment.push({ table_number: largest.table_number, assigned_seats: largest.free_seats });
-            remaining -= largest.free_seats;
-        }
-    }
-    return assignment;
 };
 
 /**
@@ -233,4 +191,21 @@ export const getActiveBookingsByHiker = (hiker_id: number, now: string): Reserva
         }
     }
     return reservations;
+};
+
+/**
+ * Checks whether a hiker already has a booking in a slot (only one booking per slot is allowed).
+ * @param hiker_id The account of the hiker.
+ * @param date The day of the slot (YYYY-MM-DD).
+ * @param start_time The start time of the slot (HH:MM).
+ * @returns true if the hiker already has a booking in the slot, false otherwise.
+ */
+export const hasBookingInSlot = (hiker_id: number, date: string, start_time: string): boolean => {
+    const sql = `
+        SELECT 1
+        FROM booking b
+        JOIN seated_at sa ON sa.booking_id = b.id
+        WHERE b.hiker_id = ? AND sa.slot_date = ? AND sa.slot_start_time = ?
+        LIMIT 1`;
+    return db.prepare<[number, string, string], { 1: number }>(sql).get(hiker_id, date, start_time) !== undefined;
 };

@@ -1,10 +1,10 @@
 import { getSlot } from "../dao/slot-dao";
-import { saveBooking } from "../dao/booking-dao";
+import { saveBooking, hasBookingInSlot } from "../dao/booking-dao";
 import { CreateReservationRequestDTO, CreateReservationResponseDTO } from "../models/dto/reservation-dto";
 import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
 import { bookingDataToCreateReservationResponseDTO } from "../services/mapper-service";
-import { isBookingOpen } from "../services/booking-rules";
+import { isBookingOpen } from "../domain/booking-rules";
 import { BOOKING_CUTOFF_HOURS } from "../config/config";
 import { notifyBookingCreated } from "../notifications/booking-confirmation";
 
@@ -16,9 +16,9 @@ import { notifyBookingCreated } from "../notifications/booking-confirmation";
  *        optional dietary requirements of the party.
  * @returns The created booking with the tables assigned and the declared requirements.
  * Sends the booking confirmation email in the background once the booking is saved.
- * @throws BadRequestError if the slot does not exist or starts in less than
- *         BOOKING_CUTOFF_HOURS hours.
+ * @throws BadRequestError if the slot does not exist or starts in less than BOOKING_CUTOFF_HOURS hours.
  * @throws ConflictError if the requested capacity is no longer available.
+ * @throws ConflictError if the hiker already has a booking in the slot
  */
 export const createReservation = (
     hiker_id: number,
@@ -32,6 +32,10 @@ export const createReservation = (
         throw new BadRequestError(
             `Reservations are allowed up to ${BOOKING_CUTOFF_HOURS} hours before the slot starts`
         );
+    }
+
+    if (hasBookingInSlot(hiker_id, slot.date, slot.start_time)) {
+        throw new ConflictError("You already have a booking for this date and time");
     }
   
     const requirements = (request.requirements ?? []).map((r) => ({

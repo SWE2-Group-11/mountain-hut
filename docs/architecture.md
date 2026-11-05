@@ -33,6 +33,7 @@ flowchart TD
 | `routes/` | Map each path to a controller; send the response or the error JSON |
 | `controllers/` | Business logic and validation; throw `AppError` |
 | `dao/` | SQL queries only; return entities |
+| `domain/` | Pure business rules; importable by any layer |
 | `models/entities/` | Shape of DB rows |
 | `models/dto/` | Shape of API payloads |
 | `models/errors/` | `AppError` and subclasses |
