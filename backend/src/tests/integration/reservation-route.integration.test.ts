@@ -21,6 +21,8 @@ const SLOTS_URL = "/api/v1/slots";
 describe("POST /api/v1/reservations", () => {
     const tomorrow = dayFromToday(1);
     const book = (slot: string, partySize: number, date = tomorrow) => ({ date, slot, partySize });
+    const bookWith = (slot: string, partySize: number, requirements: unknown) =>
+        ({ ...book(slot, partySize), requirements });
 
     beforeEach(() => {
         resetTestDatabase();
@@ -95,6 +97,27 @@ describe("POST /api/v1/reservations", () => {
                 .send("{ not json");
 
             expect(res.status).toBe(400);
+        });
+    });
+
+    describe("party requirements validation (400)", () => {
+        it.each([
+            ["requirements that are not a list", "1 vegan"],
+            ["a requirement without the allergy flag", [{ details: "1 vegan" }]],
+            ["an allergy flag sent as text", [{ hasAllergies: "true", details: "1 vegan" }]],
+            ["a requirement without details", [{ hasAllergies: false }]],
+            ["empty details", [{ hasAllergies: false, details: "" }]],
+            ["details made only of spaces", [{ hasAllergies: true, details: "   " }]],
+            ["details sent as a number", [{ hasAllergies: false, details: 2 }]],
+            ["one invalid requirement among valid ones",
+                [{ hasAllergies: false, details: "2 vegetarians" }, { hasAllergies: true }]],
+        ])("rejects %s", async (_label, requirements) => {
+            const mario = await loginAs(MARIO);
+
+            const res = await mario.post(RESERVATIONS_URL).send(bookWith("13:00", 2, requirements));
+
+            expect(res.status).toBe(400);
+            expect(res.body).toMatchObject({ code: 400, message: expect.stringMatching(/^requirements/) });
         });
     });
 
@@ -192,6 +215,64 @@ describe("POST /api/v1/reservations", () => {
         });
     });
 
+    describe("party requirements (201)", () => {
+        it("returns the declared requirements in the order they were sent", async () => {
+            const mario = await loginAs(MARIO);
+            const requirements = [
+                { hasAllergies: true, details: "1 peanut allergy" },
+                { hasAllergies: false, details: "2 vegetarians" },
+            ];
+
+            const res = await mario.post(RESERVATIONS_URL).send(bookWith("13:00", 4, requirements));
+
+            expect(res.status).toBe(201);
+            expect(res.body).toEqual({
+                id: expect.any(Number),
+                date: tomorrow,
+                slot: "13:00",
+                partySize: 4,
+                seatings: [{ table_number: 1, assigned_seats: 4 }],
+                requirements,
+            });
+        });
+
+        it("returns no requirements when the party declares none", async () => {
+            const mario = await loginAs(MARIO);
+
+            const res = await mario.post(RESERVATIONS_URL).send(bookWith("13:00", 2, []));
+
+            expect(res.status).toBe(201);
+            expect(res.body.requirements).toEqual([]);
+        });
+
+        it("trims the spaces around the details", async () => {
+            const mario = await loginAs(MARIO);
+
+            const res = await mario
+                .post(RESERVATIONS_URL)
+                .send(bookWith("13:00", 2, [{ hasAllergies: false, details: "  1 vegan  " }]));
+
+            expect(res.status).toBe(201);
+            expect(res.body.requirements).toEqual([{ hasAllergies: false, details: "1 vegan" }]);
+        });
+
+        it("does not change how the party is seated", async () => {
+            const hiker = await loginAs(NEW_HIKER);
+
+            const res = await hiker
+                .post(RESERVATIONS_URL)
+                .send(bookWith("12:00", 7, [{ hasAllergies: true, details: "1 shellfish allergy" }]));
+
+            expect(res.status).toBe(201);
+            expect(res.body.seatings).toEqual(
+                expect.arrayContaining([
+                    { table_number: 2, assigned_seats: 4 },
+                    { table_number: 1, assigned_seats: 3 },
+                ])
+            );
+        });
+    });
+
     describe("capacity (409)", () => {
         it("rejects a party larger than the free seats", async () => {
             const hiker = await loginAs(NEW_HIKER);
@@ -221,8 +302,19 @@ describe("POST /api/v1/reservations", () => {
 
             expect(res.status).toBe(409);
         });
-    });
 
+        it("rejects a party larger than the free seats even when it declares requirements", async () => {
+            const mario = await loginAs(MARIO);
+
+            const res = await mario
+                .post(RESERVATIONS_URL)
+                .send(bookWith("12:00", 8, [{ hasAllergies: false, details: "2 vegetarians" }]));
+
+            expect(res.status).toBe(409);
+            expect(res.body).toMatchObject({ code: 409, message: expect.any(String) });
+        });
+    });
+    
     describe("one booking per slot (409)", () => {
         it("rejects a second booking of the same hiker in a slot", async () => {
             const mario = await loginAs(MARIO); // already booked 12:00 tomorrow

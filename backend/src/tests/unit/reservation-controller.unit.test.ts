@@ -2,13 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createReservation } from "../../controllers/reservation-controller";
 import { getSlot } from "../../dao/slot-dao";
 import { saveBooking, hasBookingInSlot } from "../../dao/booking-dao";
-import { type CreateReservationRequestDTO } from "../../models/dto/reservation-dto";
+import { RequirementDTO, type CreateReservationRequestDTO } from "../../models/dto/reservation-dto";
 import { Booking } from "../../models/entities/booking";
 import { SeatedAt } from "../../models/entities/seated_at";
 import { Slot } from "../../models/entities/slot";
 import { BadRequestError } from "../../models/errors/badrequest-error";
 import { ConflictError } from "../../models/errors/conflict-error";
 import { notifyBookingCreated } from "../../notifications/booking-confirmation";
+import { DietaryRequirement } from "../../models/entities/dietary_requirement";
 
 // Isolate persistence; keep real booking rules and response mapping
 vi.mock("../../dao/slot-dao", () => ({ getSlot: vi.fn() }));
@@ -147,30 +148,33 @@ describe("POST /reservations — createReservation controller", () => {
     });
 
     it("notifies only after saveBooking has returned successfully", () => {
-        let saved = false;
+    let saved = false;
 
-        vi.mocked(saveBooking).mockImplementation(() => {
-            saved = true;
-            return {
-                booking: new Booking(BOOKING_ID, HIKER_ID),
-                seatings: [makeSeating(1, 4)],
-            };
-        });
-
-        vi.mocked(notifyBookingCreated).mockImplementation(() => {
-            expect(saved).toBe(true);
-            return Promise.resolve();
-        });
-
-        createReservation(HIKER_ID, VALID_REQUEST);
-
-        expect(notifyBookingCreated).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
+    vi.mocked(saveBooking).mockImplementation(() => {
+        saved = true;
+        return {
+            booking: new Booking(BOOKING_ID, HIKER_ID),
+            seatings: [makeSeating(1, 4)],
+            dietary_requirements: []
+        };
     });
+
+    vi.mocked(notifyBookingCreated).mockImplementation(() => {
+        expect(saved).toBe(true);
+        return Promise.resolve();
+    });
+
+    createReservation(HIKER_ID, VALID_REQUEST);
+
+    expect(notifyBookingCreated).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
+    });
+
 
     it("returns the reservation without waiting for the notification promise", async () => {
         vi.mocked(saveBooking).mockReturnValue({
             booking: new Booking(BOOKING_ID, HIKER_ID),
             seatings: [makeSeating(1, 4)],
+            dietary_requirements: []
         });
 
         let finishNotification!: () => void;
@@ -193,4 +197,90 @@ describe("POST /reservations — createReservation controller", () => {
         finishNotification();
         await notification;
     });
+
+
+        it("forwards multiple dietary requirements to the saveBooking DAO call", () => {
+        const requestWithRequirements = {
+            ...VALID_REQUEST,
+            requirements: [
+                { hasAllergies: true, details: "1 vegan, peanut allergy" },
+                { hasAllergies: true, details: "1 shellfish allergy" },
+                { hasAllergies: false, details: "2 vegetarians" }
+            ]
+        };
+
+        vi.mocked(saveBooking).mockReturnValue({
+            booking: new Booking(BOOKING_ID, HIKER_ID),
+            seatings: [makeSeating(1, 4)],
+            dietary_requirements: [
+                new DietaryRequirement(1, BOOKING_ID, true, "1 vegan, peanut allergy"),
+                new DietaryRequirement(2, BOOKING_ID, true, "1 shellfish allergy"),
+                new DietaryRequirement(3, BOOKING_ID, false, "2 vegetarians")
+            ]
+        });
+
+        createReservation(HIKER_ID, requestWithRequirements);
+
+        expect(saveBooking).toHaveBeenCalledWith(
+            HIKER_ID,
+            DAY,
+            START_TIME,
+            requestWithRequirements.partySize,
+            [
+                { allergy_flag: true, description: "1 vegan, peanut allergy" },
+                { allergy_flag: true, description: "1 shellfish allergy" },
+                { allergy_flag: false, description: "2 vegetarians" }
+            ]
+        );
+    });
+
+    it("includes mapped requirements in the response DTO when returned by saveBooking", () => {
+        const requestWithRequirements = {
+            ...VALID_REQUEST,
+            requirements: [{ hasAllergies: true, details: "Peanuts" }]
+        };
+
+        vi.mocked(saveBooking).mockReturnValue({
+            booking: new Booking(BOOKING_ID, HIKER_ID),
+            seatings: [makeSeating(1, 4)],
+            dietary_requirements: [
+                new DietaryRequirement(1, BOOKING_ID, true, "Peanuts")
+            ]
+        });
+
+        const response = createReservation(HIKER_ID, requestWithRequirements);
+
+        expect(response.requirements).toEqual([
+            new RequirementDTO(true, "Peanuts")
+        ]);
+        expect(response.requirements[0]).toBeInstanceOf(RequirementDTO);
+    });
+
+        it("handles zero dietary requirements by forwarding an empty array to the DAO", () => {
+        const requestWithoutRequirements = {
+            ...VALID_REQUEST,
+            requirements: []
+        };
+
+        vi.mocked(saveBooking).mockReturnValue({
+            booking: new Booking(BOOKING_ID, HIKER_ID),
+            seatings: [makeSeating(1, 4)],
+            dietary_requirements: []
+        });
+
+        const response = createReservation(HIKER_ID, requestWithoutRequirements);
+
+        expect(saveBooking).toHaveBeenCalledWith(
+            HIKER_ID,
+            DAY,
+            START_TIME,
+            requestWithoutRequirements.partySize,
+            []
+        );
+        expect(response.requirements).toEqual([]);
+    });
+
 });
+
+
+
