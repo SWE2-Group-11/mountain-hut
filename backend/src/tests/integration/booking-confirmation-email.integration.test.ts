@@ -82,10 +82,11 @@ describe("Booking confirmation email - integration", () => {
             expect(email.text).toContain(`Booking reference: ${reference}`);
             expect(email.text).toContain(`Date: ${formatSlotDate(tomorrow)}`);
             expect(email.text).toContain("Time slot: 13:00–14:00");
-            expect(email.text).toContain("Party size: 3");
+            expect(email.text).toContain("Party size: 3 people");
             expect(email.text).toContain("No party requirements.");
             expect(email.html).toContain("Your booking is confirmed");
             expect(email.html).toContain(reference);
+            expect(email.html).toContain("3 people");
         });
 
         it("shows the end time from the slot duration", async () => {
@@ -106,7 +107,16 @@ describe("Booking confirmation email - integration", () => {
 
             expect(res.body.seatings).toHaveLength(2);
             await waitForEmails(1);
-            expect(mail.inbox[0].text).toContain("Party size: 7");
+            expect(mail.inbox[0].text).toContain("Party size: 7 people");
+        });
+
+        it("reports a party of one in the singular", async () => {
+            const hiker = await loginAs(NEW_HIKER);
+
+            await hiker.post(RESERVATIONS_URL).send(book("13:00", 1));
+
+            await waitForEmails(1);
+            expect(mail.inbox[0].text).toContain("Party size: 1 person\n");
         });
 
         it("sends each hiker their own confirmation", async () => {

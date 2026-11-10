@@ -3,7 +3,6 @@ import express from "express";
 import request from "supertest";
 import reservationRouter from "../../routes/reservation-route";
 import { createReservation } from "../../controllers/reservation-controller";
-import { sendAppError } from "../../services/error-service";
 import { BadRequestError } from "../../models/errors/badrequest-error";
 import { ConflictError } from "../../models/errors/conflict-error";
 import type { CreateReservationResponseDTO } from "../../models/dto/reservation-dto";
