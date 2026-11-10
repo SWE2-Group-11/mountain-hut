@@ -2,6 +2,26 @@
 
 Base URL: `http://localhost:3000/api/v1`
 
+## Accounts
+
+### POST /accounts - Register a hiker account
+
+- **Description:** registers a new account; every registered account is a hiker account. The user is not logged in by the registration
+- **Authentication:** not required
+- **Request body:**
+  - `fullname`: required string with at least one non-space character; surrounding spaces are removed
+  - `mobile_number`: required string with at least one non-space character; surrounding spaces are removed
+  - `email`: required, valid email address; stored lowercase, so it is case-insensitive for registration and login
+  - `password`: required, non-empty string; stored as a salted hash, never in plain text
+  - `notes`: optional string, at most 200 characters after removing surrounding spaces; `null` if omitted
+  - `emergency_contact`: optional string, at most 200 characters after removing surrounding spaces; `null` if omitted
+  - Any other field (e.g. `role`) is ignored
+- **Responses:**
+  - `201 Created`: account created; returns `id`, `email` and `role` (always `"hiker"`)
+  - `400 Bad Request`: missing or invalid request fields, or `notes`/`emergency_contact` longer than 200 characters
+  - `409 Conflict`: an account (hiker or staff) with the same email already exists
+  - `500 Internal Server Error`: unexpected server error
+
 ## Service
 
 ### POST /reservations - Create a reservation

@@ -14,8 +14,22 @@ export class AccountResponseDTO {
 }
 
 export const AccountLoginRequestSchema = z.object({
-    email: z.email(),
+    // what is this hideous thing doing: checking if email is a string,
+    // trimming leading and ending spaces and lowercase the entire thing.
+    // THEN pipe() passes the result to the email format checker
+    email: z.string().trim().toLowerCase().pipe(z.email()),
     password: z.string().min(1),
 });
+
+export const AccountRegistrationRequestSchema = z.object({
+    fullname: z.string().trim().min(1),
+    mobile_number: z.string().trim().min(1),
+    notes: z.string().trim().max(200).optional(),
+    emergency_contact: z.string().trim().max(200).optional(),
+    email: z.string().trim().toLowerCase().pipe(z.email()),
+    password: z.string().min(1),
+});
+
+export type AccountRegistrationRequestDTO = z.infer<typeof AccountRegistrationRequestSchema>;
 
 export type AccountLoginRequestDTO = z.infer<typeof AccountLoginRequestSchema>;
