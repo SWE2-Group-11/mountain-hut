@@ -82,3 +82,60 @@ export const CreateReservationRequestSchema = z.object({
  * Data Transfer Object for Reservation request payloads, inferred from the schema.
  */
 export type CreateReservationRequestDTO = z.infer<typeof CreateReservationRequestSchema>;
+
+const StaffReservationHikerSchema = z.discriminatedUnion("mode", [
+    z.object({
+        mode: z.literal("existing"),
+        hikerId: z.number().int().positive(),
+    }).strict(),
+
+    z.object({
+        mode: z.literal("temporary"),
+        fullname: z.string().trim().min(1),
+        mobile_number: z.string().trim().min(1).optional(),
+    }).strict(),
+
+    z.object({
+        mode: z.literal("registered"),
+        fullname: z.string().trim().min(1),
+        mobile_number: z.string().trim().min(1),
+        email: z.string().trim().toLowerCase().pipe(z.email()),
+        notes: z.string().trim().max(200).optional(),
+        emergency_contact: z.string().trim().max(200).optional(),
+    }).strict(),
+]);
+
+export const CreateStaffReservationRequestSchema =
+    CreateReservationRequestSchema.extend({
+        hiker: StaffReservationHikerSchema,
+    }).strict();
+
+export type CreateStaffReservationRequestDTO =
+    z.infer<typeof CreateStaffReservationRequestSchema>;
+
+export type CreateStaffReservationResponseDTO = CreateReservationResponseDTO & {
+    hikerId: number;
+    // Only for a newly created regular account; deliver to the authorized staff.
+    initialPassword?: string;
+};
+
+/** At least one search criterion; multiple criteria are combined with AND. */
+export const SearchStaffHikersRequestSchema = z.object({
+    name: z.string().trim().min(1).optional(),
+    phone: z.string().trim().min(1).optional(),
+    email: z.string().trim().toLowerCase().pipe(z.email()).optional(),
+}).strict().refine(
+    (query) => Object.values(query).some((value) => value !== undefined),
+    { message: "Provide at least one of name, phone or email" }
+);
+
+export type SearchStaffHikersRequestDTO =
+    z.infer<typeof SearchStaffHikersRequestSchema>;
+
+export type StaffHikerDTO = {
+    id: number;
+    fullname: string;
+    mobile_number: string | null;
+    email: string | null;
+    hasAccount: boolean;
+};
