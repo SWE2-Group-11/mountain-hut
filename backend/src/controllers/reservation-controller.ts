@@ -7,6 +7,7 @@ import {
     insertSeatings,
     saveBooking,
     hasBookingInSlot,
+    getTablesAvailability,
 } from "../dao/booking-dao";
 import { replaceRequirements } from "../dao/dietary-requirement-dao";
 import { inTransaction } from "../database/database";
@@ -24,7 +25,8 @@ import {
     bookingDataToCreateReservationResponseDTO,
     reservationToResponseDTO,
 } from "../services/mapper-service";
-import { isBookingOpen} from "../domain/booking-rules";
+import { isBookingOpen } from "../domain/booking-rules";
+import type { Assignment } from "../domain/booking-rules";
 import { BOOKING_CUTOFF_HOURS, HUT_TIMEZONE, CHANGE_BOOKING_CUTOFF_HOURS } from "../config/config";
 import { notifyBookingCreated } from "../notifications/booking-confirmation";
 import {DateTime} from "luxon";
@@ -57,8 +59,8 @@ export const createReservation = (
     if (hasBookingInSlot(hiker_id, slot.date, slot.start_time)) {
     throw new ConflictError(
         "You already have a booking for this date and time"
-    );
-}
+        ); 
+    }
   
     const requirements = (request.requirements ?? []).map((r) => ({
         allergy_flag: r.hasAllergies,
@@ -88,6 +90,14 @@ export const getReservations = (hiker_id: number): CreateReservationResponseDTO[
 /**
  * Updates a reservation belonging to the authenticated hiker.
  * The route must validate the request and reservation identifier.
+ * @param hiker_id The ID of the authenticated hiker.
+ * @param reservation_id The ID of the reservation to update.
+ * @param request The request payload containing the new date, slot, party size and/or dietary requirements.
+ * @returns The updated booking with the tables assigned and the declared requirements.
+ * @throws NotFoundError if the reservation does not exist or the requested slot does not exist.
+ * @throws ForbiddenError if the reservation belongs to another hiker.
+ * @throws BadRequestError if the change is attempted after the change deadline or if the requested slot starts in less than BOOKING_CUTOFF_HOURS hours.
+ * @throws ConflictError if the hiker already has a booking in the requested slot or if the requested capacity is no longer available.
  */
 export const updateReservation = (
     hiker_id: number,
@@ -159,13 +169,59 @@ export const updateReservation = (
     let seatings = reservation.seatings;
 
     if (slotChanged || party_size !== reservation.party_size) {
+        let assignment: Assignment[] | null = null;
+
+        if (!slotChanged) {
+            assignment = reservation.seatings.map((seating) => ({
+                table_number: seating.table_number,
+                assigned_seats: seating.assigned_seats,
+            }));
+
+            if (party_size > reservation.party_size) {
+                const freeByTable = new Map(
+                    getTablesAvailability(date, start_time).map((table) => [
+                        table.table_number,
+                        table.free_seats,
+                    ])
+                );
+
+                let seatsToAdd = party_size - reservation.party_size;
+
+                for (const table of assignment) {
+                    const added = Math.min(
+                        seatsToAdd,
+                        freeByTable.get(table.table_number) ?? 0
+                    );
+
+                    table.assigned_seats += added;
+                    seatsToAdd -= added;
+                }
+
+                if (seatsToAdd > 0) assignment = null;
+            } else {
+                let seatsToRemove = reservation.party_size - party_size;
+
+                for (let i = assignment.length - 1; i >= 0; i--) {
+                    const removed = Math.min(
+                        seatsToRemove,
+                        assignment[i].assigned_seats
+                    );
+
+                    assignment[i].assigned_seats -= removed;
+                    seatsToRemove -= removed;
+                }
+
+                assignment = assignment.filter(
+                    (table) => table.assigned_seats > 0
+                );
+            }
+        }
+
         deleteSeatings(reservation_id);
 
-        const assignment = getBookingAvailability(
-            date,
-            start_time,
-            party_size
-        );
+        if (assignment === null) {
+            assignment = getBookingAvailability(date, start_time, party_size);
+        }
 
         if (!assignment || assignment.length === 0) {
             throw new ConflictError(
