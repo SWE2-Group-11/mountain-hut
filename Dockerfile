@@ -43,6 +43,6 @@ RUN mkdir -p /app/data
 # 5173 frontend, 3000 REST API, 8025 Mailpit web UI
 EXPOSE 5173 3000 8025
 
-# Start Mailpit and the frontend in the background, then the backend.
-# The database is created and seeded on the first start and kept on later starts.
-CMD ["sh", "-c", "mailpit & (cd /app/frontend && exec npx vite preview --host 0.0.0.0 --port 5173 --strictPort) & [ -f \"$DB_PATH\" ] || export RESET_DB=true; exec node dist/index.js"]
+# Startup script: Mailpit, frontend and backend
+COPY docker-start.sh /app/docker-start.sh
+CMD ["sh", "/app/docker-start.sh"]

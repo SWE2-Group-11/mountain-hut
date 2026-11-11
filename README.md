@@ -141,11 +141,28 @@ The application runs on `http://localhost:5173`.
 | `npm run lint` | Lint with oxlint |
 | `npm run preview` | Preview production build locally |
 
-### Project structure
+## E2E tests
 
+Playwright starts everything the tests need: Mailpit (with Docker), the backend on a fresh in-memory database seeded at start, and the frontend.
+
+First time:
+
+```bash
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
+cd e2e && npm install
+npx playwright install chromium
 ```
-src/
-  main.tsx      React entry point
-  App.tsx       Root application component
-  index.css     Global styles
+
+Every time, with Docker running and ports 3000 and 5173 free (stop the `mountain-hut` container and any `npm run dev`):
+
+```bash
+cd e2e
+npm test
 ```
+
+### Scripts
+
+| Command | Description |
+|---|---|
+| `npm test` | Run all tests |
