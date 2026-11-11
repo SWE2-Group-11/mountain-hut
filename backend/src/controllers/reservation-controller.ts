@@ -1,8 +1,12 @@
 import { getSlot } from "../dao/slot-dao";
-import { saveBooking, hasBookingInSlot } from "../dao/booking-dao";
+// TODO: Change the import path to use the new DAO once it is implemented
+import { saveBooking, hasBookingInSlot, getBooking, deleteBooking } from "../dao/booking-dao";
 import { CreateReservationRequestDTO, CreateReservationResponseDTO } from "../models/dto/reservation-dto";
+import { inTransaction } from "../database/database";
+import { NotFoundError } from "../models/errors/notfound-error";
 import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
+import { ForbiddenError } from "../models/errors/forbidden-error";
 import { bookingDataToCreateReservationResponseDTO } from "../services/mapper-service";
 import { isBookingOpen } from "../domain/booking-rules";
 import { BOOKING_CUTOFF_HOURS } from "../config/config";
@@ -53,3 +57,28 @@ export const createReservation = (
         result.booking, result.seatings, result.dietary_requirements, slot.date, slot.start_time
     );
 };
+
+
+/**
+ * Cancels a reservation for the authenticated hiker.
+ * @param hiker_id The ID of the authenticated hiker.
+ * @param reservation_id The ID of the reservation to cancel.
+ * @throws NotFoundError if the reservation does not exist.
+ * @throws ForbiddenError if the reservation does not belong to the authenticated hiker.
+ * @throws ConflictError if the reservation could not be cancelled.
+ */
+export const cancelReservation = (hiker_id: number, reservation_id: number): void => inTransaction(() => {
+    const reservation = getBooking(reservation_id);
+    if (!reservation) {
+        throw new NotFoundError("The reservation does not exist");
+    }
+    if(reservation.booking.hiker_id !== hiker_id) {
+        throw new ForbiddenError("This reservation does not belong to the authenticated hiker");
+    }
+    // TODO: integrate with the correct DAO once it is implemented
+    const deleted =deleteBooking(reservation_id);
+
+    if(!deleted) {
+        throw new ConflictError("The reservation could not be cancelled");
+    }
+});
