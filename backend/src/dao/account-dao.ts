@@ -69,12 +69,12 @@ export const createHikerAccount = (input: HikerInput): Hiker | null => {
             return null;
         }
         const { lastInsertRowid } = db
-            .prepare("INSERT INTO account (email, password_salt, password_hash) VALUES (?, ?, ?)")
-            .run(email, salt, hash);
+            .prepare("INSERT INTO account (email, password_salt, password_hash, must_change_password) VALUES (?, ?, ?, ?)")
+            .run(email, salt, hash, false);
         const id = Number(lastInsertRowid);
         db.prepare<[number, string, string, string | null, string | null]>(
             "INSERT INTO hiker (account_id, full_name, mobile_number, notes, emergency_contact) VALUES (?, ?, ?, ?, ?)"
         ).run(id, full_name, mobile_number, notes, emergency_contact);
-        return new Hiker(id, email, salt, hash, full_name, mobile_number, notes, emergency_contact);
+        return new Hiker(id, email, salt, hash, false, full_name, mobile_number, notes, emergency_contact);
     });
 };
