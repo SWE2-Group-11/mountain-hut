@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  globalTeardown: './global-teardown.ts',
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
@@ -14,8 +15,9 @@ export default defineConfig({
   webServer: [
     {
       // Mailpit catches the emails sent by the backend (SMTP 1025, API on 8025). An instance
-      // already running (e.g. from docker compose) is reused: the tests never clear its inbox.
-      command: 'docker run --rm -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.27.0',
+      // already running (e.g. started with the README command) is reused: the tests never clear its inbox.
+      // The container started here is removed by global-teardown.ts.
+      command: 'docker run --rm --name e2e-mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.27.0',
       url: 'http://localhost:8025/readyz',
       reuseExistingServer: true,
     },

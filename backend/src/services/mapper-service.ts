@@ -9,6 +9,7 @@ import { DietaryRequirement } from '../models/entities/dietary_requirement';
 import { SeatedAt } from '../models/entities/seated_at';
 import { AppError } from '../models/errors/app-error';
 import type { Assignment } from '../domain/booking-rules';
+import type { Reservation } from '../dao/booking-dao';
 import { minutesToTime, timeToMinutes } from './date-service';
 
 /**
@@ -90,3 +91,17 @@ export const assignmentsToAvailabilityResponseDTO = (
 
     return new GetAvailabilityResponseDTO(available);
 };
+
+/**
+ * Maps a complete reservation returned by the DAO to its response DTO.
+ */
+export const reservationToResponseDTO = (
+    reservation: Reservation
+): CreateReservationResponseDTO =>
+    bookingDataToCreateReservationResponseDTO(
+        reservation.booking,
+        reservation.seatings,
+        reservation.dietary_requirements,
+        reservation.date,
+        reservation.start_time
+    );

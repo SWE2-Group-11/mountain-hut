@@ -83,6 +83,18 @@ export const CreateReservationRequestSchema = z.object({
  */
 export type CreateReservationRequestDTO = z.infer<typeof CreateReservationRequestSchema>;
 
+/**
+ * Partial update schema for Reservation request payloads.
+ * Used in PATCH /reservations/:id
+ */
+export const UpdateReservationRequestSchema = CreateReservationRequestSchema.partial().refine(
+    (request) => Object.values(request).some((value) => value !== undefined),
+    {message: "At least one field must be provided for update."}
+);
+
+export type UpdateReservationRequestDTO = z.infer<typeof UpdateReservationRequestSchema>;
+
+export type UpdateReservationResponseDTO = CreateReservationResponseDTO;
 const StaffReservationHikerSchema = z.discriminatedUnion("mode", [
     z.object({
         mode: z.literal("existing"),

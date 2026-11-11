@@ -9,11 +9,13 @@ export const RESET_DB = process.env.RESET_DB === "true";
 // Application URLs
 const APP_V1_BASE_URL = "/api/v1";
 const URL_AUTH = "/session";
+const URL_ACCOUNTS = "/accounts";
 const URL_RESERVATIONS = "/reservations";
 const URL_SLOTS = "/slots";
 
 export const ROUTES = {
     V1_AUTH: `${APP_V1_BASE_URL}${URL_AUTH}`,
+    V1_ACCOUNTS: `${APP_V1_BASE_URL}${URL_ACCOUNTS}`,
     V1_RESERVATIONS: `${APP_V1_BASE_URL}${URL_RESERVATIONS}`,
     V1_SLOTS: `${APP_V1_BASE_URL}${URL_SLOTS}`,
 } as const;
@@ -32,6 +34,9 @@ export const PASSWORD_KEY_LENGTH = 16;
 
 // How many hours before the due time can be reserved a seat
 export const BOOKING_CUTOFF_HOURS = 2;
+
+// How many hours before the due time can be changed a reservation
+export const CHANGE_BOOKING_CUTOFF_HOURS = 48;
 
 // timezone in which the dates and start_time of the slots are expressed
 export const HUT_TIMEZONE = "Europe/Rome"; 
