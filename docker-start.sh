@@ -5,7 +5,8 @@
 mailpit &
 
 # Frontend: production bundle served on port 5173
-(cd /app/frontend && exec npx vite preview --host 0.0.0.0 --port 5173 --strictPort) &
+# -s falls back to index.html for client-side routes, -L disables per-request logs
+serve -s -L -l tcp://0.0.0.0:5173 /app/frontend/dist &
 
 # Print the URLs once the services have started
 (

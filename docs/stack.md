@@ -28,7 +28,7 @@
 | `react-router-dom` | Client-side routing |
 | `tailwindcss`, `@tailwindcss/postcss`, `postcss`, `autoprefixer` | Styling |
 | `lucide-react` | Icons |
-| `vite`, `@vitejs/plugin-react` | Development server with HMR, bundler and production preview |
+| `vite`, `@vitejs/plugin-react` | Development server with HMR and bundler |
 | `typescript` | Type checking and compilation (v6) |
 | `oxlint` | Linting |
 
@@ -37,3 +37,11 @@
 | Package | Used for |
 |---|---|
 | `@playwright/test` | End-to-end tests in the browser |
+
+## Docker image
+
+| Tool | Used for |
+|---|---|
+| `tini` | Runs as PID 1: forwards stop signals to all processes and reaps zombies |
+| `serve` | Serves the built frontend bundle |
+| Mailpit | Catches every email the system sends |
