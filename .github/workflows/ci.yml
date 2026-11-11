@@ -2,9 +2,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ "main", "dev", "QA" ]
+    branches: [ "main", "dev" ]
   pull_request:
-    branches: [ "main", "dev", "QA" ]
+    branches: [ "main", "dev" ]
 
 jobs:
   backend-ci:
