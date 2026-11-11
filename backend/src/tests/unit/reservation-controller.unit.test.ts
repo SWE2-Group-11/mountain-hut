@@ -148,27 +148,26 @@ describe("POST /reservations — createReservation controller", () => {
     });
 
     it("notifies only after saveBooking has returned successfully", () => {
-    let saved = false;
+        let saved = false;
 
-    vi.mocked(saveBooking).mockImplementation(() => {
-        saved = true;
-        return {
-            booking: new Booking(BOOKING_ID, HIKER_ID),
-            seatings: [makeSeating(1, 4)],
-            dietary_requirements: []
-        };
+        vi.mocked(saveBooking).mockImplementation(() => {
+            saved = true;
+            return {
+                booking: new Booking(BOOKING_ID, HIKER_ID),
+                seatings: [makeSeating(1, 4)],
+                dietary_requirements: [],
+            };
+        });
+
+        vi.mocked(notifyBookingCreated).mockImplementation(() => {
+            expect(saved).toBe(true);
+            return Promise.resolve();
+        });
+
+        createReservation(HIKER_ID, VALID_REQUEST);
+
+        expect(notifyBookingCreated).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
     });
-
-    vi.mocked(notifyBookingCreated).mockImplementation(() => {
-        expect(saved).toBe(true);
-        return Promise.resolve();
-    });
-
-    createReservation(HIKER_ID, VALID_REQUEST);
-
-    expect(notifyBookingCreated).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
-    });
-
 
     it("returns the reservation without waiting for the notification promise", async () => {
         vi.mocked(saveBooking).mockReturnValue({
@@ -281,6 +280,3 @@ describe("POST /reservations — createReservation controller", () => {
     });
 
 });
-
-
-
