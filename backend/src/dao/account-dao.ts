@@ -3,7 +3,7 @@ import { db, inTransaction } from "../database/database";
 import { Account, Hiker, Staff, StaffRole } from "../models/entities/account";
 import { generatePasswordHash, hashPassword } from "../services/password-service";
 
-type AccountRow = { id: number; email: string; password_salt: string; password_hash: string };
+type AccountRow = { id: number; email: string; password_salt: string; password_hash: string; must_change_password: number };
 type HikerRow = { full_name: string; mobile_number: string; notes: string | null; emergency_contact: string | null };
 type StaffRow = { name: string; role: StaffRole };
 
@@ -13,7 +13,7 @@ type StaffRow = { name: string; role: StaffRole };
  */
 export const getAccountByCredentials = (email: string, password: string): Account | null => {
     const account = db
-        .prepare<[string], AccountRow>("SELECT id, email, password_salt, password_hash FROM account WHERE email = ?")
+        .prepare<[string], AccountRow>("SELECT id, email, password_salt, password_hash, must_change_password FROM account WHERE email = ?")
         .get(email);
     if (!account) {
         return null;
@@ -31,7 +31,7 @@ export const getAccountByCredentials = (email: string, password: string): Accoun
         .prepare<[number], HikerRow>("SELECT full_name, mobile_number, notes, emergency_contact FROM hiker WHERE account_id = ?")
         .get(account.id);
     if (hiker) {
-        return new Hiker(account.id, account.email, account.password_salt, account.password_hash,
+        return new Hiker(account.id, account.email, account.password_salt, account.password_hash, account.must_change_password === 1,
             hiker.full_name, hiker.mobile_number, hiker.notes, hiker.emergency_contact);
     }
 
@@ -39,7 +39,7 @@ export const getAccountByCredentials = (email: string, password: string): Accoun
         .prepare<[number], StaffRow>("SELECT name, role FROM staff WHERE account_id = ?")
         .get(account.id);
     if (staff) {
-        return new Staff(account.id, account.email, account.password_salt, account.password_hash,
+        return new Staff(account.id, account.email, account.password_salt, account.password_hash, account.must_change_password === 1,
             staff.name, staff.role);
     }
 

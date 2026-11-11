@@ -2,6 +2,7 @@ PRAGMA foreign_keys = ON;
 
 DELETE FROM dietary_requirement;
 DELETE FROM seated_at;
+DELETE FROM temporary_hiker;
 DELETE FROM booking;
 DELETE FROM slot_table;
 DELETE FROM slot;

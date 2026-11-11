@@ -44,14 +44,19 @@ INSERT INTO slot_table (slot_date, slot_start_time, table_number, seats) VALUES
     (date('now', 'localtime', '+2 days'), '12:00', 4, 2);
 
 -- Bookings
-INSERT INTO booking (id, hiker_id) VALUES (1, 3), (2, 4), (3, 3);
+INSERT INTO booking (id, hiker_id) VALUES (1, 3), (2, 4), (3, 3), (4, NULL);
+
+-- Temporary hikers
+INSERT INTO temporary_hiker (booking_id, full_name, mobile_number) VALUES
+    (4, 'Paolo Verdi', '+39 340 111 2233');
 
 -- Seats
 INSERT INTO seated_at (booking_id, slot_date, slot_start_time, table_number, assigned_seats) VALUES
     (1, date('now', 'localtime', '+1 day'), '12:00', 4, 2),
     (2, date('now', 'localtime', '+1 day'), '12:00', 3, 6),
     (2, date('now', 'localtime', '+1 day'), '12:00', 1, 1),
-    (3, date('now', 'localtime', '+1 day'), '19:30', 1, 4);
+    (3, date('now', 'localtime', '+1 day'), '19:30', 1, 4),
+    (4, date('now', 'localtime', '+2 days'), '12:00', 2, 3);
 
 -- Dietary requirements
 INSERT INTO dietary_requirement (booking_id, allergy_flag, description) VALUES
