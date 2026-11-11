@@ -13,12 +13,13 @@ The editable source is [`img/schema-core.er`](img/schema-core.er): load it in th
 
 Primary keys in **bold**, `*` = nullable.
 
-- account(**id**, email, password_salt, password_hash)
+- account(**id**, email, password_salt, password_hash, must_change_password)
 - hiker(**account_id** → account, full_name, mobile_number, notes\*, emergency_contact\*)
 - staff(**account_id** → account, name, role)
 - slot(**date**, **start_time**, duration)
 - slot_table(**(slot_date, slot_start_time)** → slot, **table_number**, seats)
-- booking(**id**, hiker_id → hiker)
+- booking(**id**, hiker_id\* → hiker)
+- temporary_hiker(**booking_id** → booking, full_name, mobile_number\*)
 - seated_at(**booking_id** → booking, **(slot_date, slot_start_time, table_number)** → slot_table, assigned_seats)
 - dietary_requirement(**id**, booking_id → booking, allergy_flag, description)
 
@@ -35,14 +36,15 @@ Primary keys in **bold**, `*` = nullable.
 - A hiker can have at most one booking per slot.
 - A booking can be created only up to 2 hours before the slot start (`date` + `start_time`).
 - A booking can be changed only up to 48 hours before the slot start.
+- Every booking belongs to exactly one of: a hiker (`booking.hiker_id`) or a temporary hiker (a row in `temporary_hiker`), never both and never none.
 
 ## SQL scripts (`backend/src/database/sql/`)
 
 | File | Content |
 |---|---|
 | `drop-core.sql` | Drops all tables |
-| `init-core.sql` | Creates `account`, `hiker`, `staff`, `slot`, `slot_table`, `booking`, `seated_at`, `dietary_requirement` |
-| `seed-core.sql` | 4 demo accounts (warden, employee, 2 hikers), 4 slots with the same table layout, 3 demo bookings with seats and dietary requirements |
+| `init-core.sql` | Creates all tables |
+| `seed-core.sql` | 4 demo accounts (warden, employee, 2 hikers), 4 slots with the same table layout, 4 demo bookings with seats and dietary requirements (3 by hikers, 1 for a temporary hiker) |
 | `clear-core.sql` | Empties all tables |
 
 `RESET_DB=true` runs drop, init and seed at startup.

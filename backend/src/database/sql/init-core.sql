@@ -5,7 +5,8 @@ CREATE TABLE account (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     email         TEXT    NOT NULL UNIQUE,
     password_salt TEXT    NOT NULL,
-    password_hash TEXT    NOT NULL
+    password_hash TEXT    NOT NULL,
+    must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1))
 );
 
 -- Hikers
@@ -49,7 +50,14 @@ CREATE TABLE slot_table (
 -- Bookings
 CREATE TABLE booking (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    hiker_id INTEGER NOT NULL REFERENCES hiker(account_id)
+    hiker_id INTEGER REFERENCES hiker(account_id)
+);
+
+-- Temporary hikers
+CREATE TABLE temporary_hiker (
+    booking_id    INTEGER PRIMARY KEY REFERENCES booking(id) ON DELETE CASCADE,
+    full_name     TEXT    NOT NULL,
+    mobile_number TEXT
 );
 
 -- Seats assigned to a booking at each table
