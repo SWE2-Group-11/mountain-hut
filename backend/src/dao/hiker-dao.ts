@@ -1,5 +1,10 @@
 import { db } from "../database/database";
-import type { SearchStaffHikersRequestDTO } from "../models/dto/reservation-dto";
+
+export type HikerSearchFilter = {
+    name?: string
+    phone?:string
+    email?: string
+}
 
 export type HikerProfile = {
     id: number | null;          // account id; null for temporary hikers
@@ -29,7 +34,7 @@ export const getHikerById = (id: number): HikerProfile | null =>
  * and therefore only matches registered hikers.
  * @returns At most 50 hikers ordered by name. A temporary hiker is identified by its booking_id.
  */
-export const searchHikers = ({ name, phone, email }: SearchStaffHikersRequestDTO): HikerProfile[] => {
+export const searchHikersFilter = ({ name, phone, email }: HikerSearchFilter): HikerProfile[] => {
     const sql = `
         SELECT h.account_id AS id, NULL AS booking_id, h.full_name, h.mobile_number, a.email
         FROM hiker h
