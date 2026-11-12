@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { useAuth } from '../useAuth';
@@ -17,6 +17,17 @@ const inputClass = (hasError: boolean) =>
   `w-full px-4 py-3 bg-[#FDFBF7] border rounded-xl text-sm text-[#1C2826] focus:outline-none focus:border-[#234E39] transition-all ${
     hasError ? 'border-red-300' : 'border-[#EFEADF]'
   }`;
+
+  // Order of the fields on the screen, and the id of each input: the first one with an error gets the focus
+const FIELD_IDS: [keyof RegistrationForm, string][] = [
+  ['fullname', 'register-fullname'],
+  ['mobileNumber', 'register-mobile'],
+  ['email', 'register-email'],
+  ['password', 'register-password'],
+  ['confirmPassword', 'register-confirm'],
+  ['emergencyContact', 'register-emergency'],
+  ['notes', 'register-notes'],
+];
 
 const labelClass = 'text-xs font-bold uppercase tracking-wider text-[#5A6865]';
 
@@ -53,6 +64,14 @@ export const RegisterForm: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdEmail, setCreatedEmail] = useState<string | null>(null);
+  const formErrorRef = useRef<HTMLDivElement>(null);
+
+
+  useEffect(() => {
+    if (!formError || !formErrorRef.current) return;
+    formErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    formErrorRef.current.focus({ preventScroll: true });
+  }, [formError]);
 
   // Someone who is already signed in has no reason to be here
   if (!authLoading && user && !createdEmail) {
@@ -80,7 +99,12 @@ export const RegisterForm: React.FC = () => {
 
     const errors = validateRegistration(form);
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+       if (Object.keys(errors).length > 0) {
+      // Take the person to the first field to fix (focusing scrolls it into view)
+      const first = FIELD_IDS.find(([name]) => errors[name]);
+      if (first) document.getElementById(first[1])?.focus();
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -134,6 +158,8 @@ export const RegisterForm: React.FC = () => {
 
       {formError && (
         <div
+          ref={formErrorRef}
+          tabIndex={-1}
           role="alert"
           className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-red-700 text-xs"
         >
