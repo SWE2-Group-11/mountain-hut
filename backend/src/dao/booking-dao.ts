@@ -45,7 +45,7 @@ export type TemporaryHikerInput = {
 
 /**
  * Persists a new booking with the seats assigned to it and its dietary requirements, atomically.
- * @param hiker_id The account of the hiker making the reservation.
+ * @param hiker The account id of an hiker making the reservation, or the data of a temporary hiker trough witch is made a reservation.
  * @param date The day of the slot (YYYY-MM-DD).
  * @param start_time The start time of the slot (HH:MM).
  * @param party_size The number of people to seat.
