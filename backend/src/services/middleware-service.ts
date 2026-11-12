@@ -2,11 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { sendBadRequestError } from "../services/error-service";
 
-// req.parsedQuery: the query string validated by validateQuery
+// req.parsedQuery / req.parsedParams: the query string / path parameters validated by validateQuery / validateParams
 declare global {
     namespace Express {
         interface Request {
             parsedQuery: any;
+            parsedParams: unknown;
         }
     }
 }
@@ -40,5 +41,19 @@ export const validateQuery = (schema: z.ZodType) =>
             return sendZodBadRequestError(result.error, res);
         }
         req.parsedQuery = result.data;
+        next();
+    };
+
+/**
+ * Validates the path parameters with the given schema and stores the parsed value in req.parsedParams,
+ * keeping req.params as the raw strings typed by Express.
+ */
+export const validateParams = (schema: z.ZodType) =>
+    (req: Request, res: Response, next: NextFunction) => {
+        const result = schema.safeParse(req.params);
+        if (!result.success) {
+            return sendZodBadRequestError(result.error, res);
+        }
+        req.parsedParams = result.data;
         next();
     };

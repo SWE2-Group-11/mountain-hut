@@ -24,26 +24,6 @@ Base URL: `http://localhost:3000/api/v1`
 
 ## Service
 
-### POST /reservations - Create a reservation
-
-- **Description:** create the reservation to book a table for an authenticated hiker, optionally declaring the dietary requirements of the party
-- **Authentication:** required
-- **Permissions:** hiker
-- **Request body:**
-  - `date`: required, formatted `YYYY-MM-DD`
-  - `slot`: required, start time of the slot, formatted `HH:mm`
-  - `partySize`: required positive integer
-  - `requirements`: optional list of objects, each describing the dietary requirements of a subset of the party; if omitted, no dietary requirements are declared
-    - `hasAllergies`: required boolean
-    - `details`: required string with at least one non-space character, describing the people of the subset and their dietary restrictions or allergies (e.g. `"2 vegetarians"`)
-- **Responses:**
-  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`)
-  - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement), slot that does not exist, or slot that starts in less than 2 hours
-  - `401 Unauthorized`: user is not authenticated
-  - `403 Forbidden`: user does not have the required permissions
-  - `409 Conflict`: the user already has a booking in the same slot (date and time), or the requested capacity is no longer available
-  - `500 Internal Server Error`: unexpected server error
-
 ### GET /slots - Get slots for the selected date
 
 - **Description:** get the slots available for the selected date, including their booking availability
@@ -119,36 +99,57 @@ Base URL: `http://localhost:3000/api/v1`
   - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
 
+### POST /reservations - Create a reservation
+
+- **Description:** create the reservation to book a table for an authenticated hiker, optionally declaring the dietary requirements of the party
+- **Authentication:** required
+- **Permissions:** hiker
+- **Request body:**
+  - `date`: required, formatted `YYYY-MM-DD`
+  - `slot`: required, start time of the slot, formatted `HH:mm`
+  - `partySize`: required positive integer
+  - `requirements`: optional list of objects, each describing the dietary requirements of a subset of the party; if omitted, no dietary requirements are declared
+    - `hasAllergies`: required boolean
+    - `details`: required string with at least one non-space character, describing the people of the subset and their dietary restrictions or allergies (e.g. `"2 vegetarians"`)
+- **Responses:**
+  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`)
+  - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement), slot that does not exist, or slot that starts in less than 2 hours
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
+  - `409 Conflict`: the user already has a booking in the same slot (date and time), or the requested capacity is no longer available
+  - `500 Internal Server Error`: unexpected server error
+
 ### PATCH /reservations/:reservationId - Update a reservation
 
-- **Description:** updates a reservation belonging to the authenticated user
+- **Description:** updates a reservation belonging to the authenticated hiker
 - **Authentication:** required
-- **Permissions:** user
+- **Permissions:** hiker
 - **Path parameters:**
-  - `reservationId`: required reservation identifier
+  - `reservationId`: required positive integer, reservation identifier
 - **Request Body:**
   - `date`: optional date, formatted `YYYY-MM-DD`
-  - `slot`: optional slot identifier
+  - `slot`: optional start time of the slot, formatted `HH:mm`
   - `partySize`: optional positive integer
   - `requirements`: optional list of objects; when provided, replaces all the previous requirements (an empty list removes them)
     - `hasAllergies`: required boolean
     - `details`: required string describing dietary restrictions or preferences
   - At least one field must be provided
 - **Responses:**
-  - `200 OK`: returns the updated reservation
-  - `400 Bad Request`: empty body, invalid fields or inconsistent date and slot or the reservation cannot be modified under the applicable business rules
+  - `200 OK`: returns the updated reservation (`id`, `date`, `slot`, `partySize`, `seatings`, `requirements`)
+  - `400 Bad Request`: invalid `reservationId`, empty body, invalid fields, change attempted less than 48 hours before the original slot, or requested slot starting in less than 2 hours
   - `401 Unauthorized`: user is not authenticated
-  - `403 Forbidden`: the reservation belongs to another user
+  - `403 Forbidden`: user is not a hiker, or the reservation belongs to another user
   - `404 Not Found`: the reservation or requested slot does not exist
-  - `409 Conflict`: insufficient availability
+  - `409 Conflict`: the user already has a reservation in the requested slot, or insufficient availability
   - `500 Internal Server Error`: unexpected server error
 
-### GET /reservations — Get the authenticated user's reservations
+### GET /reservations - Get the authenticated hiker's reservations
 
-- **Description:** returns active reservations (reservation_date>now) belonging to the authenticated user
+- **Description:** returns the active reservations (slot not started yet) belonging to the authenticated hiker
 - **Authentication:** required
-- **Permissions:** user
+- **Permissions:** hiker
 - **Responses:**
-  - `200 OK`: returns only reservations whose slot has not started yet ordered by start date and time; returns `[]` if no reservations match
+  - `200 OK`: returns the reservations ordered by slot date and time, each with `id`, `date`, `slot`, `partySize`, `seatings`, `requirements`; returns `[]` if no reservations match
   - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user is not a hiker
   - `500 Internal Server Error`: unexpected server error
