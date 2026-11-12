@@ -40,7 +40,7 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="w-full bg-[#FAF6EE] px-6 md:px-12 py-4 flex items-center justify-between border-b border-[#EFEADF] relative z-50">
+    <header className="w-full bg-[#FAF6EE] px-6 md:px-12 py-4 flex items-center justify-between border-b border-[#EFEADF] sticky top-0 z-50">
       {/* Logo & Brand */}
       <Link to="/" className="flex items-center gap-3">
         <img
