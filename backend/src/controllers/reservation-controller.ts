@@ -32,9 +32,6 @@ import { notifyBookingCreated } from "../notifications/booking-confirmation";
 
 import { randomBytes } from "node:crypto";
 import { DateTime } from "luxon";
-import { inTransaction } from "../database/database";
-import { HUT_TIMEZONE } from "../config/config";
-import { NotFoundError } from "../models/errors/notfound-error";
 import type {
     CreateStaffReservationRequestDTO,
     CreateStaffReservationResponseDTO,
@@ -47,7 +44,7 @@ import {
     searchHikers,
     getHikerById,
     createTemporaryHiker,
-} from "../dao/hiker-dao";
+} from "../dao/account-dao";
 
 // TODO(MH-107): integrate registration function
 import { createHikerAccount } from "../dao/account-dao";
@@ -140,9 +137,45 @@ export const createStaffReservation = (
         );
     }
 
+    const customer = request.hiker;
+            
+    const requirements = (request.requirements ?? []).map((requirement) => ({
+    allergy_flag: requirement.hasAllergies,
+    description: requirement.details,
+    }));
+
+    if (customer.mode === "temporary") {
+        const result = saveTemporaryBooking(
+            slot.date,
+            slot.start_time,
+            request.partySize,
+            {
+                full_name: customer.fullname,
+                mobile_number: customer.mobile_number ?? null,
+            },
+            requirements
+        );
+
+        if (!result) {
+            throw new ConflictError(
+                "The requested capacity is no longer available"
+            );
+        }
+
+        return {
+            ...bookingDataToCreateReservationResponseDTO(
+                result.booking,
+                result.seatings,
+                result.dietary_requirements,
+                slot.date,
+                slot.start_time
+            ),
+            hikerId: null,
+        };
+    }
+
     let hikerId: number;
     let initialPassword: string | undefined;
-    const customer = request.hiker;
 
     switch (customer.mode) {
         case "existing": {
@@ -154,17 +187,6 @@ export const createStaffReservation = (
             hikerId = hiker.id;
             break;
         }
-
-        case "temporary": {
-            // TODO(MH-107): create only a hiker profile, without a login account.
-            const hiker = createTemporaryHiker({
-                full_name: customer.fullname,
-                mobile_number: customer.mobile_number ?? null,
-            });
-            hikerId = hiker.id;
-            break;
-        }
-
         case "registered": {
             initialPassword = randomBytes(18).toString("base64url");
 
@@ -195,11 +217,6 @@ export const createStaffReservation = (
         throw new ConflictError("The hiker already has a booking for this slot");
     }
 
-    const requirements = (request.requirements ?? []).map((requirement) => ({
-        allergy_flag: requirement.hasAllergies,
-        description: requirement.details,
-    }));
-
     // TODO(MH-107): adapt saveBooking to the new profile/booking model.
     // It must also accept temporary hikers, recheck capacity and save all data
     // atomically. Return null when capacity is insufficient; no 2-hour cutoff.
@@ -216,12 +233,23 @@ export const createStaffReservation = (
 
     // TODO(MH-107): verify the mapper against the future booking entity.
     // The current mapper only needs booking.id, seatings and requirements.
-    const reservation = bookingDataToCreateReservationResponseDTO(
-        result.booking,
-        result.seatings,
-        result.dietary_requirements,
+    const reservation = customer.mode === "temporary"
+    ? saveTemporaryBooking(
         slot.date,
-        slot.start_time
+        slot.start_time,
+        request.partySize,
+        {
+            full_name: customer.fullname,
+            mobile_number: customer.mobile_number ?? null,
+        },
+        requirements
+    )
+    : saveBooking(
+        hikerId,
+        slot.date,
+        slot.start_time,
+        request.partySize,
+        requirements
     );
 
     return {
