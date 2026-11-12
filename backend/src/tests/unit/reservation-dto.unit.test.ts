@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     CreateReservationRequestSchema,
     UpdateReservationRequestSchema,
+    ReservationIdParamsSchema,
     type CreateReservationRequestDTO,
 } from "../../models/dto/reservation-dto";
 
@@ -190,5 +191,36 @@ describe("PATCH /reservations/:id — UpdateReservationRequestSchema", () => {
     it("rejects invalid data types for partial fields", () => {
         expect(UpdateReservationRequestSchema.safeParse({ partySize: "invalid" }).success).toBe(false);
         expect(UpdateReservationRequestSchema.safeParse({ slot: "24:00" }).success).toBe(false);
+    });
+});
+
+describe("ReservationIdParamsSchema", () => {
+    it.each(["1", "42", String(Number.MAX_SAFE_INTEGER)])(
+        "converts valid URL parameter %s into a number",
+        (id) => {
+            expect(
+                ReservationIdParamsSchema.parse({ reservationId: id })
+            ).toEqual({ reservationId: Number(id) });
+        }
+    );
+
+    it.each([
+        "",
+        "0",
+        "-1",
+        "1.5",
+        "abc",
+        "Infinity",
+        "9007199254740992",
+    ])("rejects invalid URL parameter %s", (id) => {
+        const result = ReservationIdParamsSchema.safeParse({
+            reservationId: id,
+        });
+
+        expect(result.success).toBe(false);
+    });
+
+    it("rejects a missing reservation ID", () => {
+        expect(ReservationIdParamsSchema.safeParse({}).success).toBe(false);
     });
 });
