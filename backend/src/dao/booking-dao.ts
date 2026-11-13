@@ -37,9 +37,15 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
     return db.prepare<[string, string], TableAvailability>(sql).all(date, start_time);
 };
 
+
+export type TemporaryHikerInput = {
+    full_name: string;
+    mobile_number: string | null;
+};
+
 /**
  * Persists a new booking with the seats assigned to it and its dietary requirements, atomically.
- * @param hiker_id The account of the hiker making the reservation.
+ * @param hiker The account id of an hiker making the reservation, or the data of a temporary hiker trough witch is made a reservation.
  * @param date The day of the slot (YYYY-MM-DD).
  * @param start_time The start time of the slot (HH:MM).
  * @param party_size The number of people to seat.
@@ -48,7 +54,7 @@ export const getTablesAvailability = (date: string, start_time: string): TableAv
  * or null if the capacity is no longer available.
  */
 export const saveBooking = (
-    hiker_id: number,
+    hiker: number | TemporaryHikerInput,   // account id, or the data of a temporary hiker
     date: string,
     start_time: string,
     party_size: number,
@@ -58,8 +64,14 @@ export const saveBooking = (
         const assignment = getBookingAvailability(date, start_time, party_size);
         if (!assignment || (Array.isArray(assignment) && assignment.length === 0)) return null;
 
+        const hiker_id = typeof hiker === "number" ? hiker : null;
         const result = db.prepare("INSERT INTO booking (hiker_id) VALUES (?)").run(hiker_id);
         const booking = new Booking(Number(result.lastInsertRowid), hiker_id);
+
+        if (typeof hiker !== "number") {
+            db.prepare("INSERT INTO temporary_hiker (booking_id, full_name, mobile_number) VALUES (?, ?, ?)")
+                .run(booking.id, hiker.full_name, hiker.mobile_number);
+        }
 
         const sql = `INSERT INTO seated_at
                      (booking_id, slot_date, slot_start_time, table_number, assigned_seats)
@@ -152,7 +164,7 @@ export const getBooking = (booking_id: number): Reservation | null => {
     const sql = `SELECT id, hiker_id
                  FROM booking
                  WHERE id = ?`;
-    const row = db.prepare<[number], { id: number; hiker_id: number }>(sql).get(booking_id);
+    const row = db.prepare<[number], { id: number; hiker_id: number | null }>(sql).get(booking_id);
     if (!row) return null;
 
     const seatings = getSeatingsByBooking(booking_id);

@@ -95,6 +95,17 @@ export const UpdateReservationRequestSchema = CreateReservationRequestSchema.par
 export type UpdateReservationRequestDTO = z.infer<typeof UpdateReservationRequestSchema>;
 
 export type UpdateReservationResponseDTO = CreateReservationResponseDTO;
+
+/**
+ * Validation schema for the path parameters identifying a reservation.
+ * Used in PATCH /reservations/:reservationId
+ */
+export const ReservationIdParamsSchema = z.object({
+    // coerce is needed because url params are always a string
+    reservationId: z.coerce.number().int().positive(),
+});
+
+export type ReservationIdParamsDTO = z.infer<typeof ReservationIdParamsSchema>;
 const StaffReservationHikerSchema = z.discriminatedUnion("mode", [
     z.object({
         mode: z.literal("existing"),
