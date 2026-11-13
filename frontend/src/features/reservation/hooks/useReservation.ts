@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiClient, ApiError } from '../../../api/client';
 import type { ReservationState, Slot, Reservation, RequirementRow } from '../types/reservation.types';
-import { rowError, toRequirements,peopleMentioned } from '../utils/requirements';
+import { rowError, toRequirements, peopleMentioned } from '../utils/requirements';
+import { parseBookingPrefill } from '../utils/bookingPrefill';
 
 export const formatLocalDate = (date: Date): string => {
   const year = date.getFullYear();
@@ -18,10 +20,17 @@ export function useReservation() {
     return d;
   }, []);
 
+  // Coming from "check availability": the day, time and party size are already chosen.
+  // Read once when the page opens; the first slot load checks them against the server.
+  const [searchParams] = useSearchParams();
+  const [prefill] = useState(() => parseBookingPrefill(searchParams, new Date()));
+  const pendingPrefill = useRef(prefill);
+  const [prefillNotice, setPrefillNotice] = useState<string | null>(null);
+
   const [state, setState] = useState<ReservationState>({
-    selectedDate: defaultTomorrow,
-    selectedTime: null,
-    partySize: 2,
+    selectedDate: prefill?.date ?? defaultTomorrow,
+    selectedTime: prefill?.slot ?? null,
+    partySize: prefill?.partySize ?? 2,
   });
 
   // Dietary requirements: a list, each row for a subset of the party (optional)
@@ -50,12 +59,31 @@ export function useReservation() {
         const data: Slot[] = await apiClient.get(`/slots?date=${date}`);
         if (cancelled) return;
         setSlots(data);
-        // Drop the selected time if the slot is gone or full
-        setState((prev) =>
-          prev.selectedTime && !data.some((s) => s.start_time === prev.selectedTime)
-            ? { ...prev, selectedTime: null }
-            : prev
-        );
+
+        // The slot may have filled up since the check: say so instead of silently changing the form
+        const pending = pendingPrefill.current;
+        if (pending && pending.slot && pending.dateKey === date) {
+          pendingPrefill.current = null;
+          const checked = data.find((s) => s.start_time === pending.slot);
+          if (!checked) {
+            setPrefillNotice(`The ${pending.slot} table is no longer available on this day. Please choose another time.`);
+          } else if (pending.partySize !== null && pending.partySize > checked.available_seats) {
+            setPrefillNotice(
+              `Only ${checked.available_seats} ${checked.available_seats === 1 ? 'seat is' : 'seats are'} left at ${pending.slot}, so the party size was lowered.`
+            );
+          }
+        }
+
+        // Drop the selected time if the slot is gone or full, and never keep more people than seats left
+        setState((prev) => {
+          if (!prev.selectedTime) return prev;
+          const slot = data.find((s) => s.start_time === prev.selectedTime);
+          if (!slot) return { ...prev, selectedTime: null };
+          if (prev.partySize > slot.available_seats) {
+            return { ...prev, partySize: Math.max(1, slot.available_seats) };
+          }
+          return prev;
+        });
       } catch (err) {
         if (cancelled) return;
         setSlots([]);
@@ -81,13 +109,24 @@ export function useReservation() {
   );
   const maxAvailableSeats = selectedSlot?.available_seats ?? 0;
 
-  const setSelectedDate = useCallback((date: Date) => {
-    setState((prev) => ({ ...prev, selectedDate: date, selectedTime: null }));
-    setBookingError(null);
+  // Any choice made by the person ends the hand-over from the availability page
+  const settlePrefill = useCallback(() => {
+    pendingPrefill.current = null;
+    setPrefillNotice(null);
   }, []);
+
+  const setSelectedDate = useCallback(
+    (date: Date) => {
+      settlePrefill();
+      setState((prev) => ({ ...prev, selectedDate: date, selectedTime: null }));
+      setBookingError(null);
+    },
+    [settlePrefill]
+  );
 
   const setSelectedTime = useCallback(
     (time: string) => {
+      settlePrefill();
       const slot = slots.find((s) => s.start_time === time);
       const available = slot?.available_seats ?? 0;
       setState((prev) => ({
@@ -97,23 +136,24 @@ export function useReservation() {
       }));
       setBookingError(null);
     },
-    [slots]
+    [slots, settlePrefill]
   );
 
   const setPartySize = useCallback(
     (size: number) => {
+      settlePrefill();
       setState((prev) => ({
         ...prev,
         partySize: Math.max(1, Math.min(size, maxAvailableSeats || 1)),
       }));
       setBookingError(null);
     },
-    [maxAvailableSeats]
+    [maxAvailableSeats, settlePrefill]
   );
 
   const addRequirement = useCallback(() => {
-    const key = ++keyCounter.current; 
-setRequirementRows((prev) => [...prev, { key, count: 1, tags: [], extra: '', hasAllergies: false }]);
+    const key = ++keyCounter.current;
+    setRequirementRows((prev) => [...prev, { key, count: 1, tags: [], extra: '', hasAllergies: false }]);
     setBookingError(null);
   }, []);
 
@@ -122,14 +162,14 @@ setRequirementRows((prev) => [...prev, { key, count: 1, tags: [], extra: '', has
   }, []);
 
   const updateRequirement = useCallback(
-   (key: number, changes: Partial<Omit<RequirementRow, 'key'>>) => {
+    (key: number, changes: Partial<Omit<RequirementRow, 'key'>>) => {
       setRequirementRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...changes } : row)));
       setBookingError(null);
     },
     []
   );
 
-   // Every allergy is described, and the notes do not talk about more people than the party has
+  // Every allergy is described, and the notes do not talk about more people than the party has
   const requirementsValid =
     requirementRows.every((row) => rowError(row) === null) &&
     peopleMentioned(requirementRows) <= state.partySize;
@@ -150,7 +190,7 @@ setRequirementRows((prev) => [...prev, { key, count: 1, tags: [], extra: '', has
     }
     if (isSubmitting) return false;
     if (!requirementsValid) {
-            setBookingError('Please check the food needs: describe every allergy and do not list more people than your party.');
+      setBookingError('Please check the food needs: describe every allergy and do not list more people than your party.');
       return false;
     }
 
@@ -200,6 +240,7 @@ setRequirementRows((prev) => [...prev, { key, count: 1, tags: [], extra: '', has
     isSubmitting,
     bookingError,
     reservation,
+    prefillNotice,
     setSelectedDate,
     setSelectedTime,
     setPartySize,

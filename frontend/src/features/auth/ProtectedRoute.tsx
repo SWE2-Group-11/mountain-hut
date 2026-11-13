@@ -26,7 +26,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
 
   // Not logged in: go to login and remember where the visitor wanted to go
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+        return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   }
 
   // Logged in with the wrong role

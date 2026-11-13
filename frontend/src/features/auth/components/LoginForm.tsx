@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate , useLocation } from 'react-router-dom';
 import { useAuth } from '../useAuth';
 import { ApiError } from '../../../api/client';
 import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
@@ -8,14 +8,17 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const LoginForm: React.FC = () => {
   const { user, loading: authLoading, login } = useAuth();
-
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!authLoading && user) {
-    const destination = user.role === 'hiker' ? '/book-table' : '/staff/slots';
+       // A hiker who was sent here from the booking page goes back to it with what was already chosen
+    const from = (location.state as { from?: string } | null)?.from;
+    const backToBooking = typeof from === 'string' && /^\/book-table(\?|$)/.test(from);
+    const destination = user.role === 'hiker' ? (backToBooking ? from : '/book-table') : '/staff/slots';
     return <Navigate to={destination} replace />;
   }
 

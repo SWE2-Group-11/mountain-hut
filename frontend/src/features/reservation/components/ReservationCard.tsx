@@ -32,8 +32,10 @@ export const ReservationCard: React.FC = () => {
     isSubmitting,
     bookingError,
     reservation,
+     prefillNotice,
     confirmReservation,
     clearError,
+   
   } = useReservation();
 
   // The receipt shows what the server confirmed, not what the form held
@@ -173,7 +175,11 @@ export const ReservationCard: React.FC = () => {
             <h2 className="text-3xl font-serif font-bold text-[#1C2826] mb-2">Reserve your table</h2>
             <p className="text-[#5A6865] text-sm">Choose your meal time and party size.</p>
           </div>
-
+          {prefillNotice && (
+            <div role="status" className="p-4 bg-[#FDF6E3] border border-[#EBD9A8] rounded-2xl text-xs text-[#6B5200]">
+              {prefillNotice}
+            </div>
+          )}
           <DatePickerStep selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
           <TimeSlotStep
