@@ -137,8 +137,8 @@ export type CreateStaffReservationRequestDTO =
     z.infer<typeof CreateStaffReservationRequestSchema>;
 
 export type CreateStaffReservationResponseDTO = CreateReservationResponseDTO & {
-    hikerId: number;
-    // Only for a newly created regular account; deliver to the authorized staff.
+    hikerId: number | null;
+    // Only for a newly created regular account; deliver to authorized staff.
     initialPassword?: string;
 };
 
@@ -156,7 +156,8 @@ export type SearchStaffHikersRequestDTO =
     z.infer<typeof SearchStaffHikersRequestSchema>;
 
 export type StaffHikerDTO = {
-    id: number;
+    id: number | null;
+    bookingId: number | null;
     fullname: string;
     mobile_number: string | null;
     email: string | null;

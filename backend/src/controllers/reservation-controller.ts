@@ -38,16 +38,12 @@ import type {
     SearchStaffHikersRequestDTO,
     StaffHikerDTO,
 } from "../models/dto/reservation-dto";
-
-// TODO(MH-107): integrate functions to look for hikers and create temporary hikers, and to create a hiker account for a registered hiker.
 import {
-    searchHikers,
+    searchHikersFilter,
     getHikerById,
-    createTemporaryHiker,
-} from "../dao/account-dao";
-
-// TODO(MH-107): integrate registration function
+} from "../dao/hiker-dao";
 import { createHikerAccount } from "../dao/account-dao";
+import type { TemporaryHikerInput } from "../dao/booking-dao";
 
 /**
  * Creates a reservation for the authenticated hiker, seating the party
@@ -96,26 +92,29 @@ export const createReservation = (
     );
 };
 
-/** The route validates the query and authorizes employee/warden first. */
+/** The route validates the query and authorizes employee/warden first. 
+ * @returns A list of hikers matching the search criteria, with their booking ID if they have a reservation in the requested slot.
+*/
+
 export const searchStaffHikers = (
     request: SearchStaffHikersRequestDTO
-): StaffHikerDTO[] => {
-    // TODO(MH-107): adapt function to the new hiker DAO, including temporary hikers. Retains the current search by name or email.
-    return searchHikers(request).map((hiker) => ({
-        id: hiker.id,
-        fullname: hiker.full_name,
-        mobile_number: hiker.mobile_number,
-        email: hiker.email,
-        hasAccount: hiker.account_id !== null,
-    }));
-};
+): StaffHikerDTO[] => searchHikersFilter(request).map((hiker) => ({
+    id: hiker.id,
+    bookingId: hiker.booking_id,
+    fullname: hiker.full_name,
+    mobile_number: hiker.mobile_number,
+    email: hiker.email,
+    hasAccount: hiker.id !== null,
+}));
 
 /**
  * Creates a reservation for an existing, temporary or newly registered hiker.
- *
- * TODO(MH-107): all future DAO operations must be synchronous and use the
- * same SQLite connection as inTransaction, so an error rolls back the new
- * profile/account together with the booking.
+ * Account creation and booking use the same database transaction.
+ * @returns The created booking with the tables assigned and the declared requirements.
+ * If a new account is created, the initial password is returned to be delivered to the hiker.
+ * @throws NotFoundError if the requested slot does not exist or the hiker ID does not exist.
+ * @throws BadRequestError if the change is attempted after the slot has started.
+ * @throws ConflictError if the hiker already has a booking in the requested slot, if the requested capacity is no longer available, or if an account with the provided email already exists.
  */
 export const createStaffReservation = (
     request: CreateStaffReservationRequestDTO
@@ -130,70 +129,38 @@ export const createStaffReservation = (
     });
     const now = DateTime.now().setZone(HUT_TIMEZONE);
 
-    // Staff can book until the slot starts: do not apply the hiker's 2-hour cutoff.
+    // Staff can book until the slot starts, without the hiker's cutoff.
     if (now.toMillis() > start.toMillis()) {
-        throw new BadRequestError(
-            "Staff reservations cannot be made after the slot has started"
-        );
+        throw new BadRequestError("Staff reservations cannot be made after the slot has started");
     }
 
     const customer = request.hiker;
-            
-    const requirements = (request.requirements ?? []).map((requirement) => ({
-    allergy_flag: requirement.hasAllergies,
-    description: requirement.details,
-    }));
-
-    if (customer.mode === "temporary") {
-        const result = saveTemporaryBooking(
-            slot.date,
-            slot.start_time,
-            request.partySize,
-            {
-                full_name: customer.fullname,
-                mobile_number: customer.mobile_number ?? null,
-            },
-            requirements
-        );
-
-        if (!result) {
-            throw new ConflictError(
-                "The requested capacity is no longer available"
-            );
-        }
-
-        return {
-            ...bookingDataToCreateReservationResponseDTO(
-                result.booking,
-                result.seatings,
-                result.dietary_requirements,
-                slot.date,
-                slot.start_time
-            ),
-            hikerId: null,
-        };
-    }
-
-    let hikerId: number;
+    let hiker: number | TemporaryHikerInput;
     let initialPassword: string | undefined;
 
     switch (customer.mode) {
         case "existing": {
-            // TODO(MH-107): align the lookup and returned id with the new hiker DAO.
-            const hiker = getHikerById(customer.hikerId);
-            if (!hiker) {
+            const profile = getHikerById(customer.hikerId);
+            if (!profile || profile.id === null) {
                 throw new NotFoundError("Hiker not found");
             }
-            hikerId = hiker.id;
+
+            hiker = profile.id;
             break;
         }
+
+        case "temporary": {
+            hiker = {
+                full_name: customer.fullname,
+                mobile_number: customer.mobile_number ?? null,
+            };
+            break;
+        }
+
         case "registered": {
             initialPassword = randomBytes(18).toString("base64url");
 
-            // TODO(MH-107): align this call with the registration DAO.
-            // Persist the change-password flag; authentication must enforce it
-            // and the regular account must support email password recovery.
-            const hiker = createHikerAccount({
+            const account = createHikerAccount({
                 full_name: customer.fullname,
                 mobile_number: customer.mobile_number,
                 email: customer.email,
@@ -202,72 +169,51 @@ export const createStaffReservation = (
                 emergency_contact: customer.emergency_contact ?? null,
                 must_change_password: true,
             });
-            if (!hiker) {
+
+            if (!account) {
                 throw new ConflictError("An account with this email already exists");
             }
-            // TODO(MH-107): use the profile id if the DAO returns an account wrapper.
-            hikerId = hiker.id;
+
+            hiker = account.id;
             break;
         }
     }
 
-    // TODO(MH-107): adapt the existing function to the new hiker identity,
-    // including temporary profiles. Retains the current one-booking-per-slot rule.
-    if (hasBookingInSlot(hikerId, slot.date, slot.start_time)) {
+    // Temporary hikers have no account id.
+    if (typeof hiker === "number" && hasBookingInSlot(hiker, slot.date, slot.start_time)) {
         throw new ConflictError("The hiker already has a booking for this slot");
     }
 
-    // TODO(MH-107): adapt saveBooking to the new profile/booking model.
-    // It must also accept temporary hikers, recheck capacity and save all data
-    // atomically. Return null when capacity is insufficient; no 2-hour cutoff.
+    const requirements = (request.requirements ?? []).map((requirement) => ({
+        allergy_flag: requirement.hasAllergies,
+        description: requirement.details,
+    }));
+
     const result = saveBooking(
-        hikerId,
+        hiker,
         slot.date,
         slot.start_time,
         request.partySize,
         requirements
     );
+
     if (!result) {
-        throw new ConflictError("The requested capacity is no longer available");
+        // Throwing also rolls back a newly created account.
+        throw new ConflictError( "The requested capacity is no longer available");
     }
 
-    // TODO(MH-107): verify the mapper against the future booking entity.
-    // The current mapper only needs booking.id, seatings and requirements.
-    const reservation = customer.mode === "temporary"
-    ? saveTemporaryBooking(
-        slot.date,
-        slot.start_time,
-        request.partySize,
-        {
-            full_name: customer.fullname,
-            mobile_number: customer.mobile_number ?? null,
-        },
-        requirements
-    )
-    : saveBooking(
-        hikerId,
-        slot.date,
-        slot.start_time,
-        request.partySize,
-        requirements
-    );
-
     return {
-        ...reservation,
-        hikerId,
+        ...bookingDataToCreateReservationResponseDTO(
+            result.booking,
+            result.seatings,
+            result.dietary_requirements,
+            slot.date,
+            slot.start_time
+        ),
+        hikerId: result.booking.hiker_id,
         ...(initialPassword === undefined ? {} : { initialPassword }),
     };
 });
-
-
-/**
- * Retrieves the authenticated hiker's active reservations.
- */
-export const getReservations = (hiker_id: number): CreateReservationResponseDTO[] => {
-    const now = DateTime.now().setZone(HUT_TIMEZONE).toFormat("yyyy-MM-dd HH:mm");
-
-    return getActiveBookingsByHiker(hiker_id, now).map(reservationToResponseDTO);
-};
 
 /**
  * Updates a reservation belonging to the authenticated hiker.
