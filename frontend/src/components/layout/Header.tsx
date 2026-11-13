@@ -3,6 +3,14 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import logoImage from '../../assets/logo.jpeg';
 import { Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../features/auth/useAuth';
+import { UserMenu, type AccountLink } from './UserMenu';
+
+interface NavLink {
+  to: string;
+  label: string;
+  visible: boolean;
+  highlighted?: boolean; // green, for the pages of a signed-in role
+}
 
 export const Header: React.FC = () => {
   const { user, loading, logout } = useAuth();
@@ -12,17 +20,41 @@ export const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isLoginActive = currentPath === '/login' || currentPath === '/staff/login';
-  const isHomeActive = currentPath === '/';
-  const isBookActive = currentPath === '/book-table';
-  const isSlotsActive = currentPath === '/staff/slots';
-  const isAvailabilityActive = currentPath === '/availability';
 
-  // Visitors and hikers see the link; staff do not book tables.
+  // Visitors and hikers see "Book a Table"; staff do not book tables.
   // A visitor who clicks it is sent to /login by ProtectedRoute.
   const canSeeBooking = !loading && (!user || user.role === 'hiker');
-
+  // Only hikers have bookings to look at and change
+  const canSeeMyBookings = !loading && user?.role === 'hiker';
   // Employees and wardens set up the slots
   const canManageSlots = !loading && (user?.role === 'employee' || user?.role === 'warden');
+
+  // One list for the desktop and the mobile menu: add a page here and it shows up in both
+  const navLinks: NavLink[] = [
+    { to: '/', label: 'Home', visible: true },
+    { to: '/availability', label: 'Check availability', visible: true },
+    { to: '/book-table', label: 'Book a Table', visible: canSeeBooking, highlighted: true },
+    { to: '/staff/slots', label: 'Manage slots', visible: canManageSlots, highlighted: true },
+  ].filter((link) => link.visible);
+
+  // The pages of the signed-in person live in the account menu, not in the main menu
+  const accountLinks: AccountLink[] = canSeeMyBookings ? [{ to: '/my-bookings', label: 'My bookings' }] : [];
+
+  const desktopLinkClass = ({ to, highlighted }: NavLink) =>
+    `transition-colors ${
+      currentPath === to
+        ? `font-bold ${highlighted ? 'text-[#234E39]' : 'text-[#1C2826]'}`
+        : highlighted
+          ? 'text-[#234E39] hover:text-[#1C3E2E]'
+          : 'hover:text-[#1C2826]'
+    }`;
+
+  const mobileLinkClass = ({ to, highlighted }: NavLink) =>
+    `text-base font-medium py-2 transition-colors ${
+      currentPath === to
+        ? `font-bold ${highlighted ? 'text-[#234E39]' : 'text-[#1C2826]'}`
+        : 'text-[#5A6865]'
+    }`;
 
   const handleNavClick = () => {
     setIsMobileMenuOpen(false);
@@ -53,57 +85,17 @@ export const Header: React.FC = () => {
 
       {/* Desktop Navigation */}
       <nav className="hidden md:flex items-center gap-6 font-medium text-sm text-[#3C4A47]">
-        <Link
-          to="/"
-          className={`hover:text-[#1C2826] transition-colors ${isHomeActive ? 'font-bold text-[#1C2826]' : ''}`}
-        >
-          Home
-        </Link>
-        <Link
-          to="/availability"
-          className={`hover:text-[#1C2826] transition-colors ${isAvailabilityActive ? 'font-bold text-[#1C2826]' : ''}`}
-        >
-          Check availability
-        </Link>
-        {canSeeBooking && (
-          <Link
-            to="/book-table"
-            className={`flex items-center gap-1.5 transition-colors ${isBookActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'
-              }`}
-          >
-
-            Book a Table
+        {navLinks.map((link) => (
+          <Link key={link.to} to={link.to} className={desktopLinkClass(link)}>
+            {link.label}
           </Link>
-        )}
-
-        {canManageSlots && (
-          <Link
-            to="/staff/slots"
-            className={`transition-colors ${isSlotsActive ? 'font-bold text-[#234E39]' : 'text-[#234E39] hover:text-[#1C3E2E]'
-              }`}
-          >
-            Manage slots
-          </Link>
-        )}
+        ))}
 
         {/* Wait for the session check to avoid a flash of "Login" */}
         {loading ? (
           <div className="w-16 h-6 bg-[#EFEADF] rounded-lg animate-pulse" />
         ) : user ? (
-          <div className="flex items-center gap-4 pl-4 border-l border-[#EFEADF]">
-            <div className="flex items-center gap-2 text-xs text-[#5A6865]">
-              <UserIcon className="w-4 h-4 text-[#234E39]" />
-              <span className="font-semibold text-[#1C2826]">{user.email}</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 font-medium transition-colors cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </div>
+          <UserMenu email={user.email} role={user.role} links={accountLinks} onLogout={handleLogout} />
         ) : (
           <Link
             to="/login"
@@ -129,46 +121,11 @@ export const Header: React.FC = () => {
       {/* Mobile Dropdown Drawer */}
       {isMobileMenuOpen && (
         <div className="absolute top-full left-0 w-full bg-[#FAF6EE] border-b border-[#EFEADF] shadow-lg py-6 px-8 flex flex-col gap-4 md:hidden">
-          <Link
-            to="/"
-            onClick={handleNavClick}
-            className={`text-base font-medium py-2 transition-colors ${isHomeActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
-              }`}
-          >
-            Home
-          </Link>
-          <Link
-            to="/availability"
-            onClick={handleNavClick}
-            className={`text-base font-medium py-2 transition-colors ${isAvailabilityActive ? 'font-bold text-[#1C2826]' : 'text-[#5A6865]'
-              }`}
-          >
-            Check availability
-          </Link>
-
-          {canSeeBooking && (
-            <Link
-              to="/book-table"
-              onClick={handleNavClick}
-              className={`text-base font-medium py-2 transition-colors flex items-center gap-2 ${isBookActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
-                }`}
-            >
-
-              Book a Table
+          {navLinks.map((link) => (
+            <Link key={link.to} to={link.to} onClick={handleNavClick} className={mobileLinkClass(link)}>
+              {link.label}
             </Link>
-          )}
-
-          {canManageSlots && (
-            <Link
-              to="/staff/slots"
-              onClick={handleNavClick}
-              className={`text-base font-medium py-2 transition-colors ${
-                isSlotsActive ? 'font-bold text-[#234E39]' : 'text-[#5A6865]'
-              }`}
-            >
-              Manage slots
-            </Link>
-          )}
+          ))}
 
           {loading ? (
             <div className="w-20 h-8 bg-[#EFEADF] rounded-lg animate-pulse" />
@@ -181,6 +138,11 @@ export const Header: React.FC = () => {
                   {user.role}
                 </span>
               </div>
+              {accountLinks.map((link) => (
+                <Link key={link.to} to={link.to} onClick={handleNavClick} className={mobileLinkClass({ ...link, visible: true })}>
+                  {link.label}
+                </Link>
+              ))}
               <button
                 type="button"
                 onClick={() => {

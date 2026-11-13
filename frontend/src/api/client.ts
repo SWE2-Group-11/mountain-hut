@@ -55,4 +55,6 @@ export const apiClient = {
 
   delete: (endpoint: string, options?: RequestOptions) =>
     request('DELETE', endpoint, undefined, options),
+  patch: (endpoint: string, body?: unknown, options?: RequestOptions) =>
+    request('PATCH', endpoint, body, options),
 };
