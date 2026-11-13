@@ -92,6 +92,15 @@ export const createReservation = (
     );
 };
 
+/**
+ * Retrieves the authenticated hiker's active reservations.
+ * @returns A list of the hiker's active reservations.
+ */
+export const getReservations = (hiker_id: number): CreateReservationResponseDTO[] => {
+    const now = DateTime.now().setZone(HUT_TIMEZONE).toFormat("yyyy-MM-dd HH:mm");
+    return getActiveBookingsByHiker(hiker_id, now).map(reservationToResponseDTO);
+};
+
 /** The route validates the query and authorizes employee/warden first. 
  * @returns A list of hikers matching the search criteria, with their booking ID if they have a reservation in the requested slot.
 */
