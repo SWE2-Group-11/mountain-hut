@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertCircle, CalendarClock, CheckCircle2, History, Table2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { AlertCircle, CalendarClock, CheckCircle2, History, Table2, X } from 'lucide-react';
 import { useSlotSetup } from '../hooks/useSlotSetup';
 import { TableEditor } from './TableEditor';
 import { PreviousSetupPicker } from './PreviousSetupPicker';
@@ -13,8 +13,76 @@ export const SlotSetupCard: React.FC = () => {
   const s = useSlotSetup();
   const minutes = s.startTime && s.endTime ? durationMinutes(s.startTime, s.endTime) : 0;
 
+  // A short confirmation that stays on screen wherever the page is scrolled, then goes away.
+  // The list at the bottom keeps the record of every slot created.
+  const [dismissedCount, setDismissedCount] = useState(0);
+  const lastCreated = s.created[0];
+  const showConfirmation = Boolean(lastCreated) && s.created.length > dismissedCount;
+  useEffect(() => {
+    if (!showConfirmation) return;
+    const timer = setTimeout(() => setDismissedCount(s.created.length), 6000);
+    return () => clearTimeout(timer);
+  }, [showConfirmation, s.created.length]);
+
+  // Bring the new slot into view in the list and mark it, so it is easy to find among many
+  const newestRef = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (s.created.length > 0) {
+      newestRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [s.created.length]);
+
+  // A form, so that Enter in any field creates the slot, like the button does
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    s.submit();
+  };
+
+  // Some browsers do not submit a form when Enter is pressed inside a date or time field,
+  // so we do it ourselves there (preventDefault stops the browser from also submitting).
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    const target = e.target as HTMLElement;
+    if (
+      e.key === 'Enter' &&
+      target instanceof HTMLInputElement &&
+      (target.type === 'date' || target.type === 'time')
+    ) {
+      e.preventDefault();
+      s.submit();
+    }
+  };
+
   return (
-    <div className="w-full max-w-3xl mx-auto bg-white rounded-[32px] p-8 md:p-10 shadow-xl border border-[#EFEADF] relative -mt-20 space-y-8">
+    <form
+      onSubmit={handleSubmit}
+      onKeyDown={handleKeyDown}
+      noValidate
+      className="w-full max-w-3xl mx-auto bg-white rounded-[32px] p-8 md:p-10 shadow-xl border border-[#EFEADF] relative -mt-20 space-y-8"
+    >
+      {/* CONFIRMATION: visible without scrolling, closes by itself after a few seconds */}
+      {showConfirmation && (
+        <div
+          role="status"
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md flex items-center gap-3 rounded-2xl bg-[#234E39] text-white px-5 py-4 shadow-2xl"
+        >
+          <CheckCircle2 className="w-6 h-6 shrink-0" />
+          <div className="text-sm">
+            <p className="font-bold">Slot created</p>
+            <p className="text-white/85">
+              {lastCreated.date}, from {lastCreated.startTime} to {lastCreated.endTime}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissedCount(s.created.length)}
+            aria-label="Close confirmation"
+            className="ml-auto p-1 rounded-lg hover:bg-white/15 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* SERVER ERROR POPUP */}
       {s.submitError && (
         <div
@@ -32,6 +100,7 @@ export const SlotSetupCard: React.FC = () => {
             </div>
             <button
               type="button"
+              autoFocus
               onClick={s.clearSubmitError}
               className="w-full py-3 bg-[#1C2826] text-white rounded-xl font-medium text-xs hover:bg-black transition-colors cursor-pointer"
             >
@@ -153,8 +222,7 @@ export const SlotSetupCard: React.FC = () => {
           </p>
         )}
         <button
-          type="button"
-          onClick={s.submit}
+          type="submit"
           disabled={s.isSubmitting}
           className="w-full py-3.5 bg-[#234E39] text-white rounded-xl font-semibold text-sm hover:bg-[#1C3E2E] disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
@@ -174,7 +242,12 @@ export const SlotSetupCard: React.FC = () => {
             {s.created.map((slot, i) => (
               <li
                 key={`${slot.date}-${slot.startTime}-${i}`}
-                className="flex items-start gap-3 rounded-2xl bg-[#F1F6F2] border border-[#D9E6DC] p-4"
+                ref={i === 0 ? newestRef : undefined}
+                className={`flex items-start gap-3 rounded-2xl bg-[#F1F6F2] border p-4 transition-shadow ${
+                  i === 0 && showConfirmation
+                    ? 'border-[#234E39] ring-2 ring-[#234E39]/40'
+                    : 'border-[#D9E6DC]'
+                }`}
               >
                 <CheckCircle2 className="w-5 h-5 text-[#234E39] shrink-0" />
                 <div className="text-xs text-[#1C2826]">
@@ -190,6 +263,6 @@ export const SlotSetupCard: React.FC = () => {
           </ul>
         </section>
       )}
-    </div>
+    </form>
   );
 };

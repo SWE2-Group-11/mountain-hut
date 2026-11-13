@@ -13,7 +13,7 @@ export default function HomePage() {
   const { user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#FDFBF7] flex flex-col font-sans overflow-x-clip">
       <Header />
 
       {/* Hero Banner */}

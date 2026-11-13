@@ -3,7 +3,7 @@ import { LoginForm } from '../../features/auth/components/LoginForm';
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#FDFBF7] flex flex-col font-sans overflow-x-clip">
       <Header />
 
       <main className="flex-1 flex items-center justify-center px-6 py-16">
