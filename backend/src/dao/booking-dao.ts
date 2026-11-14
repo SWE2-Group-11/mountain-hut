@@ -221,3 +221,12 @@ export const hasBookingInSlot = (hiker_id: number, date: string, start_time: str
         LIMIT 1`;
     return db.prepare<[number, string, string], { 1: number }>(sql).get(hiker_id, date, start_time) !== undefined;
 };
+
+/**
+ * Removes a booking. Its seatings, dietary requirements and temporary hiker data
+ * are removed with it through ON DELETE CASCADE, releasing the seats.
+ * @param booking_id The id of the booking to remove.
+ * @returns true if the booking existed and was removed, false otherwise.
+ */
+export const deleteBooking = (booking_id: number): boolean =>
+    db.prepare("DELETE FROM booking WHERE id = ?").run(booking_id).changes > 0;
