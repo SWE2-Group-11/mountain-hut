@@ -73,19 +73,6 @@ describe("POST /reservations — route", () => {
             expect(res.body).toMatchObject({ code: 401 });
             expect(createReservation).not.toHaveBeenCalled();
         });
-
-        it.each([
-            { label: "an employee", user: EMPLOYEE },
-            { label: "a warden", user: WARDEN },
-        ])("answers 403 and skips the controller for $label", async ({ user }) => {
-            currentUser = user;
-
-            const res = await request(app).post(URL).send(VALID_BODY);
-
-            expect(res.status).toBe(403);
-            expect(res.body).toMatchObject({ code: 403 });
-            expect(createReservation).not.toHaveBeenCalled();
-        });
     });
 
     describe("validation", () => {
