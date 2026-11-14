@@ -8,11 +8,13 @@ import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import AvailabilityPage from './features/availability/page';
 import MyBookingsPage from './features/my-bookings/page';
 
+import RegisterPage from './app/register/page';
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/availability" element={<AvailabilityPage />} />
 
       <Route element={<ProtectedRoute allowedRoles={['hiker']} />}>

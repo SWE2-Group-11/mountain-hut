@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../useAuth';
 import { ApiError } from '../../../api/client';
 import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
@@ -138,6 +138,12 @@ export const LoginForm: React.FC = () => {
           )}
         </button>
       </form>
+            <p className="text-xs text-[#5A6865] text-center">
+        New to the hut?{' '}
+        <Link to="/register" className="font-semibold text-[#234E39] hover:underline">
+          Create an account
+        </Link>
+      </p>
     </div>
   );
 };
