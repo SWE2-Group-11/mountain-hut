@@ -44,7 +44,7 @@ Primary keys in **bold**, `*` = nullable.
 |---|---|
 | `drop-core.sql` | Drops all tables |
 | `init-core.sql` | Creates all tables |
-| `seed-core.sql` | 4 demo accounts (warden, employee, 2 hikers), 4 slots with the same table layout, 4 demo bookings with seats and dietary requirements (3 by hikers, 1 for a temporary hiker) |
+| `seed-core.sql` | 4 slots with the same table layout, 4 demo bookings with seats and dietary requirements (3 by hikers 3 and 4, 1 for a temporary hiker) |
 | `clear-core.sql` | Empties all tables |
 
-`RESET_DB=true` runs drop, init and seed at startup.
+`RESET_DB=true` runs drop, init and seed at startup. Before `seed-core.sql`, the demo accounts (staff and hikers) are inserted from the `SEED_ACCOUNT_<n>_*` environment variables (`.env`, see `.env.example`), with passwords hashed at that moment; account `<n>` gets id `<n>`.

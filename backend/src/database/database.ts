@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { DB_FILE_PATH } from "../config/config.js";
+import { insertSeedAccounts } from "./seed-accounts.js";
 
 const SQL_DIR = path.resolve(process.cwd(), "src/database/sql");
 
@@ -30,7 +31,8 @@ export const readSql = (file: string): string =>
     fs.readFileSync(path.join(SQL_DIR, file), "utf-8");
 
 /**
- * Drops, recreates and seeds the whole database in a single transaction.
+ * Drops, recreates and seeds the whole database in a single transaction:
+ * accounts from the SEED_ACCOUNT_<n>_* environment variables, then seed-core.sql.
  * If any step fails, the database is left unchanged.
  */
 export const resetDatabase = (): void => {
@@ -41,6 +43,7 @@ export const resetDatabase = (): void => {
     db.transaction(() => {
         db.exec(drop);
         db.exec(init);
+        insertSeedAccounts(db);
         db.exec(seed);
     })();
 };

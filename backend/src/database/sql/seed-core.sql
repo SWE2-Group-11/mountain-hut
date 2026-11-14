@@ -1,21 +1,8 @@
 PRAGMA foreign_keys = ON;
 
--- Accounts
-INSERT INTO account (id, email, password_salt, password_hash) VALUES
-    (1, 'warden@mountainhut.test',   'a1b2c3d4e5f60718', '33322a2ed866a9b3c2ca5411a8f734cc'),
-    (2, 'employee@mountainhut.test', '1827364554637281', '1ca13f2ba419d1d5573fb0ea08cdbf15'),
-    (3, 'mario@mountainhut.test',    '9f8e7d6c5b4a3921', '260948108aae67a766b978b99e11fb72'),
-    (4, 'laura@mountainhut.test',    '0a1b2c3d4e5f6a7b', '6a40925313901ee3eb369b84e4335cb2');
-
--- Staff
-INSERT INTO staff (account_id, name, role) VALUES
-    (1, 'Anna', 'warden'),
-    (2, 'Luca', 'employee');
-
--- Hikers
-INSERT INTO hiker (account_id, full_name, mobile_number, notes, emergency_contact) VALUES
-    (3, 'Mario Rossi',   '+39 333 123 4567', 'Registered mountain guide', 'Giulia Rossi, +39 333 765 4321'),
-    (4, 'Laura Bianchi', '+39 347 987 6543', NULL, NULL);
+-- Accounts, staff and hikers are seeded from the SEED_ACCOUNT_<n>_* environment
+-- variables (see .env.example): account <n> has id <n>.
+-- The bookings below belong to accounts 3 and 4, which must be hikers.
 
 -- Slots
 INSERT INTO slot (date, start_time, duration) VALUES

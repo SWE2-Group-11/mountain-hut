@@ -1,4 +1,10 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { parseEnv } from 'node:util';
 import { defineConfig, devices } from '@playwright/test';
+
+// Test-only session secret and seed accounts, shared with the backend tests: never the real .env
+const testEnv = parseEnv(readFileSync(path.join(__dirname, '../backend/test.env'), 'utf-8')) as Record<string, string>;
 
 export default defineConfig({
   testDir: './tests',
@@ -27,7 +33,7 @@ export default defineConfig({
       // database file (backend/src/data/database.sqlite), so the run stops instead.
       command: 'npx tsx src/index.ts',
       cwd: '../backend',
-      env: { RESET_DB: 'true', DB_PATH: ':memory:', PORT: '3000', SMTP_HOST: 'localhost', SMTP_PORT: '1025' },
+      env: { ...testEnv, RESET_DB: 'true', DB_PATH: ':memory:', PORT: '3000', SMTP_HOST: 'localhost', SMTP_PORT: '1025' },
       port: 3000,
       reuseExistingServer: false,
     },

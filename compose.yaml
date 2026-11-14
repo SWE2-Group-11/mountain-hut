@@ -3,6 +3,7 @@ services:
     image: ghcr.io/swe2-group-11/mountain-hut:latest
     build: .
     container_name: mountain-hut
+    env_file: .env
     volumes:
       - mountain-hut-data:/app/data
     ports:

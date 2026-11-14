@@ -29,12 +29,22 @@ docs/       Project documentation
 
 The whole system runs in a single Docker image: web application, REST API and Mailpit.
 
-### Run the published image
+### Secrets and demo accounts
 
-Requires only Docker.
+The session secret and the demo accounts live in a `.env` file in the repository root, never committed. Create it from the template and replace every value:
 
 ```bash
-docker run -d --name mountain-hut -p 5173:5173 -p 3000:3000 -p 8025:8025 -v mountain-hut-data:/app/data ghcr.io/swe2-group-11/mountain-hut:latest
+cp .env.example .env
+```
+
+The container reads `.env` at startup; the image never contains it. The demo accounts are created only together with the database (first start), so editing them later requires resetting the database (see below).
+
+### Run the published image
+
+Requires only Docker and the `.env` file above.
+
+```bash
+docker run -d --name mountain-hut --env-file .env -p 5173:5173 -p 3000:3000 -p 8025:8025 -v mountain-hut-data:/app/data ghcr.io/swe2-group-11/mountain-hut:latest
 ```
 
 To run a specific release, replace `latest` with its version, e.g. `1.0.0`.
@@ -56,14 +66,7 @@ docker compose up --build
 
 Keep the ports as they are: the web application calls the API on port 3000, and the API accepts requests only from port 5173.
 
-All demo accounts have the password `password`.
-
-| Email | Role |
-|---|---|
-| `warden@mountainhut.test` | Warden |
-| `employee@mountainhut.test` | Employee |
-| `mario@mountainhut.test` | Hiker |
-| `laura@mountainhut.test` | Hiker |
+Log in with the demo accounts defined in `.env`.
 
 ### Database
 
@@ -92,7 +95,7 @@ The end-to-end tests (`cd e2e && npm test`) read the confirmation emails from Ma
 
 ### Getting started
 
-Requires Node 22 or newer.
+Requires Node 22 or newer and the `.env` file in the repository root (see [Secrets and demo accounts](#secrets-and-demo-accounts)): `npm run dev` and `npm start` read `../.env`.
 
 ```bash
 cd backend
@@ -100,7 +103,7 @@ npm install
 npm run dev
 ```
 
-If running for the first time or in need to recreate the database:
+If running for the first time or in need to recreate the database (this also recreates the demo accounts from `.env`):
 
 ```bash
 RESET_DB=true npm run dev
