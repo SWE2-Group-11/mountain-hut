@@ -27,7 +27,7 @@ const validateStaffReservation = validateBody(CreateStaffReservationRequestSchem
 // Create a reservation, with the dietary requirements of the party.
 // A hiker books for themself; employee book on behalf of the hiker given in the body.
 router.post("/",
-    requireRole("hiker", "employee"),
+    requireRole("hiker", "employee", "warden"),
     (req: Request, res: Response, next: NextFunction) =>
         (req.user!.role === "hiker" ? validateHikerReservation : validateStaffReservation)(req, res, next),
     (req: Request, res: Response<CreateReservationResponseDTO | CreateStaffReservationResponseDTO>) => {
