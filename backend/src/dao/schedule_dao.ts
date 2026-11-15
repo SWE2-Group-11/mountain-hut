@@ -19,7 +19,7 @@ type CopyParams = { source: string; target: string };
  * Checks if there are any bookings in the week starting at the given date.
  */
 export const hasBookingsInWeek = (weekStart: string): boolean => {
-    const row = db.prepare<WeekParams, {found: number}>(`
+    const found = db.prepare<WeekParams, {found: number}>(`
         SELECT 1 AS found
         FROM seated_at
         WHERE slot_date >= @weekStart
@@ -27,7 +27,7 @@ export const hasBookingsInWeek = (weekStart: string): boolean => {
         LIMIT 1
     `).get({ weekStart })?.found === 1;
 
-    return row !== undefined;
+    return found;
 }
 
 /**
@@ -53,8 +53,8 @@ export const copyWeeklySchedule = (
 
     const validWeekStart = db.prepare<WeekParams, {valid: number}>(`
         SELECT COALESCE(
-            date(@weekstart, '+o days') = @weekstart
-            AND strftime('%w', @weekstart) = '1',
+            date(@weekStart, '+0 days') = @weekStart
+            AND strftime('%w', @weekStart) = '1',
             0
         ) AS valid
     `);
@@ -109,12 +109,12 @@ export const copyWeeklySchedule = (
     `);
 
     const copyTables = db.prepare<CopyParams>(`
-        INSERT INTO slot_table (slot_date, start_time, table_number, seats)
+        INSERT INTO slot_table (slot_date, slot_start_time, table_number, seats)
         SELECT date(
-            st.date,
+            st.slot_date,
             CAST((julianday(@target) - julianday(@source)) AS INTEGER) || ' days'
         ),
-        st.start_time,
+        st.slot_start_time,
         st.table_number,
         st.seats
         FROM slot_table st
