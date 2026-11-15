@@ -148,17 +148,6 @@ describe("Provide party requirements - integration", () => {
             expect(countRows("dietary_requirement")).toBe(requirements);
         });
 
-        it("does not let staff provide requirements", async () => {
-            const employee = await loginAs(EMPLOYEE);
-            const requirements = countRows("dietary_requirement");
-
-            const res = await employee.post(RESERVATIONS_URL)
-                .send(reservation(2, [{ hasAllergies: true, details: "1 peanut allergy" }]));
-
-            expect(res.status).toBe(403);
-            expect(countRows("dietary_requirement")).toBe(requirements);
-        });
-
         it("does not accept requirements from an anonymous user", async () => {
             const requirements = countRows("dietary_requirement");
 

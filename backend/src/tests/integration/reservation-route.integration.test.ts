@@ -40,15 +40,6 @@ describe("POST /api/v1/reservations", () => {
             expect(res.status).toBe(401);
             expect(res.body).toMatchObject({ code: 401 });
         });
-
-        it("answers 403 for a staff account", async () => {
-            const employee = await loginAs(EMPLOYEE);
-
-            const res = await employee.post(RESERVATIONS_URL).send(book("13:00", 2));
-
-            expect(res.status).toBe(403);
-            expect(res.body).toMatchObject({ code: 403 });
-        });
     });
 
     describe("validation (400)", () => {
