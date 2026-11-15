@@ -22,6 +22,23 @@ Base URL: `http://localhost:3000/api/v1`
   - `409 Conflict`: an account (hiker or staff) with the same email already exists
   - `500 Internal Server Error`: unexpected server error
 
+### GET /accounts - Search hiker profiles
+
+- **Description:** searches hiker profiles: registered hikers and temporary hikers (hikers without an account, created by a staff booking). Staff accounts are never returned
+- **Authentication:** required
+- **Permissions:** employee, warden
+- **Query parameters:** at least one is required; when several are given they are combined with AND. Any other parameter is rejected
+  - `name`: partial, case-insensitive match on the full name; surrounding spaces are removed
+  - `phone`: partial match on the mobile number; spaces are ignored
+  - `email`: exact, case-insensitive match; only registered hikers have an email, so temporary hikers never match
+- **Ordering:** by full name; at most 50 results
+- **Responses:**
+  - `200 OK`: returns the matching hikers, each with `id` (account id, `null` for a temporary hiker), `bookingId` (booking of a temporary hiker, `null` for a registered hiker), `fullname`, `mobile_number`, `email` (`null` for a temporary hiker) and `hasAccount`; returns `[]` if no hiker matches
+  - `400 Bad Request`: no search parameter, an empty parameter, an invalid `email`, or an unknown parameter
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
+  - `500 Internal Server Error`: unexpected server error
+
 ## Service
 
 ### GET /slots - Get slots for the selected date
