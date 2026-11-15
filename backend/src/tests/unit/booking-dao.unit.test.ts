@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { db } from "../../database/database";
 import {
+    deleteBooking,
     deleteSeatings,
     getActiveBookingsByHiker,
     getBooking,
@@ -97,6 +98,50 @@ describe("getTablesAvailability (unit)", () => {
         getTablesAvailability(DATE, START);
         
         expect(statement.all).toHaveBeenCalledWith(DATE, START);
+    });
+});
+
+describe("deleteBooking (unit)", () => {
+    it("returns true when the booking was deleted", () => {
+        statement.run.mockReturnValue({ changes: 1 });
+
+        expect(deleteBooking(BOOKING_ID)).toBe(true);
+    });
+
+    it("returns false when the booking does not exist", () => {
+        statement.run.mockReturnValue({ changes: 0 });
+
+        expect(deleteBooking(BOOKING_ID)).toBe(false);
+    });
+
+    it("deletes only the requested booking using its id as a bound parameter", () => {
+        const bookingId = 99;
+
+        deleteBooking(bookingId);
+
+        expect(db.prepare).toHaveBeenCalledExactlyOnceWith(
+            expect.stringMatching(/DELETE\s+FROM\s+booking\s+WHERE\s+id\s*=\s*\?/i)
+        );
+        expect(statement.run).toHaveBeenCalledExactlyOnceWith(bookingId);
+    });
+
+    it("propagates an error while preparing the delete without running it", () => {
+        const boom = new Error("SQLITE_ERROR: no such table: booking");
+        vi.mocked(db.prepare).mockImplementation(() => {
+            throw boom;
+        });
+
+        expect(() => deleteBooking(BOOKING_ID)).toThrow(boom);
+        expect(statement.run).not.toHaveBeenCalled();
+    });
+
+    it("propagates an error while deleting instead of returning false", () => {
+        const boom = new Error("SQLITE_BUSY: database is locked");
+        statement.run.mockImplementation(() => {
+            throw boom;
+        });
+
+        expect(() => deleteBooking(BOOKING_ID)).toThrow(boom);
     });
 });
 
