@@ -1,12 +1,15 @@
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import {
     createReservation,
+    createStaffReservation,
     getReservations,
     updateReservation,
 } from "../controllers/reservation-controller";
 import {
     CreateReservationRequestSchema,
     CreateReservationResponseDTO,
+    CreateStaffReservationRequestSchema,
+    CreateStaffReservationResponseDTO,
     ReservationIdParamsDTO,
     ReservationIdParamsSchema,
     UpdateReservationRequestSchema,
@@ -18,10 +21,20 @@ import { validateBody, validateParams } from "../services/middleware-service";
 
 const router = express.Router();
 
-// Create a reservation, with the dietary requirements of the party (hiker)
-router.post("/", requireRole("hiker"), validateBody(CreateReservationRequestSchema), (req: Request, res: Response<CreateReservationResponseDTO>) => {
+const validateHikerReservation = validateBody(CreateReservationRequestSchema);
+const validateStaffReservation = validateBody(CreateStaffReservationRequestSchema);
+
+// Create a reservation, with the dietary requirements of the party.
+// A hiker books for themself; employee book on behalf of the hiker given in the body.
+router.post("/",
+    requireRole("hiker", "employee", "warden"),
+    (req: Request, res: Response, next: NextFunction) =>
+        (req.user!.role === "hiker" ? validateHikerReservation : validateStaffReservation)(req, res, next),
+    (req: Request, res: Response<CreateReservationResponseDTO | CreateStaffReservationResponseDTO>) => {
     try {
-        res.status(201).json(createReservation(req.user!.id, req.body));
+        res.status(201).json(req.user!.role === "hiker"
+            ? createReservation(req.user!.id, req.body)
+            : createStaffReservation(req.body));
     } catch (err) {
         sendAppError(err, res);
     }
