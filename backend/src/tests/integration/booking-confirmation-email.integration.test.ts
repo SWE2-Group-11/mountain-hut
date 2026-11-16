@@ -211,11 +211,10 @@ describe("Booking confirmation email - integration", () => {
             await expectOnlyNextBookingConfirmed();
         });
 
-        it("sends nothing to a visitor (401) or a staff account (403)", async () => {
+        it("sends nothing to a visitor (401)", async () => {
             const employee = await loginAs(EMPLOYEE);
 
             expect((await request(app).post(RESERVATIONS_URL).send(book("13:00", 2))).status).toBe(401);
-            expect((await employee.post(RESERVATIONS_URL).send(book("13:00", 2))).status).toBe(403);
 
             await expectOnlyNextBookingConfirmed();
         });

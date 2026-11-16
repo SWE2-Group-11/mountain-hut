@@ -35,5 +35,8 @@ export const PASSWORD_KEY_LENGTH = 16;
 // How many hours before the due time can be reserved a seat
 export const BOOKING_CUTOFF_HOURS = 2;
 
+// How many hours before the due time can be changed a reservation
+export const CHANGE_BOOKING_CUTOFF_HOURS = 48;
+
 // timezone in which the dates and start_time of the slots are expressed
 export const HUT_TIMEZONE = "Europe/Rome"; 

@@ -1,40 +1,16 @@
 services:
-  backend:
-    build: ./backend
-    environment:
-      PORT: 3000
-      DB_PATH: /app/data/database.sqlite
-      CLIENT_ORIGIN: http://localhost:5173
-      # Outgoing email goes to the Mailpit service below
-      SMTP_HOST: mailpit
-      SMTP_PORT: 1025
-      # Set to "true" to drop, recreate and seed the database at startup
-      RESET_DB: ${RESET_DB:-false}
+  app:
+    image: ghcr.io/swe2-group-11/mountain-hut:latest
+    build: .
+    container_name: mountain-hut
     volumes:
-      - db-data:/app/data
+      - mountain-hut-data:/app/data
     ports:
-      - "3000:3000"
-    depends_on:
-      - mailpit
-    restart: unless-stopped
-
-  frontend:
-    build: ./frontend
-    environment:
-      API_PROXY_TARGET: http://backend:3000
-    depends_on:
-      - backend
-    ports:
-      - "5173:5173"
-    restart: unless-stopped
-
-  # Development inbox: catches all emails, web UI on http://localhost:8025
-  mailpit:
-    image: axllent/mailpit:v1.27.0
-    ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "5173:5173" # frontend
+      - "3000:3000" # REST API
+      - "8025:8025" # Mailpit web UI
     restart: unless-stopped
 
 volumes:
-  db-data:
+  mountain-hut-data:
+    name: mountain-hut-data

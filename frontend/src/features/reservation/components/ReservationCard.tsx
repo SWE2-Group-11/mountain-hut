@@ -61,6 +61,7 @@ export const ReservationCard: React.FC = () => {
             <button
               type="button"
               onClick={clearError}
+              autoFocus
               className="w-full py-3 bg-[#1C2826] text-white rounded-xl font-medium text-xs hover:bg-black transition-colors cursor-pointer"
             >
               Got it

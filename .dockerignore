@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+**/*.sqlite*
+**/.env
+backend/src/data
+e2e
+docs
+.git
+.github
