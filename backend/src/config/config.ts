@@ -15,7 +15,7 @@ const requireEnv = (name: string): string => {
 // Database
 export const DB_FILE_PATH = process.env.DB_PATH ?? path.resolve(process.cwd(), "src/data/database.sqlite");
 
-// Drop, recreate and seed the database at startup (default: false)
+// Drop, recreate and seed the database at startup (default: false; an empty database is always seeded)
 export const RESET_DB = process.env.RESET_DB === "true";
 
 // Application URLs

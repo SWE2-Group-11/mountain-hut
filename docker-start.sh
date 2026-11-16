@@ -19,9 +19,6 @@ serve -s -L -l tcp://0.0.0.0:5173 /app/frontend/dist &
   echo
 ) &
 
-# Backend: create and seed the database on the first start, keep it on later starts
-if [ ! -f "$DB_PATH" ]; then
-  export RESET_DB=true
-fi
+# Backend: creates and seeds the database when it has no tables yet (first start), keeps it otherwise
 cd /app/backend
 exec node dist/index.js

@@ -40,7 +40,7 @@ cp seed-accounts.example.json seed-accounts.json    # demo accounts
 
 In `seed-accounts.json`, every account has `role` (`warden`, `employee` or `hiker`), `email`, `password` and `name`. Hikers also need `mobile` and can have `notes` and `emergency_contact`. The demo bookings belong to the 3rd and 4th accounts in the file, so those must be hikers.
 
-The container reads both files at startup; the image never contains them. The demo accounts are created only together with the database (first start), so editing them later requires resetting the database (see below). After the first start, `seed-accounts.json` is no longer read.
+The container reads both files at startup; the image never contains them. The demo accounts are created only together with the database (first start), so editing them later requires resetting the database (see below). If seeding fails (for example an invalid `seed-accounts.json`), the backend stops with the error and retries seeding on the next start, once the file is fixed. After a successful first start, `seed-accounts.json` is no longer read.
 
 ### Run the published image
 
@@ -73,7 +73,7 @@ Log in with the demo accounts defined in `seed-accounts.json`.
 
 ### Database
 
-The SQLite database is stored in the `mountain-hut-data` Docker volume. It is created and seeded on the first start and kept on later starts. To reset it:
+The SQLite database is stored in the `mountain-hut-data` Docker volume. It is created and seeded on the first start (whenever it has no tables yet) and kept on later starts. To reset it:
 
 ```bash
 docker rm -f mountain-hut
@@ -106,7 +106,7 @@ npm install
 npm run dev
 ```
 
-If running for the first time or in need to recreate the database (this also recreates the demo accounts from `seed-accounts.json`):
+The database is created and seeded on the first run. To recreate it (this also recreates the demo accounts from `seed-accounts.json`):
 
 ```bash
 RESET_DB=true npm run dev
