@@ -1,8 +1,8 @@
 PRAGMA foreign_keys = ON;
 
--- Accounts, staff and hikers are seeded from the SEED_ACCOUNT_<n>_* environment
--- variables (see .env.example): account <n> has id <n>.
--- The bookings below belong to accounts 3 and 4, which must be hikers.
+-- Accounts, staff and hikers are seeded from seed-accounts.json (see seed-accounts.example.json).
+-- The account at position <n> in the file gets id <n>: the bookings below belong to
+-- accounts 3 and 4, so the 3rd and 4th accounts in the file must be hikers.
 
 -- Slots
 INSERT INTO slot (date, start_time, duration) VALUES

@@ -31,20 +31,23 @@ The whole system runs in a single Docker image: web application, REST API and Ma
 
 ### Secrets and demo accounts
 
-The session secret and the demo accounts live in a `.env` file in the repository root, never committed. Create it from the template and replace every value:
+Two files in the repository root hold the secrets, and neither is committed. Create them from the templates and replace every value:
 
 ```bash
-cp .env.example .env
+cp .env.example .env                                # session secret
+cp seed-accounts.example.json seed-accounts.json    # demo accounts
 ```
 
-The container reads `.env` at startup; the image never contains it. The demo accounts are created only together with the database (first start), so editing them later requires resetting the database (see below).
+In `seed-accounts.json`, every account has `role` (`warden`, `employee` or `hiker`), `email`, `password` and `name`. Hikers also need `mobile` and can have `notes` and `emergency_contact`. The demo bookings belong to the 3rd and 4th accounts in the file, so those must be hikers.
+
+The container reads both files at startup; the image never contains them. The demo accounts are created only together with the database (first start), so editing them later requires resetting the database (see below). After the first start, `seed-accounts.json` is no longer read.
 
 ### Run the published image
 
-Requires only Docker and the `.env` file above.
+Requires only Docker and the two files above. Run it from the repository root:
 
 ```bash
-docker run -d --name mountain-hut --env-file .env -p 5173:5173 -p 3000:3000 -p 8025:8025 -v mountain-hut-data:/app/data ghcr.io/swe2-group-11/mountain-hut:latest
+docker run -d --name mountain-hut --env-file .env -v "$PWD/seed-accounts.json:/run/secrets/seed_accounts:ro" -p 5173:5173 -p 3000:3000 -p 8025:8025 -v mountain-hut-data:/app/data ghcr.io/swe2-group-11/mountain-hut:latest
 ```
 
 To run a specific release, replace `latest` with its version, e.g. `1.0.0`.
@@ -66,7 +69,7 @@ docker compose up --build
 
 Keep the ports as they are: the web application calls the API on port 3000, and the API accepts requests only from port 5173.
 
-Log in with the demo accounts defined in `.env`.
+Log in with the demo accounts defined in `seed-accounts.json`.
 
 ### Database
 
@@ -95,7 +98,7 @@ The end-to-end tests (`cd e2e && npm test`) read the confirmation emails from Ma
 
 ### Getting started
 
-Requires Node 22 or newer and the `.env` file in the repository root (see [Secrets and demo accounts](#secrets-and-demo-accounts)): `npm run dev` and `npm start` read `../.env`.
+Requires Node 22 or newer, plus `.env` and `seed-accounts.json` in the repository root (see [Secrets and demo accounts](#secrets-and-demo-accounts)). `npm run dev` and `npm start` read `../.env`; database resets read `../seed-accounts.json`.
 
 ```bash
 cd backend
@@ -103,7 +106,7 @@ npm install
 npm run dev
 ```
 
-If running for the first time or in need to recreate the database (this also recreates the demo accounts from `.env`):
+If running for the first time or in need to recreate the database (this also recreates the demo accounts from `seed-accounts.json`):
 
 ```bash
 RESET_DB=true npm run dev

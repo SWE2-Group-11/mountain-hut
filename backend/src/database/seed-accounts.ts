@@ -1,14 +1,17 @@
+import fs from "node:fs";
+import path from "node:path";
 import Database from "better-sqlite3";
 import { z } from "zod";
 import { generatePasswordHash } from "../services/password-service";
 
 /*
- * Demo accounts seeded by resetDatabase, read from SEED_ACCOUNT_<n>_<FIELD> environment
- * variables (see .env.example). Numbering starts at 1 and stops at the first missing
- * SEED_ACCOUNT_<n>_EMAIL; account <n> gets id <n>, which seed-core.sql relies on.
+ * Demo accounts seeded by resetDatabase, read from a JSON file (see seed-accounts.example.json):
+ * seed-accounts.json in the repository root, or the file in SEED_ACCOUNTS_FILE
+ * (the Docker image sets it to the mounted secret, the tests to their own file).
+ * The account at position <n> (from 1) gets id <n>, which seed-core.sql relies on.
  */
 
-const PREFIX = "SEED_ACCOUNT_";
+const SEED_ACCOUNTS_FILE = process.env.SEED_ACCOUNTS_FILE ?? path.resolve(process.cwd(), "../seed-accounts.json");
 
 const credentials = {
     email: z.string().trim().toLowerCase().pipe(z.email()),
@@ -16,45 +19,36 @@ const credentials = {
     name: z.string().min(1),
 };
 
-const SeedAccountSchema = z.discriminatedUnion("role", [
-    z.object({ role: z.enum(["warden", "employee"]), ...credentials }),
+const SeedAccountsSchema = z.array(z.discriminatedUnion("role", [
+    z.object({ role: z.enum(["warden", "employee"]), ...credentials }).strict(),
     z.object({
         role: z.literal("hiker"),
         ...credentials,
         mobile: z.string().min(1),
-        notes: z.string().optional(),
-        emergency_contact: z.string().optional(),
-    }),
-]);
+        notes: z.string().nullish(),
+        emergency_contact: z.string().nullish(),
+    }).strict(),
+])).min(1);
 
-type SeedAccount = z.infer<typeof SeedAccountSchema>;
+type SeedAccount = z.infer<typeof SeedAccountsSchema>[number];
 // Distributive over the role union, so `role` still narrows to the hiker fields
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 type SeedRow = DistributiveOmit<SeedAccount, "password"> & { id: number; salt: string; hash: string };
 
 const readSeedAccounts = (): SeedAccount[] => {
-    const accounts: SeedAccount[] = [];
-    for (let n = 1; process.env[`${PREFIX}${n}_EMAIL`] !== undefined; n++) {
-        // Empty values count as missing, so optional fields can be left blank
-        const field = (name: string) => process.env[`${PREFIX}${n}_${name}`] || undefined;
-        const parsed = SeedAccountSchema.safeParse({
-            role: field("ROLE"),
-            email: field("EMAIL"),
-            password: field("PASSWORD"),
-            name: field("NAME"),
-            mobile: field("MOBILE"),
-            notes: field("NOTES"),
-            emergency_contact: field("EMERGENCY_CONTACT"),
-        });
-        if (!parsed.success) {
-            throw new Error(`Invalid ${PREFIX}${n}_* environment variables:\n${z.prettifyError(parsed.error)}`);
-        }
-        accounts.push(parsed.data);
+    let json: unknown;
+    try {
+        json = JSON.parse(fs.readFileSync(SEED_ACCOUNTS_FILE, "utf-8"));
+    } catch (err) {
+        // A directory here usually means Docker created it because the host file was missing
+        throw new Error(`Cannot read the seed accounts file ${SEED_ACCOUNTS_FILE} `
+            + `(copy seed-accounts.example.json to seed-accounts.json): ${(err as Error).message}`);
     }
-    if (accounts.length === 0) {
-        throw new Error(`No seed accounts: set ${PREFIX}1_EMAIL and the other ${PREFIX}<n>_* variables (see .env.example)`);
+    const parsed = SeedAccountsSchema.safeParse(json);
+    if (!parsed.success) {
+        throw new Error(`Invalid seed accounts file ${SEED_ACCOUNTS_FILE}:\n${z.prettifyError(parsed.error)}`);
     }
-    return accounts;
+    return parsed.data;
 };
 
 // Hashed once per process: scrypt is slow and tests reset the database before each test
@@ -68,8 +62,8 @@ const getSeedRows = (): SeedRow[] =>
     }));
 
 /**
- * Inserts the seed accounts from the environment into freshly created tables.
- * @throws Error if the SEED_ACCOUNT_<n>_* variables are missing or invalid.
+ * Inserts the seed accounts from the JSON file into freshly created tables.
+ * @throws Error if the file is missing or invalid.
  */
 export const insertSeedAccounts = (db: Database.Database): void => {
     const insertAccount = db.prepare<[number, string, string, string]>(
