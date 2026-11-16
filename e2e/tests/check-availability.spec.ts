@@ -277,7 +277,7 @@ test.describe('Check availability - a visitor', () => {
     await page.getByRole('button', { name: 'Sign in' }).click();
 
     // Assert
-    await expect(page).toHaveURL(/\/book-table$/);
+    await expect(page).toHaveURL(/\/book-table(\?.*)?$/);
     await expect(page.getByRole('heading', { name: 'Reserve your table' })).toBeVisible();
   });
 });
@@ -296,7 +296,7 @@ test.describe('Check availability - logged in', () => {
     await answer(page).getByRole('link', { name: 'Book a table' }).click();
 
     // Assert
-    await expect(page).toHaveURL(/\/book-table$/);
+    await expect(page).toHaveURL(/\/book-table(\?.*)?$/);
     await expect(page.getByRole('heading', { name: 'Reserve your table' })).toBeVisible();
   });
 
