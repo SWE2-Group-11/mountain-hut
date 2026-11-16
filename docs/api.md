@@ -22,6 +22,23 @@ Base URL: `http://localhost:3000/api/v1`
   - `409 Conflict`: an account (hiker or staff) with the same email already exists
   - `500 Internal Server Error`: unexpected server error
 
+### GET /accounts - Search hiker profiles
+
+- **Description:** searches hiker profiles: registered hikers and temporary hikers (hikers without an account, created by a staff booking). Staff accounts are never returned
+- **Authentication:** required
+- **Permissions:** employee, warden
+- **Query parameters:** at least one is required; when several are given they are combined with AND. Any other parameter is rejected
+  - `name`: partial, case-insensitive match on the full name; surrounding spaces are removed
+  - `phone`: partial match on the mobile number; spaces are ignored
+  - `email`: exact, case-insensitive match; only registered hikers have an email, so temporary hikers never match
+- **Ordering:** by full name; at most 50 results
+- **Responses:**
+  - `200 OK`: returns the matching hikers, each with `id` (account id, `null` for a temporary hiker), `bookingId` (booking of a temporary hiker, `null` for a registered hiker), `fullname`, `mobile_number`, `email` (`null` for a temporary hiker) and `hasAccount`; returns `[]` if no hiker matches
+  - `400 Bad Request`: no search parameter, an empty parameter, an invalid `email`, or an unknown parameter
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
+  - `500 Internal Server Error`: unexpected server error
+
 ## Service
 
 ### GET /slots - Get slots for the selected date
@@ -101,9 +118,9 @@ Base URL: `http://localhost:3000/api/v1`
 
 ### POST /reservations - Create a reservation
 
-- **Description:** create the reservation to book a table for an authenticated hiker, optionally declaring the dietary requirements of the party
+- **Description:** create the reservation to book a table, optionally declaring the dietary requirements of the party. A hiker books for themself; an employee book on behalf of the hiker described in `hiker`
 - **Authentication:** required
-- **Permissions:** hiker
+- **Permissions:** hiker, employee, warden
 - **Request body:**
   - `date`: required, formatted `YYYY-MM-DD`
   - `slot`: required, start time of the slot, formatted `HH:mm`
@@ -111,12 +128,17 @@ Base URL: `http://localhost:3000/api/v1`
   - `requirements`: optional list of objects, each describing the dietary requirements of a subset of the party; if omitted, no dietary requirements are declared
     - `hasAllergies`: required boolean
     - `details`: required string with at least one non-space character, describing the people of the subset and their dietary restrictions or allergies (e.g. `"2 vegetarians"`)
+  - `hiker`: required for staff, ignored for hikers; who the booking is for, selected by `mode` (no other fields are accepted in a staff request):
+    - `{ "mode": "existing", "hikerId" }`: an existing hiker account (positive integer id)
+    - `{ "mode": "temporary", "fullname", "mobile_number"? }`: a hiker without an account
+    - `{ "mode": "registered", "fullname", "mobile_number", "email", "notes"?, "emergency_contact"? }`: creates a hiker account (with a generated initial password that must be changed) and books for it
+- **Rules for staff:** the booking is allowed until the slot starts (the 2-hour cutoff applies only to hikers); no confirmation email is sent
 - **Responses:**
-  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`)
-  - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement), slot that does not exist, or slot that starts in less than 2 hours
+  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`). For staff, also `hikerId` (`null` for a temporary hiker) and, only in `registered` mode, `initialPassword` to deliver to the hiker
+  - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement, or a missing/invalid `hiker` in a staff request), slot that does not exist (hiker), slot that starts in less than 2 hours (hiker), or slot that has already started (staff)
   - `401 Unauthorized`: user is not authenticated
-  - `403 Forbidden`: user does not have the required permissions
-  - `409 Conflict`: the user already has a booking in the same slot (date and time), or the requested capacity is no longer available
+  - `404 Not Found`: (staff) the slot or the `existing` hiker does not exist
+  - `409 Conflict`: the hiker already has a booking in the same slot (date and time), the requested capacity is no longer available, or (staff, `registered` mode) an account with the given email already exists
   - `500 Internal Server Error`: unexpected server error
 
 ### PATCH /reservations/:reservationId - Update a reservation

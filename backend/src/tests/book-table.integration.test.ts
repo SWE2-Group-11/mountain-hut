@@ -144,16 +144,6 @@ describe("Book a table - integration", () => {
             expect(countRows("booking")).toBe(bookings);
         });
 
-        it("does not let staff book a table", async () => {
-            const employee = await loginAs(EMPLOYEE);
-            const bookings = countRows("booking");
-
-            const res = await employee.post(RESERVATIONS_URL).send({ date: tomorrow, slot: "13:00", partySize: 2 });
-
-            expect(res.status).toBe(403);
-            expect(countRows("booking")).toBe(bookings);
-        });
-
         it("answers errors with the { code, name, message } shape", async () => {
             const res = await request(app).post(RESERVATIONS_URL).send({});
 

@@ -54,6 +54,7 @@ export type HikerInput = {
     mobile_number: string;
     notes: string | null;
     emergency_contact: string | null;
+    must_change_password?: boolean;
 };
 
 /**
@@ -62,7 +63,7 @@ export type HikerInput = {
  * @returns The created Hiker, or null if the email is already registered.
  */
 export const createHikerAccount = (input: HikerInput): Hiker | null => {
-    const { email, password, full_name, mobile_number, notes, emergency_contact } = input;
+    const { email, password, full_name, mobile_number, notes, emergency_contact, must_change_password = false } = input;
     const { salt, hash } = generatePasswordHash(password);
     return inTransaction(() => {
         if (db.prepare<[string]>("SELECT 1 FROM account WHERE email = ?").get(email)) {
@@ -70,11 +71,11 @@ export const createHikerAccount = (input: HikerInput): Hiker | null => {
         }
         const { lastInsertRowid } = db
             .prepare("INSERT INTO account (email, password_salt, password_hash, must_change_password) VALUES (?, ?, ?, ?)")
-            .run(email, salt, hash, false);
+            .run(email, salt, hash, must_change_password ? 1 : 0);
         const id = Number(lastInsertRowid);
         db.prepare<[number, string, string, string | null, string | null]>(
             "INSERT INTO hiker (account_id, full_name, mobile_number, notes, emergency_contact) VALUES (?, ?, ?, ?, ?)"
         ).run(id, full_name, mobile_number, notes, emergency_contact);
-        return new Hiker(id, email, salt, hash, false, full_name, mobile_number, notes, emergency_contact);
+        return new Hiker(id, email, salt, hash, must_change_password, full_name, mobile_number, notes, emergency_contact);
     });
 };
