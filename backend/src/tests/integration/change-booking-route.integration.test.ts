@@ -368,6 +368,19 @@ describe("PATCH /api/v1/reservations/:reservationId", () => {
             expect(await availableSeats(D1, "12:00")).toBe(3);
         });
 
+        it("seats a smaller party again with the MH-01 rules, even if it still fits at its table", async () => {
+            // MH-06 clarification: any party size change is a new booking. Mario's 4 people at T1 (19:30)
+            // become 2: the smallest table with 2 free seats is T4, so the party moves there.
+            const mario = await loginAt(MARIO);
+
+            const res = await mario.patch(`${RESERVATIONS_URL}/3`).send({ partySize: 2 });
+
+            expect(res.status).toBe(200);
+            expect(res.body).toMatchObject({ partySize: 2, seatings: [{ table_number: 4, assigned_seats: 2 }] });
+            expect(seatsOf(3)).toEqual([{ date: D1, slot: "19:30", table_number: 4, assigned_seats: 2 }]);
+            expect(await availableSeats(D1, "19:30")).toBe(14);
+        });
+
         it("moves the party to a bigger table in the same slot", async () => {
             // Mario's T1 at 19:30 is full, so 5 people go to the only table with room for 5 (T3).
             const mario = await loginAt(MARIO);

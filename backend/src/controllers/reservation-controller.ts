@@ -7,7 +7,6 @@ import {
     insertSeatings,
     saveBooking,
     hasBookingInSlot,
-    getTablesAvailability,
 } from "../dao/booking-dao";
 import { replaceRequirements } from "../dao/dietary-requirement-dao";
 import { inTransaction } from "../database/database";
@@ -26,8 +25,7 @@ import {
     requirementDTOsToInputs,
     reservationToResponseDTO,
 } from "../services/mapper-service";
-import { assignSeats, isBookingOpen, isChangeOpen } from "../domain/booking-rules";
-import type { SeatedAt } from "../models/entities/seated_at";
+import { isBookingOpen, isChangeOpen } from "../domain/booking-rules";
 import { BOOKING_CUTOFF_HOURS, HUT_TIMEZONE, CHANGE_BOOKING_CUTOFF_HOURS } from "../config/config";
 import { notifyBookingCreated } from "../notifications/booking-confirmation";
 
@@ -44,7 +42,7 @@ import {
     getHikerById,
 } from "../dao/hiker-dao";
 import { createHikerAccount } from "../dao/account-dao";
-import type { Reservation, TemporaryHikerInput } from "../dao/booking-dao";
+import type { TemporaryHikerInput } from "../dao/booking-dao";
 import { notifyBookingChanged } from "../notifications/booking-change";
 
 /**
@@ -274,9 +272,18 @@ export const updateReservation = (
             throw new ConflictError("You already have a reservation in the requested slot");
         }
 
-        const seatings = slotChanged || party_size !== reservation.party_size
-            ? reassignSeats(reservation, date, start_time, party_size, slotChanged)
-            : reservation.seatings;
+        // MH-06 clarification: a new slot or party size is treated as a new booking.
+        // The seats are released first, or they would count as taken; if the tables cannot
+        // be assigned again, the throw rolls back the release and the booking stays as it was.
+        let seatings = reservation.seatings;
+        if (slotChanged || party_size !== reservation.party_size) {
+            deleteSeatings(reservation_id);
+            const assignment = getBookingAvailability(date, start_time, party_size);
+            if (!assignment || assignment.length === 0) {
+                throw new ConflictError("The requested capacity is no longer available");
+            }
+            seatings = insertSeatings(reservation_id, date, start_time, assignment);
+        }
 
         const dietary_requirements = request.requirements === undefined
             ? reservation.dietary_requirements
@@ -295,37 +302,4 @@ export const updateReservation = (
     // Only after the commit: a refused or rolled back change must not be notified
     notifyBookingChanged(reservation_id);
     return response;
-};
-
-/**
- * Replaces the seats of a reservation. The current seats are
- * released first; then, in the same slot, the party stays on the tables it had if it
- * still fits there. Otherwise, or in a new slot, the tables are assigned again with
- * the MH-01 rules, as for a new booking. Must run inside the caller's transaction:
- * if the change is refused, the throw rolls back the release.
- * @returns The new seatings.
- * @throws ConflictError if the requested capacity is no longer available.
- */
-const reassignSeats = (
-    reservation: Reservation,
-    date: string,
-    start_time: string,
-    party_size: number,
-    slotChanged: boolean
-): SeatedAt[] => {
-    const id = reservation.booking.id;
-    deleteSeatings(id); // release first, so the party's own seats count as free
-
-    let assignment = null;
-    if (!slotChanged) {
-        const ownTables = new Set(reservation.seatings.map((s) => s.table_number));
-        const tables = getTablesAvailability(date, start_time).filter((t) => ownTables.has(t.table_number));
-        assignment = assignSeats(tables, party_size);
-    }
-    assignment ??= getBookingAvailability(date, start_time, party_size);
-
-    if (!assignment || assignment.length === 0) {
-        throw new ConflictError("The requested capacity is no longer available");
-    }
-    return insertSeatings(id, date, start_time, assignment);
 };
