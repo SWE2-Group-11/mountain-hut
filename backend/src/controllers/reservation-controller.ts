@@ -1,5 +1,4 @@
 import { getSlot } from "../dao/slot-dao";
-// TODO: Change the import path to use the new DAO once it is implemented
 import {
     deleteSeatings,
     getActiveBookingsByHiker,
@@ -7,7 +6,8 @@ import {
     getBookingAvailability,
     insertSeatings,
     saveBooking,
-    hasBookingInSlot, getBooking, deleteBooking,
+    hasBookingInSlot, 
+    deleteBooking,
     getTablesAvailability,
 } from "../dao/booking-dao";
 import { replaceRequirements } from "../dao/dietary-requirement-dao";
@@ -18,12 +18,10 @@ import {
     UpdateReservationRequestDTO,
     UpdateReservationResponseDTO,
 } from "../models/dto/reservation-dto";
-import { inTransaction } from "../database/database";
 import { NotFoundError } from "../models/errors/notfound-error";
 import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
 import { ForbiddenError } from "../models/errors/forbidden-error";
-import { NotFoundError } from "../models/errors/notfound-error";
 import {
     bookingDataToCreateReservationResponseDTO,
     reservationToResponseDTO,
@@ -406,16 +404,16 @@ export const updateReservation = (
  */
 export const cancelReservation = (hiker_id: number, reservation_id: number): void => inTransaction(() => {
     const reservation = getBooking(reservation_id);
-    if (!reservation) {
+    if ( !reservation ) {
         throw new NotFoundError("The reservation does not exist");
     }
-    if(reservation.booking.hiker_id !== hiker_id) {
+    if( reservation.booking.hiker_id !== hiker_id ) {
         throw new ForbiddenError("This reservation does not belong to the authenticated hiker");
     }
-    // TODO: integrate with the correct DAO once it is implemented
-    const deleted =deleteBooking(reservation_id);
 
-    if(!deleted) {
+    const deleted = deleteBooking(reservation_id);
+
+    if( !deleted ) {
         throw new ConflictError("The reservation could not be cancelled");
     }
 });
