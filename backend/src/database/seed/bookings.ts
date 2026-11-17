@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { assignSeats, type TableAvailability } from "../../domain/booking-rules";
-import { pickDistinct, randomInt, type Random } from "./random";
+import { pickSome, pickDistinct, randomInt, type Random } from "./random";
 
 /*
  * Random demo bookings, seeded in SEED_MODE=random after the accounts and the slots.
@@ -78,11 +78,13 @@ export const insertRandomBookings = (db: Database.Database, random: Random = Mat
         console.log(`  ${slot.date} ${slot.start_time}: ${capacityOf(tables)} seats (${layout})`);
     }
 
+    // Some hikers with an account and some temporary hikers, at least one of each
     const guests: Guest[] = [
-        ...hikers.map((h) => ({ kind: "hiker" as const, ...h })),
-        ...DEMO_TEMPORARY_HIKERS.map((t) => ({ kind: "temporary" as const, ...t })),
+        ...pickSome(random, hikers).map((h) => ({ kind: "hiker" as const, ...h })),
+        ...pickSome(random, DEMO_TEMPORARY_HIKERS).map((t) => ({ kind: "temporary" as const, ...t })),
     ];
 
+    // Random order, so the first guests do not always fill the slots
     for (const guest of pickDistinct(random, guests, guests.length)) {
         const chosen = pickDistinct(random, slots, randomInt(random, 0, slots.length));
         console.log(`${guestLabel(guest)}: ${chosen.length} slot(s)`);

@@ -18,3 +18,7 @@ export const pickDistinct = <T>(random: Random, items: readonly T[], k: number):
     }
     return copy.slice(0, k);
 };
+
+/** A random non-empty subset of items (empty only if items is empty). */
+export const pickSome = <T>(random: Random, items: readonly T[]): T[] =>
+    pickDistinct(random, items, randomInt(random, Math.min(1, items.length), items.length));
