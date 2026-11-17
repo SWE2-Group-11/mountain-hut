@@ -8,8 +8,8 @@ import { DietaryRequirement } from "../../models/entities/dietary_requirement";
 import { createReservation, updateReservation } from "../../controllers/reservation-controller";
 import { getSlot } from "../../dao/slot-dao";
 import {
-    saveBooking, hasBookingInSlot, getBooking, getActiveBookingsByHiker, getBookingAvailability,
-    getTablesAvailability, deleteSeatings, insertSeatings, type Reservation,
+    saveBooking, hasBookingInSlot, getBooking, getActiveBookingsByHiker, 
+    getBookingAvailability, deleteSeatings, insertSeatings, type Reservation,
 } from "../../dao/booking-dao";
 import { replaceRequirements } from "../../dao/dietary-requirement-dao";
 import { inTransaction } from "../../database/database";
@@ -22,7 +22,7 @@ import { Booking } from "../../models/entities/booking";
 vi.mock("../../dao/slot-dao", () => ({ getSlot: vi.fn() }));
 vi.mock("../../dao/booking-dao", () => ({
     hasBookingInSlot: vi.fn(), saveBooking: vi.fn(), getBooking: vi.fn(),
-    getActiveBookingsByHiker: vi.fn(), getBookingAvailability: vi.fn(), getTablesAvailability: vi.fn(),
+    getActiveBookingsByHiker: vi.fn(), getBookingAvailability: vi.fn(),
     deleteSeatings: vi.fn(), insertSeatings: vi.fn(),
 }));
 vi.mock("../../dao/dietary-requirement-dao", () => ({ replaceRequirements: vi.fn() }));
@@ -301,7 +301,6 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
     const NEW_DATE = "2030-06-16";
     const NEW_START = "19:30";
 
-    const table = (table_number: number, seats: number, free_seats: number) => ({ table_number, seats, free_seats });
     const seatsOf = (...pairs: [number, number][]) => pairs.map(([table_number, assigned_seats]) => ({ table_number, assigned_seats }));
 
     const makeReservation = (
@@ -324,7 +323,8 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
         vi.setSystemTime(new Date("2030-06-10T07:00:00Z"));
         vi.mocked(getBooking).mockReturnValue(makeReservation());
         vi.mocked(getActiveBookingsByHiker).mockReturnValue([]);
-        vi.mocked(getTablesAvailability).mockReturnValue([]);
+        // Any reassignment fits the whole party on T1 unless a test says otherwise
+        vi.mocked(getBookingAvailability).mockImplementation((_date, _start, party_size) => seatsOf([1, party_size]));
         vi.mocked(replaceRequirements).mockReturnValue([]);
         vi.mocked(getSlot).mockImplementation((date, start) => new Slot(date, start, 60));
         vi.mocked(insertSeatings).mockImplementation(((id: number, date: string, start: string, assignment: { table_number: number; assigned_seats: number }[]) =>
@@ -392,18 +392,17 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
         });
 
         it("rejects a move to a slot where the hiker already has another booking", () => {
-            vi.mocked(getActiveBookingsByHiker).mockReturnValue([
-                { ...makeReservation(), booking: new Booking(99, HIKER_ID), date: NEW_DATE, start_time: NEW_START },
-            ]);
+            vi.mocked(hasBookingInSlot).mockReturnValue(true);
 
             expect(() => update({ date: NEW_DATE, slot: NEW_START })).toThrow(ConflictError);
+            expect(hasBookingInSlot).toHaveBeenCalledExactlyOnceWith(HIKER_ID, NEW_DATE, NEW_START);
             expect(deleteSeatings).not.toHaveBeenCalled();
         });
 
         it("does not look for other bookings when the slot is unchanged", () => {
             update({ partySize: 2 });
 
-            expect(getActiveBookingsByHiker).not.toHaveBeenCalled();
+            expect(hasBookingInSlot).not.toHaveBeenCalled();
         });
     });
 
@@ -416,64 +415,36 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
             expect(response.seatings).toEqual(seatsOf([1, 4]));
         });
 
+        // MH-06 clarification: any party size change is treated as a new booking
         it.each([
-            { label: "from the last table", from: [[1, 3], [2, 2]], to: 3, expected: [[1, 3]] },
-            { label: "across tables", from: [[1, 3], [2, 2]], to: 1, expected: [[1, 1]] },
-        ] as { label: string; from: [number, number][]; to: number; expected: [number, number][] }[])(
-            "decreasing releases the seats $label and never asks for a new arrangement",
-            ({ from, to, expected }) => {
+            { label: "decreases", from: [[1, 3], [2, 2]], to: 3, arrangement: [[4, 3]] },
+            { label: "increases", from: [[1, 2]], to: 4, arrangement: [[3, 4]] },
+        ] as { label: string; from: [number, number][]; to: number; arrangement: [number, number][] }[])(
+            "when the party $label, releases the seats and assigns the tables again with the MH-01 rules",
+            ({ from, to, arrangement }) => {
+                const newSeats = seatsOf(...arrangement);
+
                 vi.mocked(getBooking).mockReturnValue(makeReservation(from));
+                vi.mocked(getBookingAvailability).mockReturnValue(newSeats);
 
                 const response = update({ partySize: to });
 
                 expect(deleteSeatings).toHaveBeenCalledExactlyOnceWith(RES_ID);
-                expect(insertSeatings).toHaveBeenCalledExactlyOnceWith(RES_ID, DAY, START_TIME, seatsOf(...expected));
-                expect(getBookingAvailability).not.toHaveBeenCalled();
+                expect(getBookingAvailability).toHaveBeenCalledExactlyOnceWith(DAY, START_TIME, to);
+                // The old seats must be released before asking, or they would count as taken
+                expect(vi.mocked(deleteSeatings).mock.invocationCallOrder[0])
+                    .toBeLessThan(vi.mocked(getBookingAvailability).mock.invocationCallOrder[0]);
+                expect(insertSeatings).toHaveBeenCalledExactlyOnceWith(RES_ID, DAY, START_TIME, newSeats);
                 expect(response.partySize).toBe(to);
-                expect(response.seatings).toEqual(seatsOf(...expected));
+                expect(response.seatings).toEqual(newSeats);
             },
         );
-
-        it.each([
-            { label: "one table", from: [[1, 2]], free: [table(1, 4, 2)], to: 4, expected: [[1, 4]] },
-            { label: "several tables", from: [[1, 2], [2, 2]], free: [table(1, 4, 1), table(2, 4, 2)], to: 7, expected: [[1, 3], [2, 4]] },
-        ] as { label: string; from: [number, number][]; free: ReturnType<typeof table>[]; to: number; expected: [number, number][] }[])(
-            "increasing keeps the assigned tables when the extra people fit on $label",
-            ({ from, free, to, expected }) => {
-                vi.mocked(getBooking).mockReturnValue(makeReservation(from));
-                vi.mocked(getTablesAvailability).mockReturnValue(free);
-
-                const response = update({ partySize: to });
-
-                expect(getTablesAvailability).toHaveBeenCalledWith(DAY, START_TIME);
-                expect(getBookingAvailability).not.toHaveBeenCalled();
-                expect(insertSeatings).toHaveBeenCalledWith(RES_ID, DAY, START_TIME, seatsOf(...expected));
-                expect(response.partySize).toBe(to);
-            },
-        );
-
-        // Clarification: no longer fits at the assigned tables -> new booking with the MH-01 rules
-        it("increasing beyond the assigned tables releases the seats and assigns the tables again", () => {
-            vi.mocked(getBooking).mockReturnValue(makeReservation([[1, 2]]));
-            vi.mocked(getTablesAvailability).mockReturnValue([table(1, 4, 1)]); // only 1 of the 2 extra seats fits
-            vi.mocked(getBookingAvailability).mockReturnValue(seatsOf([3, 4]));
-
-            const response = update({ partySize: 4 });
-
-            expect(getBookingAvailability).toHaveBeenCalledExactlyOnceWith(DAY, START_TIME, 4);
-            // The old seats must be released before asking, or they would count as taken
-            expect(vi.mocked(deleteSeatings).mock.invocationCallOrder[0])
-                .toBeLessThan(vi.mocked(getBookingAvailability).mock.invocationCallOrder[0]);
-            expect(insertSeatings).toHaveBeenCalledExactlyOnceWith(RES_ID, DAY, START_TIME, seatsOf([3, 4]));
-            expect(response.seatings).toEqual(seatsOf([3, 4]));
-        });
 
         it.each([
             { label: "null", availability: null },
             { label: "an empty arrangement", availability: [] },
         ])("refuses the increase with ConflictError when there are not enough seats ($label)", ({ availability }) => {
             vi.mocked(getBooking).mockReturnValue(makeReservation([[1, 2]]));
-            vi.mocked(getTablesAvailability).mockReturnValue([table(1, 4, 0)]);
             vi.mocked(getBookingAvailability).mockReturnValue(availability);
 
             expect(() => update({ partySize: 9 })).toThrow(ConflictError);
@@ -507,14 +478,6 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
 
             expect(getBookingAvailability).toHaveBeenCalledWith(NEW_DATE, NEW_START, 6);
             expect(response.partySize).toBe(6);
-        });
-
-        it("never reuses the old tables for a different slot", () => {
-            vi.mocked(getBookingAvailability).mockReturnValue(seatsOf([3, 6]));
-
-            update({ date: NEW_DATE, partySize: 6 });
-
-            expect(getTablesAvailability).not.toHaveBeenCalled();
         });
 
         it("refuses the move with ConflictError when the new slot has not enough seats", () => {
@@ -564,3 +527,4 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
         });
     });
 });
+
