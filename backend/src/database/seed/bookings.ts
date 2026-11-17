@@ -4,7 +4,7 @@ import { pickSome, pickDistinct, randomInt, type Random } from "./random";
 
 /*
  * Random demo bookings, seeded in SEED_MODE=random after the accounts and the slots.
- * Guests are the hikers with an account and the temporary hikers below, in random order.
+ * Guests are some of the hikers with an account and some of the temporary hikers below (at least one of each), in random order.
  * Each guest books a random set of slots; in each, a party of 1..capacity/2 people seated
  * with assignSeats, skipped if the slot has not enough free seats.
  */
