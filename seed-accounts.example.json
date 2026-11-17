@@ -1,0 +1,13 @@
+[
+    { "role": "warden", "email": "warden@example.com", "password": "change-me-warden", "name": "Wanda" },
+    { "role": "employee", "email": "employee@example.com", "password": "change-me-employee", "name": "Emil" },
+    {
+        "role": "hiker", "email": "hiker1@example.com", "password": "change-me-hiker1",
+        "name": "Hanna Example", "mobile": "+39 300 000 0001",
+        "notes": "Mountain guide", "emergency_contact": "Ezio Example, +39 300 000 0002"
+    },
+    {
+        "role": "hiker", "email": "hiker2@example.com", "password": "change-me-hiker2",
+        "name": "Hugo Example", "mobile": "+39 300 000 0003"
+    }
+]

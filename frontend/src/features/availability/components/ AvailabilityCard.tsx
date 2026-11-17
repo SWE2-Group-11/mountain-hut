@@ -4,7 +4,7 @@ import { CheckCircle2, XCircle, Minus, Plus, Search } from 'lucide-react';
 import { useAvailability } from '../hooks/useAvailability';
 import { formatSeatSplit, formatTimeRange } from '../utils/availability.utils';
 import { formatLocalDate } from '../../reservation/hooks/useReservation';
-
+import { buildBookingLink } from '../../reservation/utils/bookingPrefill';
 const LABEL = 'block text-xs font-bold uppercase tracking-wider text-[#5A6865] mb-2';
 const CONTROL_BUTTON =
   'w-10 h-10 rounded-xl bg-white border border-[#EFEADF] flex items-center justify-center text-[#1C2826] hover:bg-[#EFE4D2] disabled:opacity-40 disabled:hover:bg-white transition-colors';
@@ -172,7 +172,7 @@ export const AvailabilityCard: React.FC = () => {
             </ul>
             <p className="text-xs text-[#5A6865]">This is only a check: nothing is reserved until you book.</p>
             <Link
-              to="/book-table"
+                            to={buildBookingLink({ date: formatLocalDate(selectedDate!), slot: selectedTime!, partySize })}
               className="inline-block px-5 py-2.5 bg-[#234E39] text-white rounded-xl font-medium text-sm hover:bg-[#1C3E2E] transition-colors"
             >
               Book a table

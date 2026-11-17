@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Slot } from "../../models/entities/slot";
-import { isBookingOpen, assignSeats } from "../../domain/booking-rules";
+import { isBookingOpen, assignSeats, isChangeOpen } from "../../domain/booking-rules";
 
 const ORIGINAL_SERVER_TIMEZONE = process.env.TZ;
 
@@ -209,5 +209,16 @@ describe("assignSeats: non-integer party size", () => {
     it("still seats a whole party size, as before the fix", () => {
         const result = assignSeats([table(1, 4)], 2);
         expect(result).toEqual([{ table_number: 1, assigned_seats: 2 }]);
+    });
+});
+
+describe("isChangeOpen — the 48-hour change cutoff in the hut timezone", () => {
+    // 15 Jun 12:00 Rome (CEST) = 10:00Z, so the deadline is 13 Jun 10:00Z
+    it("is open exactly at the deadline", () => {
+        expect(isChangeOpen("2030-06-15", "12:00", new Date("2030-06-13T10:00:00Z"))).toBe(true);
+    });
+
+    it("is closed one millisecond after the deadline", () => {
+        expect(isChangeOpen("2030-06-15", "12:00", new Date("2030-06-13T10:00:00.001Z"))).toBe(false);
     });
 });

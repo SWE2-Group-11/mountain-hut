@@ -4,6 +4,7 @@
 **/.vite
 **/*.sqlite*
 **/.env
+**/seed-accounts.json
 backend/src/data
 e2e
 docs

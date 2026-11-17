@@ -11,6 +11,7 @@ import { AppError } from '../models/errors/app-error';
 import type { Assignment } from '../domain/booking-rules';
 import type { Reservation } from '../dao/booking-dao';
 import { minutesToTime, timeToMinutes } from './date-service';
+import type { RequirementInput } from '../dao/dietary-requirement-dao';
 
 /**
  * Maps an operational AppError or a generic internal error into an ErrorDTO instance.
@@ -105,3 +106,11 @@ export const reservationToResponseDTO = (
         reservation.date,
         reservation.start_time
     );
+
+/**
+ * Maps the dietary requirements of a request to the shape the DAO persists.
+ * @param requirements The requirements of the request.
+ * @returns The requirements to save, in the same order.
+ */
+export const requirementDTOsToInputs = (requirements: RequirementDTO[] = []): RequirementInput[] =>
+    requirements.map((r) => ({ allergy_flag: r.hasAllergies, description: r.details }));

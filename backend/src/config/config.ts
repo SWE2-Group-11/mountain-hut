@@ -1,9 +1,21 @@
 import path from "node:path";
 
+/**
+ * Reads a required environment variable (set in .env, see .env.example).
+ * @throws Error if it is missing or empty, so the server never starts without it.
+ */
+const requireEnv = (name: string): string => {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing environment variable ${name}: copy .env.example to .env and set it`);
+    }
+    return value;
+};
+
 // Database
 export const DB_FILE_PATH = process.env.DB_PATH ?? path.resolve(process.cwd(), "src/data/database.sqlite");
 
-// Drop, recreate and seed the database at startup (default: false)
+// Drop, recreate and seed the database at startup (default: false; an empty database is always seeded)
 export const RESET_DB = process.env.RESET_DB === "true";
 
 // Application URLs
@@ -26,8 +38,8 @@ export const APP_PORT = Number(process.env.PORT) || 3000;
 // Frontend allowed by CORS
 export const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
 
-// Session
-export const SESSION_SECRET = "shhhhh... it's a secret!";
+// Session: signs the session cookie
+export const SESSION_SECRET = requireEnv("SESSION_SECRET");
 
 // Password hashing
 export const PASSWORD_KEY_LENGTH = 16;
