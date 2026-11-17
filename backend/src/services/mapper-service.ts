@@ -41,7 +41,7 @@ export const appErrorToDTO = (error: unknown): ErrorDTO => {
  * Maps an Account entity into a client-ready AccountResponseDTO instance (no password data).
  */
 export const accountEntityToResponseDTO = (account: Account): AccountResponseDTO => {
-    return new AccountResponseDTO(account.id, account.email, account.role);
+    return new AccountResponseDTO(account.id, account.email, account.role, account.must_change_password);
 };
 
 /**
