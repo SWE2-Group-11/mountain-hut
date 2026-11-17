@@ -4,7 +4,7 @@ import { app } from "../../app";
 import { db } from "../../database/database";
 import {
     resetTestDatabase, dayFromToday, loginAs, createHikerWithoutBookings,
-    MARIO, LAURA, EMPLOYEE, NEW_HIKER, PASSWORD,
+    MARIO, LAURA, NEW_HIKER, PASSWORD,
 } from "../helpers";
 
 /*
