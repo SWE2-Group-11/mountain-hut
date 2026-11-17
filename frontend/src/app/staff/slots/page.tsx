@@ -4,7 +4,7 @@ import { SlotSetupCard } from '../../../features/slot-setup/components/SlotSetup
 export default function SlotSetupPage() {
   return (
     <StaffLayout
-      title="Manage slots"
+      title="Set up slots"
       subtitle="Choose the day and time, then define the tables and seats, or reuse a previous setup."
     >
       {/* The card was made to overlap a banner (-mt-20); here there is no banner */}
