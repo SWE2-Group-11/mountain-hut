@@ -44,8 +44,10 @@ export const SESSION_SECRET = requireEnv("SESSION_SECRET");
 // Password hashing
 export const PASSWORD_KEY_LENGTH = 16;
 
-// Minimum length of a password chosen through change or reset
+// Length limits of a password chosen at registration, change or reset (not applied at login,
+// so accounts created before a stricter limit can still log in)
 export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;
 
 // Password reset by email: link lifetime, minimum wait between two emails, and frontend page the link opens
 export const PASSWORD_RESET_TTL_HOURS = 24;

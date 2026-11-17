@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Role } from "../entities/account";
-import { PASSWORD_MIN_LENGTH } from "../../config/config";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../../config/config";
 
 export class AccountResponseDTO {
     public id: number;
@@ -17,7 +17,10 @@ export class AccountResponseDTO {
 }
 
 const EmailSchema = z.string().trim().toLowerCase().pipe(z.email());
-const NewPasswordSchema = z.string().min(PASSWORD_MIN_LENGTH).max(128);
+// A password chosen at registration, change or reset. The 400 message is "<field>: <message>"
+const NewPasswordSchema = z.string()
+    .min(PASSWORD_MIN_LENGTH, `Must be at least ${PASSWORD_MIN_LENGTH} characters long`)
+    .max(PASSWORD_MAX_LENGTH, `Must be at most ${PASSWORD_MAX_LENGTH} characters long`);
 
 export const AccountLoginRequestSchema = z.object({
     // what is this hideous thing doing: checking if email is a string,
@@ -33,7 +36,7 @@ export const AccountRegistrationRequestSchema = z.object({
     notes: z.string().trim().max(200).optional(),
     emergency_contact: z.string().trim().max(200).optional(),
     email: EmailSchema,
-    password: z.string().min(1),
+    password: NewPasswordSchema,
 });
 
 export const ChangePasswordRequestSchema = z.object({

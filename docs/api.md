@@ -12,13 +12,13 @@ Base URL: `http://localhost:3000/api/v1`
   - `fullname`: required string with at least one non-space character; surrounding spaces are removed
   - `mobile_number`: required string with at least one non-space character; surrounding spaces are removed
   - `email`: required, valid email address; stored lowercase, so it is case-insensitive for registration and login
-  - `password`: required, non-empty string; stored as a salted hash, never in plain text
+  - `password`: required string, 8 to 128 characters (`PASSWORD_MIN_LENGTH`/`PASSWORD_MAX_LENGTH` in `backend/src/config/config.ts`); stored as a salted hash, never in plain text. Login accepts any non-empty password, so the limits never lock out existing accounts
   - `notes`: optional string, at most 200 characters after removing surrounding spaces; `null` if omitted
   - `emergency_contact`: optional string, at most 200 characters after removing surrounding spaces; `null` if omitted
   - Any other field (e.g. `role`) is ignored
 - **Responses:**
   - `201 Created`: account created; returns `id`, `email`, `role` (always `"hiker"`) and `must_change_password` (always `false`)
-  - `400 Bad Request`: missing or invalid request fields, or `notes`/`emergency_contact` longer than 200 characters
+  - `400 Bad Request`: missing or invalid request fields, a password shorter than 8 or longer than 128 characters, or `notes`/`emergency_contact` longer than 200 characters
   - `409 Conflict`: an account (hiker or staff) with the same email already exists
   - `500 Internal Server Error`: unexpected server error
 
