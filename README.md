@@ -58,7 +58,7 @@ The whole system runs in a single Docker image: web application, REST API and Ma
 5. Check that it started:
 
    ```bash
-   docker logs mountain-hut    # "Database reset completed." and "Server listening ..."
+   docker logs mountain-hut    # the demo slots and bookings, "Database reset completed." and "Server listening ..."
    ```
 
    Then open `http://localhost:5173` and log in with an account from `seed-accounts.json`.
@@ -84,10 +84,19 @@ Keep the ports as they are: the web application calls the API on port 3000, and 
 | `mobile` | hikers | Mobile number |
 | `notes`, `emergency_contact` | optional, hikers only | Free text |
 
-- The file must contain at least 4 accounts, and the 3rd and 4th must be hikers: the demo bookings created with the database belong to them.
+- The file must contain at least one account. Every hiker in the file may get some random demo bookings (see [Demo data](#demo-data)).
 - Unknown fields are rejected.
 - The accounts are created only together with the database (first start). Editing the file later has no effect unless you [reset the database](#manage-the-installation); after a successful first start the file is no longer read.
 - If seeding fails (for example an invalid file), the backend stops with the error and retries on the next start, once the file is fixed.
+
+### Demo data
+
+When the database is created (first start, or after a reset), it is filled with random demo data:
+
+- slots for the next 3 days, 1 to 3 per day, each with 1 to 6 tables of 2 to 8 seats;
+- bookings for the hikers in `seed-accounts.json` and for a few temporary hikers (people without an account), with random party sizes and dietary requirements.
+
+The data is different at every reset. `docker logs mountain-hut` lists the slots with their tables and every booking created.
 
 ### Manage the installation
 
@@ -134,7 +143,7 @@ docker compose up --build
    npm run dev
    ```
 
-   The database is created and seeded on the first run. To recreate it (this also recreates the demo accounts from `seed-accounts.json`):
+   The database is created and seeded on the first run. To recreate it (this also recreates the demo accounts from `seed-accounts.json` and new random [demo data](#demo-data)):
 
    ```bash
    RESET_DB=true npm run dev
@@ -152,7 +161,7 @@ Email settings (environment variables): `SMTP_HOST` (default `localhost`), `SMTP
 
 ### Tests
 
-Backend tests run on an in-memory database with their own accounts (`backend/test.env`, `backend/test-seed-accounts.json`), never the real `.env`:
+Backend tests run on an in-memory database with their own accounts and fixed slots and bookings instead of random ones (`backend/src/tests/fixtures/test.env` sets `SEED_MODE=fixed` and points to `backend/src/tests/fixtures/seed-accounts.json`), never the real `.env`:
 
 ```bash
 cd backend

@@ -1,8 +1,7 @@
 PRAGMA foreign_keys = ON;
 
--- Accounts, staff and hikers are seeded from seed-accounts.json (see seed-accounts.example.json).
--- The account at position <n> in the file gets id <n>: the bookings below belong to
--- accounts 3 and 4, so the 3rd and 4th accounts in the file must be hikers.
+-- Fixed slots, tables and bookings for the tests (SEED_MODE=fixed): the tests rely on this exact data.
+-- The bookings belong to accounts 3 and 4, the hikers Mario and Laura in seed-accounts.json (same folder).
 
 -- Slots
 INSERT INTO slot (date, start_time, duration) VALUES

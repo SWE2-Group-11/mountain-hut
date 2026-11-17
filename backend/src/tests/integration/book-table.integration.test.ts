@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import request from "supertest";
-import { app } from "../app";
-import { db } from "../database/database";
+import { app } from "../../app";
+import { db } from "../../database/database";
 import {
     resetTestDatabase, dayFromToday, loginAs, createHikerWithoutBookings,
     MARIO, LAURA, EMPLOYEE, NEW_HIKER, PASSWORD,
-} from "./helpers";
+} from "../helpers";
 
 /*
  * MH-01 Book a table - integration tests.

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import request from "supertest";
-import { app } from "../app";
-import { db } from "../database/database";
+import { app } from "../../app";
+import { db } from "../../database/database";
 import {
     resetTestDatabase, dayFromToday, loginAs, createHikerWithoutBookings,
     MARIO, EMPLOYEE, NEW_HIKER,
-} from "./helpers";
+} from "../helpers";
 
 /*
  * Provide party requirements - integration tests.
