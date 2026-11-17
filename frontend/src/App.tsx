@@ -7,7 +7,7 @@ import SlotSetupPage from './app/staff/slots/page';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import AvailabilityPage from './features/availability/page';
 import MyBookingsPage from './features/my-bookings/page';
-
+import StaffReservePage from './app/staff/slots/reserve/page';
 import RegisterPage from './app/register/page';
 export default function App() {
   return (
@@ -24,6 +24,8 @@ export default function App() {
 
       <Route element={<ProtectedRoute allowedRoles={['employee', 'warden']} />}>
         <Route path="/staff/slots" element={<SlotSetupPage />} />
+
+        <Route path="/staff/reserve" element={<StaffReservePage />} />
       </Route>
     </Routes>
   );

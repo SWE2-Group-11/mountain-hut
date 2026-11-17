@@ -15,10 +15,13 @@ export const LoginForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!authLoading && user) {
-       // A hiker who was sent here from the booking page goes back to it with what was already chosen
+    // Someone who was sent here from the booking page goes back with what was already chosen:
+    // a hiker to the booking page, staff to the page where they reserve for a hiker
     const from = (location.state as { from?: string } | null)?.from;
-    const backToBooking = typeof from === 'string' && /^\/book-table(\?|$)/.test(from);
-    const destination = user.role === 'hiker' ? (backToBooking ? from : '/book-table') : '/staff/slots';
+    const bookingMatch = typeof from === 'string' ? /^\/book-table(\?.*)?$/.exec(from) : null;
+    const search = bookingMatch?.[1] ?? '';
+    const destination =
+      user.role === 'hiker' ? (bookingMatch ? from! : '/book-table') : bookingMatch ? `/staff/reserve${search}` : '/staff/slots';
     return <Navigate to={destination} replace />;
   }
 
@@ -141,7 +144,7 @@ export const LoginForm: React.FC = () => {
           )}
         </button>
       </form>
-            <p className="text-xs text-[#5A6865] text-center">
+      <p className="text-xs text-[#5A6865] text-center">
         New to the hut?{' '}
         <Link to="/register" className="font-semibold text-[#234E39] hover:underline">
           Create an account
