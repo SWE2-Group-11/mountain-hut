@@ -15,6 +15,7 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+/seed-accounts.json
 
 # Dependencies
 node_modules/
