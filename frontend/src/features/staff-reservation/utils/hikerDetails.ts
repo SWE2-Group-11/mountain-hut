@@ -2,8 +2,15 @@ import type { AccountFields, HikerForm, HikerMatch, HikerMode, QuickGuestFields,
 
 // The API accepts at most 200 characters for these two
 export const MAX_NOTE_LENGTH = 200;
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Checked with plain string operations: a regular expression for this can be slow on long input
+const isValidEmail = (value: string): boolean => {
+  if (value.length > 254 || /\s/.test(value)) return false;
+  const at = value.indexOf('@');
+  if (at < 1 || at !== value.lastIndexOf('@')) return false;
+  const domain = value.slice(at + 1);
+  const dot = domain.lastIndexOf('.');
+  return dot > 0 && dot < domain.length - 1;
+};
 
 export const emptyQuickGuest: QuickGuestFields = { fullname: '', mobile: '' };
 export const emptyAccount: AccountFields = { fullname: '', mobile: '', email: '', notes: '', emergencyContact: '' };
@@ -21,7 +28,7 @@ export const accountErrors = (account: AccountFields): Partial<Record<keyof Acco
   if (!account.mobile.trim()) errors.mobile = 'Enter a mobile number.';
   const email = account.email.trim();
   if (!email) errors.email = 'Enter an email address.';
-  else if (!EMAIL_REGEX.test(email)) errors.email = 'Enter a valid email address.';
+    else if (!isValidEmail(email)) errors.email = 'Enter a valid email address.';
   if (account.notes.trim().length > MAX_NOTE_LENGTH) errors.notes = `At most ${MAX_NOTE_LENGTH} characters.`;
   if (account.emergencyContact.trim().length > MAX_NOTE_LENGTH) {
     errors.emergencyContact = `At most ${MAX_NOTE_LENGTH} characters.`;

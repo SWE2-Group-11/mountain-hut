@@ -89,7 +89,7 @@ export function useStaffReservation() {
         if (!cancelled) setSlotsLoading(false);
       }
     }
-    loadSlots();
+    void loadSlots();
     return () => {
       cancelled = true;
     };
