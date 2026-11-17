@@ -29,6 +29,16 @@ export const getHikerById = (id: number): HikerProfile | null =>
     db.prepare<[number], HikerProfile>(`${HIKER_SELECT} WHERE h.account_id = ?`).get(id) ?? null;
 
 /**
+ * Retrieves a registered hiker by the email of its account (stored lowercase).
+ * @returns The hiker, or null if no hiker account has this email (staff accounts are never returned).
+ */
+
+// I preferred adding this new function instead of using searchHikersFilter to prevent breakage when
+// switching searching criteria (eg exact email match -> partial email match)
+export const getHikerByEmail = (email: string): HikerProfile | null =>
+    db.prepare<[string], HikerProfile>(`${HIKER_SELECT} WHERE a.email = ?`).get(email) ?? null;
+
+/**
  * Searches registered and temporary hikers; the given criteria are combined with AND.
  * Name and phone are partial matches (phone ignores spaces), email is an exact match
  * and therefore only matches registered hikers.

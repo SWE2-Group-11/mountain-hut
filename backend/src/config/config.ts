@@ -44,6 +44,14 @@ export const SESSION_SECRET = requireEnv("SESSION_SECRET");
 // Password hashing
 export const PASSWORD_KEY_LENGTH = 16;
 
+// Minimum length of a password chosen through change or reset
+export const PASSWORD_MIN_LENGTH = 8;
+
+// Password reset by email: link lifetime, minimum wait between two emails, and frontend page the link opens
+export const PASSWORD_RESET_TTL_HOURS = 24;
+export const PASSWORD_RESET_COOLDOWN_MINUTES = 5;
+export const PASSWORD_RESET_URL = `${CLIENT_ORIGIN}/reset-password`;
+
 // How many hours before the due time can be reserved a seat
 export const BOOKING_CUTOFF_HOURS = 2;
 
