@@ -123,6 +123,11 @@ export const LoginForm: React.FC = () => {
               className="w-full pl-11 pr-4 py-3 bg-[#FDFBF7] border border-[#EFEADF] rounded-xl text-sm text-[#1C2826] focus:outline-none focus:border-[#234E39] transition-all"
             />
           </div>
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-xs font-semibold text-[#234E39] hover:underline">
+              Forgot your password?
+            </Link>
+          </div>
         </div>
 
         {/* Submit button */}

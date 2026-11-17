@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    loadSession();
+    void loadSession();
     return () => {
       cancelled = true;
     };
@@ -46,8 +46,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Throws on failure (ApiError 400 weak/same password, 403 wrong current password) so the form can say why
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await apiClient.patch('/accounts/current/password', { currentPassword, newPassword });
+    setUser((prev) => (prev ? { ...prev, mustChangePassword: false } : prev));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
