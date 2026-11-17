@@ -3,7 +3,7 @@ import request from "supertest";
 import { app } from "../../app";
 import {
     resetTestDatabase, dayFromToday, huTime, loginAs, createHikerWithoutBookings,
-    MARIO, LAURA, EMPLOYEE, NEW_HIKER,
+    MARIO, LAURA, NEW_HIKER,
 } from "../helpers";
 
 const RESERVATIONS_URL = "/api/v1/reservations";
