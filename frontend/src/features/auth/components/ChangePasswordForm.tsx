@@ -6,6 +6,7 @@ import { ApiError } from '../../../api/client';
 import {
   destinationAfterChange,
   emptyChangePasswordForm,
+  serverFieldMessage,
   validateChangePassword,
   type ChangePasswordErrors,
   type ChangePasswordForm as FormValues,
@@ -62,12 +63,14 @@ export const ChangePasswordForm: React.FC = () => {
       navigate(destinationAfterChange(from, user!.role), { replace: true });
     } catch (err) {
       saved.current = false;
-      if (err instanceof ApiError && err.status === 403) {
+      if (err instanceof ApiError && err.status === 401 && err.message === 'Current password is incorrect') {
         setFieldErrors({ currentPassword: 'This is not the password you were given.' });
-      } else if (err instanceof ApiError && err.status === 400) {
-        setError(err.message);
       } else if (err instanceof ApiError && err.status === 401) {
         setError('Your session has expired. Please log in again.');
+      } else if (err instanceof ApiError && err.status === 400) {
+        const newPasswordMessage = serverFieldMessage(err.message, 'new_password');
+        if (newPasswordMessage) setFieldErrors({ newPassword: newPasswordMessage });
+        else setError(err.message);
       } else {
         setError('Could not change the password. Please try again.');
       }

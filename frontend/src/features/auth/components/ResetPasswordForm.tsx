@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle2, Loader2, Lock } from 'lucide-react';
 import { apiClient, ApiError } from '../../../api/client';
 import {
   emptyResetPasswordForm,
+  serverFieldMessage,
   validateResetPassword,
   type ResetPasswordErrors,
   type ResetPasswordForm as FormValues,
@@ -51,12 +52,18 @@ export const ResetPasswordForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await apiClient.post('/password-reset/confirm', { token, newPassword: form.newPassword });
+      await apiClient.post('/accounts/password-reset/confirm', { token, new_password: form.newPassword });
       setDone(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 400) {
-        // An old, used or wrong link: a new one has to be asked for
-        setLinkProblem(err.message || 'This link is not valid any more.');
+        const passwordMessage = serverFieldMessage(err.message, 'new_password');
+        if (passwordMessage) {
+          // The password breaks a rule: the link is still good
+          setFieldErrors({ newPassword: passwordMessage });
+        } else {
+          // An old, used or wrong link: a new one has to be asked for
+          setLinkProblem(err.message || 'This link is not valid any more.');
+        }
       } else if (err instanceof ApiError && err.status === 404) {
         setError('The server is not reachable right now. Please try again later.');
       } else {

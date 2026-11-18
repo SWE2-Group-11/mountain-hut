@@ -20,8 +20,13 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-<Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/availability" element={<AvailabilityPage />} />
+
+      {/* Any logged-in person, whatever the role: the forced change of a temporary password */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/change-password" element={<ChangePasswordPage />} />
+      </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['hiker']} />}>
         <Route path="/book-table" element={<BookTablePage />} />
@@ -30,7 +35,6 @@ export default function App() {
 
       <Route element={<ProtectedRoute allowedRoles={['employee', 'warden']} />}>
         <Route path="/staff/slots" element={<SlotSetupPage />} />
-        <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/staff/reserve" element={<StaffReservePage />} />
       </Route>
     </Routes>

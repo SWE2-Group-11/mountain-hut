@@ -37,7 +37,7 @@ export const ForgotPasswordForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await apiClient.post('/password-reset', { email: trimmed });
+      await apiClient.post('/accounts/password-reset', { email: trimmed });
       setSentTo(trimmed);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
