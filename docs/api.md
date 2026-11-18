@@ -201,7 +201,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `sourceWeekStart`: required, Monday of the week to copy, formatted `YYYY-MM-DD`
   - `targetWeekStarts`: required non-empty array (at most 52 elements) of Mondays of the weeks receiving the copy, formatted `YYYY-MM-DD`; no duplicates, must not contain `sourceWeekStart`, each week must start after the current week (Europe/Rome)
 - **Responses:**
-  - `201 Created`: returns `sourceWeekStart` (Monday date of the copied week), `targetWeekStarts` (dates of Mondays of the weeks that received the copy, without duplicates) and `slotsPerWeek` (number of slots copied into each target week) and `slotsPerWeek` (number of slots copied into each target week)
+  - `201 Created`: returns `sourceWeekStart` (Monday date of the copied week), `targetWeekStarts` (dates of Mondays of the weeks that received the copy, without duplicates) and `slotsPerWeek` (number of slots copied into each target week)
   - `400 Bad Request`: missing or invalid fields (dates that are not Mondays, duplicate target weeks, source week among the targets, more than 52 targets), or a target week that has already started or is in the past
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
