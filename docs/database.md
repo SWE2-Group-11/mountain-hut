@@ -14,6 +14,7 @@ The editable source is [`img/schema-core.er`](img/schema-core.er): load it in th
 Primary keys in **bold**, `*` = nullable.
 
 - account(**id**, email, password_salt, password_hash, must_change_password)
+- password_reset_token(**token_hash**, account_id → account, created_at, expires_at)
 - hiker(**account_id** → account, full_name, mobile_number, notes\*, emergency_contact\*)
 - staff(**account_id** → account, name, role)
 - slot(**date**, **start_time**, duration)
@@ -26,6 +27,8 @@ Primary keys in **bold**, `*` = nullable.
 ## Rules not visible in the diagrams
 
 - `account.email` is unique.
+- `account.must_change_password` = 1 for accounts created by staff with a temporary password; it is cleared by any password change.
+- `password_reset_token`: at most one row per account (`account_id` is unique); `token_hash` is the hex SHA-256 of the emailed token, never the token itself; `created_at` and `expires_at` are UTC (`YYYY-MM-DDTHH:MM:SSZ`), `expires_at` = `created_at` + 24 hours. A row is deleted when it is redeemed, replaced, expired (on the next request) or when the account password changes.
 - Every account is either a hiker or a staff member, never both: exactly one row in `hiker` or `staff` per `account` (generalization (t,e), checked by the backend).
 - `staff.role` ∈ {`employee`, `warden`}; a warden can also perform employee functions.
 - `slot.duration` is expressed in minutes.

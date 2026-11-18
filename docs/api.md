@@ -12,13 +12,13 @@ Base URL: `http://localhost:3000/api/v1`
   - `fullname`: required string with at least one non-space character; surrounding spaces are removed
   - `mobile_number`: required string with at least one non-space character; surrounding spaces are removed
   - `email`: required, valid email address; stored lowercase, so it is case-insensitive for registration and login
-  - `password`: required, non-empty string; stored as a salted hash, never in plain text
+  - `password`: required string, 8 to 128 characters (`PASSWORD_MIN_LENGTH`/`PASSWORD_MAX_LENGTH` in `backend/src/config/config.ts`); stored as a salted hash, never in plain text. Login accepts any non-empty password, so the limits never lock out existing accounts
   - `notes`: optional string, at most 200 characters after removing surrounding spaces; `null` if omitted
   - `emergency_contact`: optional string, at most 200 characters after removing surrounding spaces; `null` if omitted
   - Any other field (e.g. `role`) is ignored
 - **Responses:**
-  - `201 Created`: account created; returns `id`, `email` and `role` (always `"hiker"`)
-  - `400 Bad Request`: missing or invalid request fields, or `notes`/`emergency_contact` longer than 200 characters
+  - `201 Created`: account created; returns `id`, `email`, `role` (always `"hiker"`) and `must_change_password` (always `false`)
+  - `400 Bad Request`: missing or invalid request fields, a password shorter than 8 or longer than 128 characters, or `notes`/`emergency_contact` longer than 200 characters
   - `409 Conflict`: an account (hiker or staff) with the same email already exists
   - `500 Internal Server Error`: unexpected server error
 
@@ -37,6 +37,42 @@ Base URL: `http://localhost:3000/api/v1`
   - `400 Bad Request`: no search parameter, an empty parameter, an invalid `email`, or an unknown parameter
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
+  - `500 Internal Server Error`: unexpected server error
+
+### PUT /accounts/current/password - Change the password
+
+- **Description:** changes the password of the logged-in account. Accounts created by staff with a temporary password have `must_change_password: true` in the login response: until they call this endpoint, every other route that requires authentication answers `403 Forbidden` ("Password change required"). The change clears the flag (also in the current session) and invalidates any pending reset link
+- **Authentication:** required; allowed even while `must_change_password` is `true`
+- **Request body:**
+  - `current_password`: required, non-empty string
+  - `new_password`: required string, 8 to 128 characters, different from `current_password`
+- **Responses:**
+  - `200 OK`: password changed; returns `id`, `email`, `role` and `must_change_password` (`false`)
+  - `400 Bad Request`: missing or invalid request fields
+  - `401 Unauthorized`: user is not authenticated, or `current_password` is wrong
+  - `500 Internal Server Error`: unexpected server error
+
+### POST /accounts/password-reset - Request a password reset email
+
+- **Description:** if a hiker account has this email, sends it a link to `<CLIENT_ORIGIN>/reset-password?token=<token>`. The link expires after 24 hours, works only once and replaces any earlier link. A new email is sent at most every 5 minutes per account. Staff accounts never receive the email
+- **Authentication:** not required
+- **Request body:**
+  - `email`: required, valid email address; case-insensitive
+- **Responses:**
+  - `202 Accepted`: always, whether or not the email is registered or the email was sent, so the endpoint does not reveal which addresses have an account
+  - `400 Bad Request`: missing or invalid `email`
+  - `500 Internal Server Error`: unexpected server error
+
+### POST /accounts/password-reset/confirm - Set a new password with a reset link
+
+- **Description:** sets a new password with the token of a reset email and clears `must_change_password`. Sessions already open are not logged out
+- **Authentication:** not required
+- **Request body:**
+  - `token`: required, the `token` query parameter of the link
+  - `new_password`: required string, 8 to 128 characters
+- **Responses:**
+  - `204 No Content`: password changed
+  - `400 Bad Request`: missing or invalid request fields, or the token is unknown, already used, replaced by a newer link or expired
   - `500 Internal Server Error`: unexpected server error
 
 ## Service

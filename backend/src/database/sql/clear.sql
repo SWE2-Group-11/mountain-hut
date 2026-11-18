@@ -8,5 +8,6 @@ DELETE FROM slot_table;
 DELETE FROM slot;
 DELETE FROM staff;
 DELETE FROM hiker;
+DELETE FROM password_reset_token;
 DELETE FROM account;
 DELETE FROM sqlite_sequence WHERE name IN ('account', 'booking', 'dietary_requirement');

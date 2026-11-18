@@ -3,6 +3,8 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/useAuth';
 import type { Role } from '../../features/auth/AuthContext';
 
+export const CHANGE_PASSWORD_PATH = '/change-password';
+
 interface ProtectedRouteProps {
   allowedRoles?: Role[];
 }
@@ -26,7 +28,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
 
   // Not logged in: go to login and remember where the visitor wanted to go
   if (!user) {
-        return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  }
+
+  // An account made by the staff has a password that was told out loud: it is changed before anything else
+  if (user.mustChangePassword && location.pathname !== CHANGE_PASSWORD_PATH) {
+    return <Navigate to={CHANGE_PASSWORD_PATH} replace state={{ from: location.pathname + location.search }} />;
   }
 
   // Logged in with the wrong role
