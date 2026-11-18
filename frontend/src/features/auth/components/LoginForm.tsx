@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate , useLocation, Link  } from 'react-router-dom';
 import { useAuth } from '../useAuth';
+import { destinationAfterLogin } from '../utils/loginDestination';
 import { ApiError } from '../../../api/client';
 import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -15,10 +16,9 @@ export const LoginForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!authLoading && user) {
-       // A hiker who was sent here from the booking page goes back to it with what was already chosen
+    // Someone who was sent here from another page goes back to it with what was already chosen
     const from = (location.state as { from?: string } | null)?.from;
-    const backToBooking = typeof from === 'string' && /^\/book-table(\?|$)/.test(from);
-    const destination = user.role === 'hiker' ? (backToBooking ? from : '/book-table') : '/staff/slots';
+    const destination = destinationAfterLogin(from, user.role);
     return <Navigate to={destination} replace />;
   }
 
@@ -120,6 +120,11 @@ export const LoginForm: React.FC = () => {
               className="w-full pl-11 pr-4 py-3 bg-[#FDFBF7] border border-[#EFEADF] rounded-xl text-sm text-[#1C2826] focus:outline-none focus:border-[#234E39] transition-all"
             />
           </div>
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-xs font-semibold text-[#234E39] hover:underline">
+              Forgot your password?
+            </Link>
+          </div>
         </div>
 
         {/* Submit button */}
@@ -141,7 +146,7 @@ export const LoginForm: React.FC = () => {
           )}
         </button>
       </form>
-            <p className="text-xs text-[#5A6865] text-center">
+      <p className="text-xs text-[#5A6865] text-center">
         New to the hut?{' '}
         <Link to="/register" className="font-semibold text-[#234E39] hover:underline">
           Create an account
