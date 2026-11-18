@@ -1,3 +1,5 @@
+import { passwordLengthError } from './changePassword';
+
 // Same limit as the backend (docs/api.md, POST /accounts)
 export const MAX_TEXT_LENGTH = 200;
 
@@ -42,7 +44,12 @@ export function validateRegistration(form: RegistrationForm): RegistrationErrors
   }
 
   // The password is sent as typed: spaces are part of it, so it is never trimmed
-  if (!form.password) errors.password = 'Please choose a password.';
+  if (!form.password) {
+    errors.password = 'Please choose a password.';
+  } else {
+    const lengthError = passwordLengthError(form.password);
+    if (lengthError) errors.password = lengthError;
+  }
 
   if (!form.confirmPassword) {
     errors.confirmPassword = 'Please type the password again.';

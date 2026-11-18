@@ -2,6 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { apiClient, ApiError } from '../../api/client';
 import { AuthContext, type User } from './AuthContext';
 
+// What the backend sends for an account: the flag may be called must_change_password or mustChangePassword
+type SessionResponse = Omit<User, 'mustChangePassword'> & {
+  must_change_password?: boolean | number;
+  mustChangePassword?: boolean;
+};
+
+function toUser(data: SessionResponse): User {
+  const { must_change_password, mustChangePassword, ...rest } = data;
+  return { ...rest, mustChangePassword: Boolean(mustChangePassword ?? must_change_password) };
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -12,8 +23,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function loadSession() {
       try {
-        const data: User = await apiClient.get('/session/current');
-        if (!cancelled) setUser(data);
+        const data: SessionResponse = await apiClient.get('/session/current');
+        if (!cancelled) setUser(toUser(data));
       } catch (err) {
         // 401 simply means "not logged in"; anything else is a real problem
         if (!(err instanceof ApiError && err.status === 401)) {
@@ -25,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    loadSession();
+    void loadSession();
     return () => {
       cancelled = true;
     };
@@ -33,9 +44,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Throws on failure (e.g. ApiError 401) so the login form can show the message
   const login = async (email: string, password: string) => {
-    // The backend expects { email, password }
-    const data: User = await apiClient.post('/session', { email, password });
-    setUser(data);
+    const data: SessionResponse = await apiClient.post('/session', { email, password });
+    setUser(toUser(data));
   };
 
   const logout = async () => {
@@ -46,8 +56,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // PUT /accounts/current/password. Throws on failure so the form can say why:
+  // 400 = weak/too short password, 401 = wrong current password (or session expired).
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    const data: SessionResponse = await apiClient.put('/accounts/current/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    setUser(toUser(data));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
