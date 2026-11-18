@@ -212,7 +212,9 @@ describe("Booking confirmation email - integration", () => {
         });
 
         it("sends nothing to a visitor (401)", async () => {
-            expect((await request(app).post(RESERVATIONS_URL).send(book("13:00", 2))).status).toBe(401);
+            const res = await request(app).post(RESERVATIONS_URL).send(book("13:00", 2));
+
+            expect(res.status).toBe(401);
 
             await expectOnlyNextBookingConfirmed();
         });

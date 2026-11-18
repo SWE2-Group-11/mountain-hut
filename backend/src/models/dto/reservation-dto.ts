@@ -98,7 +98,7 @@ export type UpdateReservationResponseDTO = CreateReservationResponseDTO;
 
 /**
  * Validation schema for the path parameters identifying a reservation.
- * Used in PATCH /reservations/:reservationId
+ * Used in PATCH and DELETE /reservations/:reservationId
  */
 export const ReservationIdParamsSchema = z.object({
     // coerce is needed because url params are always a string

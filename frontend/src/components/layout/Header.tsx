@@ -28,13 +28,16 @@ export const Header: React.FC = () => {
   const canSeeMyBookings = !loading && user?.role === 'hiker';
   // Employees and wardens set up the slots
   const canManageSlots = !loading && (user?.role === 'employee' || user?.role === 'warden');
+  // Staff work in the staff workspace: the public header only links to it
+  const isStaff = canManageSlots;
 
   // One list for the desktop and the mobile menu: add a page here and it shows up in both
   const navLinks: NavLink[] = [
     { to: '/', label: 'Home', visible: true },
-    { to: '/availability', label: 'Check availability', visible: true },
+    { to: '/availability', label: 'Check availability', visible: !isStaff },
     { to: '/book-table', label: 'Book a Table', visible: canSeeBooking, highlighted: true },
-    { to: '/staff/slots', label: 'Manage slots', visible: canManageSlots, highlighted: true },
+    // Staff have one entry to their workspace; its own menu lists the staff pages
+    { to: '/staff/reserve', label: 'Staff workspace', visible: isStaff, highlighted: true },
   ].filter((link) => link.visible);
 
   // The pages of the signed-in person live in the account menu, not in the main menu
