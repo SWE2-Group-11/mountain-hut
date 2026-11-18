@@ -9,6 +9,15 @@ CREATE TABLE account (
     must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1))
 );
 
+-- Password reset links sent by email; at most one live token per account
+CREATE TABLE password_reset_token (
+    token_hash TEXT    PRIMARY KEY CHECK (length(token_hash) = 64),   -- hex SHA-256 of the emailed token
+    account_id INTEGER NOT NULL UNIQUE REFERENCES account(id) ON DELETE CASCADE,
+    created_at TEXT    NOT NULL CHECK (created_at IS strftime('%Y-%m-%dT%H:%M:%SZ', created_at)),
+    expires_at TEXT    NOT NULL CHECK (expires_at IS strftime('%Y-%m-%dT%H:%M:%SZ', expires_at)),
+    CHECK (expires_at > created_at)
+);
+
 -- Hikers
 CREATE TABLE hiker (
     account_id        INTEGER PRIMARY KEY REFERENCES account(id) ON DELETE CASCADE,
