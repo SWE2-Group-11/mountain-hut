@@ -7,7 +7,7 @@ import type { MailMessage } from "../../notifications/mail-sender";
 import { formatBookingReference, formatSlotDate } from "../../notifications/booking-confirmation";
 import {
     resetTestDatabase, dayFromToday, huTime, loginAs, createHikerWithoutBookings,
-    MARIO, LAURA, EMPLOYEE, NEW_HIKER,
+    MARIO, LAURA, NEW_HIKER,
 } from "../helpers";
 
 /*
@@ -212,9 +212,9 @@ describe("Booking confirmation email - integration", () => {
         });
 
         it("sends nothing to a visitor (401)", async () => {
-            const employee = await loginAs(EMPLOYEE);
+            const res = await request(app).post(RESERVATIONS_URL).send(book("13:00", 2));
 
-            expect((await request(app).post(RESERVATIONS_URL).send(book("13:00", 2))).status).toBe(401);
+            expect(res.status).toBe(401);
 
             await expectOnlyNextBookingConfirmed();
         });
