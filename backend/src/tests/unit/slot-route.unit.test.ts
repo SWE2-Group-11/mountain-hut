@@ -61,7 +61,6 @@ const CONFIGURATIONS: SlotConfigurationDTO[] = [
     CONFIGURATION,
     { date: DAY, startTime: "19:30", endTime: "21:00", tables: [{ tableNumber: 1, seats: 8 }], totalSeats: 8 },
 ];
-const COPY_WEEK_URL = `${URL}/copy-week`;
 const COPY_WEEK = { sourceWeekStart: "2030-06-10", targetWeekStarts: ["2030-06-17", "2030-06-24"] };
 const COPY_WEEK_RESULT: CopyWeeklyScheduleResponseDTO = { ...COPY_WEEK, slotsPerWeek: 14 };
 

@@ -49,8 +49,20 @@ export const authenticateLocal = (req: Request, res: Response, next: NextFunctio
 };
 
 /**
+ * Allows the request only if the session is logged in, whatever the role and even if the
+ * password must be changed. Only for the routes that complete the password change.
+ * 401 if not logged in.
+ */
+export const requireAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isAuthenticated()) {
+        return sendUnauthorizedError("Not authenticated", res);
+    }
+    next();
+};
+
+/**
  * Allows the request only if the session belongs to one of the given roles.
- * 401 if not logged in, 403 if logged in with another role.
+ * 401 if not logged in, 403 if logged in with another role or with a temporary password not changed yet.
  */
 export const requireRole = (...roles: Role[]) =>
     (req: Request, res: Response, next: NextFunction) => {
@@ -59,6 +71,9 @@ export const requireRole = (...roles: Role[]) =>
         }
         if (!roles.includes(req.user.role)) {
             return sendForbiddenError("Not allowed for this role", res);
+        }
+        if (req.user.must_change_password) {
+            return sendForbiddenError("Password change required", res);
         }
         next();
     };

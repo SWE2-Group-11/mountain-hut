@@ -1,17 +1,16 @@
 import fs from "node:fs";
-import path from "node:path";
 import Database from "better-sqlite3";
 import { z } from "zod";
-import { generatePasswordHash } from "../services/password-service";
+import { generatePasswordHash } from "../../services/password-service";
+import { SEED_ACCOUNTS_FILE } from "../../config/config";
 
 /*
- * Demo accounts seeded by resetDatabase, read from a JSON file (see seed-accounts.example.json):
- * seed-accounts.json in the repository root, or the file in SEED_ACCOUNTS_FILE
- * (the Docker image sets it to the mounted secret, the tests to their own file).
- * The account at position <n> (from 1) gets id <n>, which seed-core.sql relies on.
+ * Demo accounts, read from a JSON file (see seed-accounts.example.json): seed-accounts.json
+ * in the repository root, or the file in SEED_ACCOUNTS_FILE (the Docker image sets it to
+ * the mounted secret, the tests to src/tests/fixtures/seed-accounts.json).
+ * The account at position <n> (from 1) gets id <n>, which the fixed test data
+ * (src/tests/fixtures/seed.sql) relies on.
  */
-
-const SEED_ACCOUNTS_FILE = process.env.SEED_ACCOUNTS_FILE ?? path.resolve(process.cwd(), "../seed-accounts.json");
 
 const credentials = {
     email: z.string().trim().toLowerCase().pipe(z.email()),
