@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate , useLocation, Link  } from 'react-router-dom';
 import { useAuth } from '../useAuth';
+import { destinationAfterLogin } from '../utils/loginDestination';
 import { ApiError } from '../../../api/client';
 import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -15,13 +16,9 @@ export const LoginForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!authLoading && user) {
-    // Someone who was sent here from the booking page goes back with what was already chosen:
-    // a hiker to the booking page, staff to the page where they reserve for a hiker
+    // Someone who was sent here from another page goes back to it with what was already chosen
     const from = (location.state as { from?: string } | null)?.from;
-    const bookingMatch = typeof from === 'string' ? /^\/book-table(\?.*)?$/.exec(from) : null;
-    const search = bookingMatch?.[1] ?? '';
-    const destination =
-      user.role === 'hiker' ? (bookingMatch ? from! : '/book-table') : bookingMatch ? `/staff/reserve${search}` : '/staff/slots';
+    const destination = destinationAfterLogin(from, user.role);
     return <Navigate to={destination} replace />;
   }
 
