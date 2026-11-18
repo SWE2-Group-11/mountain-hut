@@ -6,12 +6,16 @@ import { useMyBookings } from '../hooks/useMyBookings';
 import { BookingItem } from './BookingItem';
 import { bookingReference } from '../utils/bookingReference';
 import { CHANGE_CUTOFF_HOURS } from '../utils/changeWindow';
+import type { CancelOutcome } from '../hooks/useCancelBooking';
 
 export const MyBookings: React.FC = () => {
-  const { bookings, loading, error, reload, replaceBooking } = useMyBookings();
+  const { bookings, loading, error, reload, replaceBooking, markCancelled, cancelledIds } = useMyBookings();
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
   // The booking that was just changed: confirmed in a pop-up and highlighted in the list for a few seconds
   const [saved, setSaved] = useState<{ id: number; reference: string } | null>(null);
+  // A booking that was just cancelled: only confirmed in a pop-up, it is no longer in the list
+  const [cancelled, setCancelled] = useState<{ reference: string; alreadyGone: boolean } | null>(null);
 
   useEffect(() => {
     if (!saved) return;
@@ -19,10 +23,22 @@ export const MyBookings: React.FC = () => {
     return () => clearTimeout(timer);
   }, [saved]);
 
+  useEffect(() => {
+    if (!cancelled) return;
+    const timer = setTimeout(() => setCancelled(null), 6000);
+    return () => clearTimeout(timer);
+  }, [cancelled]);
+
   const handleSaved = (updated: Reservation) => {
     replaceBooking(updated);
     setEditingId(null);
     setSaved({ id: updated.id, reference: bookingReference(updated.id) });
+  };
+
+  const handleCancelled = (id: number, outcome: CancelOutcome) => {
+     markCancelled(id);
+    setCancellingId(null);
+    setCancelled({ reference: bookingReference(id), alreadyGone: outcome === 'gone' });
   };
 
   return (
@@ -30,7 +46,8 @@ export const MyBookings: React.FC = () => {
       <div>
         <h1 className="text-4xl font-serif font-bold text-[#1C2826] mb-2">My bookings</h1>
         <p className="text-[#5A6865]">
-          Your upcoming tables. You can change a booking up to {CHANGE_CUTOFF_HOURS} hours before it starts.
+          Your upcoming tables. You can change a booking up to {CHANGE_CUTOFF_HOURS} hours before it starts, and cancel it
+          at any time.
         </p>
       </div>
 
@@ -48,6 +65,31 @@ export const MyBookings: React.FC = () => {
           <button
             type="button"
             onClick={() => setSaved(null)}
+            aria-label="Close confirmation"
+            className="ml-auto p-1 rounded-lg hover:bg-white/15 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {cancelled && (
+        <div
+          role="status"
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md flex items-center gap-3 rounded-2xl bg-[#234E39] text-white px-5 py-4 shadow-2xl"
+        >
+          <CheckCircle2 className="w-6 h-6 shrink-0" />
+          <div className="text-sm">
+            <p className="font-bold">{cancelled.alreadyGone ? 'Booking already cancelled' : 'Booking cancelled'}</p>
+            <p className="text-white/85">
+              {cancelled.alreadyGone
+                ? `Booking ${cancelled.reference} no longer exists.`
+                : `Booking ${cancelled.reference} was cancelled. The places are free again.`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCancelled(null)}
             aria-label="Close confirmation"
             className="ml-auto p-1 rounded-lg hover:bg-white/15 cursor-pointer"
           >
@@ -84,13 +126,25 @@ export const MyBookings: React.FC = () => {
               key={booking.id}
               booking={booking}
               editing={editingId === booking.id}
+              cancelling={cancellingId === booking.id}
+                            cancelled={cancelledIds.includes(booking.id)}
               highlighted={saved?.id === booking.id}
               onEdit={() => {
                 setSaved(null);
+                setCancelled(null);
+                setCancellingId(null);
                 setEditingId(booking.id);
               }}
               onClose={() => setEditingId(null)}
               onSaved={handleSaved}
+              onCancel={() => {
+                setSaved(null);
+                setCancelled(null);
+                setEditingId(null);
+                setCancellingId(booking.id);
+              }}
+              onCancelClose={() => setCancellingId(null)}
+              onCancelled={(outcome) => handleCancelled(booking.id, outcome)}
             />
           ))}
         </ul>

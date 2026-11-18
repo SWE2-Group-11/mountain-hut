@@ -1,17 +1,24 @@
 import React, { useEffect, useRef } from 'react';
-import { CalendarDays, Clock, Pencil, Users, UtensilsCrossed } from 'lucide-react';
+import { CalendarDays, CalendarX, Clock, Pencil, Users, UtensilsCrossed } from 'lucide-react';
 import type { Reservation } from '../../reservation/types/reservation.types';
 import { canChange, changeDeadlineText, CHANGE_CUTOFF_HOURS } from '../utils/changeWindow';
 import { bookingReference } from '../utils/bookingReference';
 import { ChangeBookingPanel } from './ChangeBookingPanel';
+import { CancelBookingPanel } from './CancelBookingPanel';
+import type { CancelOutcome } from '../hooks/useCancelBooking';
 
 interface BookingItemProps {
   booking: Reservation;
   editing: boolean;
+  cancelling: boolean;
+  cancelled?: boolean;
   highlighted?: boolean;
   onEdit: () => void;
   onClose: () => void;
   onSaved: (updated: Reservation) => void;
+  onCancel: () => void;
+  onCancelClose: () => void;
+  onCancelled: (outcome: CancelOutcome) => void;
 }
 
 const formatLongDate = (date: string) =>
@@ -22,7 +29,19 @@ const formatLongDate = (date: string) =>
     year: 'numeric',
   });
 
-export const BookingItem: React.FC<BookingItemProps> = ({ booking, editing, highlighted = false, onEdit, onClose, onSaved }) => {
+export const BookingItem: React.FC<BookingItemProps> = ({
+  booking,
+  editing,
+  cancelling,
+  cancelled = false,
+  highlighted = false,
+  onEdit,
+  onClose,
+  onSaved,
+  onCancel,
+  onCancelClose,
+  onCancelled,
+}) => {
   const itemRef = useRef<HTMLLIElement>(null);
   const changeable = canChange(booking);
   const requirements = booking.requirements ?? [];
@@ -37,7 +56,7 @@ export const BookingItem: React.FC<BookingItemProps> = ({ booking, editing, high
       ref={itemRef}
       className={`bg-white rounded-3xl border shadow-sm p-6 space-y-4 transition-shadow ${
         highlighted ? 'border-[#234E39] ring-2 ring-[#234E39]/40' : 'border-[#EFEADF]'
-      }`}
+      } ${cancelled ? 'opacity-60' : ''}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -46,17 +65,32 @@ export const BookingItem: React.FC<BookingItemProps> = ({ booking, editing, high
             {formatLongDate(booking.date)}
           </h2>
           <p className="text-xs text-[#7C8885] mt-1">Booking {bookingReference(booking.id)}</p>
+          {cancelled && (
+            <span className="inline-block mt-2 px-3 py-1 rounded-full bg-[#FDECEC] text-[#B00020] text-xs font-semibold">
+              Cancelled
+            </span>
+          )}
         </div>
-        {!editing && (
-          <button
-            type="button"
-            onClick={onEdit}
-            disabled={!changeable}
-            className="flex items-center gap-2 px-4 py-2 bg-[#234E39] text-white rounded-xl text-sm font-medium hover:bg-[#1C3E2E] transition-colors disabled:opacity-40 disabled:hover:bg-[#234E39] cursor-pointer disabled:cursor-not-allowed"
-          >
-            <Pencil className="w-4 h-4" />
-            Change booking
-          </button>
+        {!editing && !cancelling && !cancelled && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={!changeable}
+              className="flex items-center gap-2 px-4 py-2 bg-[#234E39] text-white rounded-xl text-sm font-medium hover:bg-[#1C3E2E] transition-colors disabled:opacity-40 disabled:hover:bg-[#234E39] cursor-pointer disabled:cursor-not-allowed"
+            >
+              <Pencil className="w-4 h-4" />
+              Change booking
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-[#B00020] text-[#B00020] rounded-xl text-sm font-medium hover:bg-[#FDECEC] transition-colors cursor-pointer"
+            >
+              <CalendarX className="w-4 h-4" />
+              Cancel booking
+            </button>
+          </div>
         )}
       </div>
 
@@ -107,15 +141,20 @@ export const BookingItem: React.FC<BookingItemProps> = ({ booking, editing, high
         </div>
       )}
 
-      {!editing && (
+      {!editing && !cancelling && !cancelled && (
         <p className="text-xs text-[#5A6865]">
           {changeable
-            ? `You can change this booking until ${changeDeadlineText(booking)}.`
-            : `This booking can no longer be changed: changes close ${CHANGE_CUTOFF_HOURS} hours before it starts.`}
+            ? `You can change this booking until ${changeDeadlineText(booking)}. You can cancel it at any time.`
+            : `This booking can no longer be changed: changes close ${CHANGE_CUTOFF_HOURS} hours before it starts. You can still cancel it.`}
         </p>
       )}
 
+      {cancelled && (
+        <p className="text-xs text-[#5A6865]">This booking was cancelled. The places are free again.</p>
+      )}
+
       {editing && <ChangeBookingPanel booking={booking} onSaved={onSaved} onClose={onClose} />}
+      {cancelling && <CancelBookingPanel booking={booking} onDone={onCancelled} onClose={onCancelClose} />}
     </li>
   );
 };
