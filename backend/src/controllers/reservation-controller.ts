@@ -8,7 +8,6 @@ import {
     saveBooking,
     hasBookingInSlot, 
     deleteBooking,
-    getTablesAvailability,
 } from "../dao/booking-dao";
 import { replaceRequirements } from "../dao/dietary-requirement-dao";
 import { inTransaction } from "../database/database";
