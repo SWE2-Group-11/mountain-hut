@@ -128,7 +128,7 @@ describe("POST /accounts — AccountRegistrationRequestSchema", () => {
     });
 });
 
-describe("POST /auth — AccountLoginRequestSchema", () => {
+describe("POST /api/v1/session — AccountLoginRequestSchema", () => {
     it("accepts an email and a password", () => {
         expect(AccountLoginRequestSchema.parse(LOGIN)).toEqual(LOGIN);
     });
