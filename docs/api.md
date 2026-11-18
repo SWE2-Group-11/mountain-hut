@@ -175,3 +175,36 @@ Base URL: `http://localhost:3000/api/v1`
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user is not a hiker
   - `500 Internal Server Error`: unexpected server error
+
+### DELETE /reservations/:reservationId - Cancel a reservation
+
+- **Description:** cancels a reservation belonging to the authenticated hiker, releasing its seats so they can be booked by other guests; there are no time constraints, a reservation can be cancelled at any time
+- **Authentication:** required
+- **Permissions:** hiker
+- **Path parameters:**
+  - `reservationId`: required positive integer, reservation identifier
+- **Responses:**
+  - `204 No Content`: reservation cancelled; no response body
+  - `400 Bad Request`: invalid `reservationId`
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user is not a hiker, or the reservation belongs to another user
+  - `404 Not Found`: the reservation does not exist
+  - `409 Conflict`: the reservation could not be cancelled
+  - `500 Internal Server Error`: unexpected server error
+
+### POST /slots/copy-week - Repeat a weekly schedule
+
+- **Description:** copies the slots, tables and seats of a week into one or more later weeks, so that recurring slots do not have to be configured one by one; bookings are never copied. A target week without reservations has its existing schedule completely replaced; if any target week has reservations, nothing is copied. All the target weeks are copied together, or none is. The copied slots can later be adjusted individually
+- **Authentication:** required
+- **Permissions:** employee, warden
+- **Request body:**
+  - `sourceWeekStart`: required, Monday of the week to copy, formatted `YYYY-MM-DD`
+  - `targetWeekStarts`: required non-empty array (at most 52 elements) of Mondays of the weeks receiving the copy, formatted `YYYY-MM-DD`; no duplicates, must not contain `sourceWeekStart`, each week must start after the current week (Europe/Rome)
+- **Responses:**
+  - `201 Created`: returns `sourceWeekStart` (Monday date of the copied week), `targetWeekStarts` (dates of Mondays of the weeks that received the copy, without duplicates) and `slotsPerWeek` (number of slots copied into each target week)
+  - `400 Bad Request`: missing or invalid fields (dates that are not Mondays, duplicate target weeks, source week among the targets, more than 52 targets), or a target week that has already started or is in the past
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
+  - `404 Not Found`: the source week has no slots to copy
+  - `409 Conflict`: a target week already has reservations, so its schedule cannot be replaced; nothing was copied
+  - `500 Internal Server Error`: unexpected server error

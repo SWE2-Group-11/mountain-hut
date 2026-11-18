@@ -6,7 +6,8 @@ import {
     getBookingAvailability,
     insertSeatings,
     saveBooking,
-    hasBookingInSlot,
+    hasBookingInSlot, 
+    deleteBooking,
     getTablesAvailability,
 } from "../dao/booking-dao";
 import { replaceRequirements } from "../dao/dietary-requirement-dao";
@@ -17,16 +18,16 @@ import {
     UpdateReservationRequestDTO,
     UpdateReservationResponseDTO,
 } from "../models/dto/reservation-dto";
+import { NotFoundError } from "../models/errors/notfound-error";
 import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
 import { ForbiddenError } from "../models/errors/forbidden-error";
-import { NotFoundError } from "../models/errors/notfound-error";
 import {
     bookingDataToCreateReservationResponseDTO,
+    requirementDTOsToInputs,
     reservationToResponseDTO,
 } from "../services/mapper-service";
-import { isBookingOpen } from "../domain/booking-rules";
-import type { Assignment } from "../domain/booking-rules";
+import { isBookingOpen, isChangeOpen } from "../domain/booking-rules";
 import { BOOKING_CUTOFF_HOURS, HUT_TIMEZONE, CHANGE_BOOKING_CUTOFF_HOURS } from "../config/config";
 import { notifyBookingCreated } from "../notifications/booking-confirmation";
 
@@ -44,6 +45,7 @@ import {
 } from "../dao/hiker-dao";
 import { createHikerAccount } from "../dao/account-dao";
 import type { TemporaryHikerInput } from "../dao/booking-dao";
+import { notifyBookingChanged } from "../notifications/booking-change";
 
 /**
  * Creates a reservation for the authenticated hiker, seating the party
@@ -76,10 +78,8 @@ export const createReservation = (
         ); 
     }
   
-    const requirements = (request.requirements ?? []).map((r) => ({
-        allergy_flag: r.hasAllergies,
-        description: r.details,
-    }));
+    const requirements = requirementDTOsToInputs(request.requirements);
+
     const result = saveBooking(hiker_id, slot.date, slot.start_time, request.partySize, requirements);
     if (!result) {
         throw new ConflictError("The requested capacity is no longer available");
@@ -193,10 +193,7 @@ export const createStaffReservation = (
         throw new ConflictError("The hiker already has a booking for this slot");
     }
 
-    const requirements = (request.requirements ?? []).map((requirement) => ({
-        allergy_flag: requirement.hasAllergies,
-        description: requirement.details,
-    }));
+    const requirements = requirementDTOsToInputs(request.requirements);
 
     const result = saveBooking(
         hiker,
@@ -240,154 +237,95 @@ export const updateReservation = (
     hiker_id: number,
     reservation_id: number,
     request: UpdateReservationRequestDTO
-): UpdateReservationResponseDTO => inTransaction(() => {
-    const reservation = getBooking(reservation_id);
-
-    if (!reservation) {
-        throw new NotFoundError("Reservation not found");
-    }
-
-    if (reservation.booking.hiker_id !== hiker_id) {
-        throw new ForbiddenError(
-            "The reservation belongs to another user"
-        );
-    }
-
-    const now = DateTime.now().setZone(HUT_TIMEZONE);
-
-    const changeDeadline = DateTime.fromISO(
-        `${reservation.date}T${reservation.start_time}`,
-        { zone: HUT_TIMEZONE }
-    ).minus({ hours: CHANGE_BOOKING_CUTOFF_HOURS });
-
-    if (now.toMillis() > changeDeadline.toMillis()) {
-        throw new BadRequestError(
-            `Reservations can only be changed up to ${CHANGE_BOOKING_CUTOFF_HOURS} hours before the original slot starts`
-        );
-    }
-
-    const date = request.date ?? reservation.date;
-    const start_time = request.slot ?? reservation.start_time;
-    const party_size = request.partySize ?? reservation.party_size;
-
-    const slot = getSlot(date, start_time);
-
-    if (!slot) {
-        throw new NotFoundError("The requested slot does not exist");
-    }
-
-    if (!isBookingOpen(slot, now.toJSDate())) {
-        throw new BadRequestError(
-            `The requested slot must start at least ${BOOKING_CUTOFF_HOURS} hours from now`
-        );
-    }
-
-    const slotChanged = date !== reservation.date || start_time !== reservation.start_time;
-
-    if (slotChanged) {
-        const bookings = getActiveBookingsByHiker(
-            hiker_id,
-            now.toFormat("yyyy-MM-dd HH:mm")
-        );
-
-        const alreadyBooked = bookings.some((other) =>
-            other.booking.id !== reservation_id &&
-            other.date === date &&
-            other.start_time === start_time
-        );
-
-        if (alreadyBooked) {
-            throw new ConflictError(
-                "You already have a reservation in the requested slot"
+): UpdateReservationResponseDTO => {
+    const response = inTransaction(() => {
+        const reservation = getBooking(reservation_id);
+        if (!reservation) {
+            throw new NotFoundError("Reservation not found");
+        }
+        if (reservation.booking.hiker_id !== hiker_id) {
+            throw new ForbiddenError("The reservation belongs to another user");
+        }
+        if (!isChangeOpen(reservation.date, reservation.start_time)) {
+            throw new BadRequestError(
+                `Reservations can only be changed up to ${CHANGE_BOOKING_CUTOFF_HOURS} hours before the original slot starts`
             );
         }
-    }
 
-    let seatings = reservation.seatings;
+        const date = request.date ?? reservation.date;
+        const start_time = request.slot ?? reservation.start_time;
+        const party_size = request.partySize ?? reservation.party_size;
 
-    if (slotChanged || party_size !== reservation.party_size) {
-        let assignment: Assignment[] | null = null;
+        const slot = getSlot(date, start_time);
+        if (!slot) {
+            throw new NotFoundError("The requested slot does not exist");
+        }
+        if (!isBookingOpen(slot)) {
+            throw new BadRequestError(
+                `The requested slot must start at least ${BOOKING_CUTOFF_HOURS} hours from now`
+            );
+        }
 
-        if (!slotChanged) {
-            assignment = reservation.seatings.map((seating) => ({
-                table_number: seating.table_number,
-                assigned_seats: seating.assigned_seats,
-            }));
+        const slotChanged = date !== reservation.date || start_time !== reservation.start_time;
 
-            if (party_size > reservation.party_size) {
-                const freeByTable = new Map(
-                    getTablesAvailability(date, start_time).map((table) => [
-                        table.table_number,
-                        table.free_seats,
-                    ])
-                );
+        // All the seatings of a booking are in one slot, so in a different slot
+        // any booking found belongs to another reservation.
+        if (slotChanged && hasBookingInSlot(hiker_id, date, start_time)) {
+            throw new ConflictError("You already have a reservation in the requested slot");
+        }
 
-                let seatsToAdd = party_size - reservation.party_size;
-
-                for (const table of assignment) {
-                    const added = Math.min(
-                        seatsToAdd,
-                        freeByTable.get(table.table_number) ?? 0
-                    );
-
-                    table.assigned_seats += added;
-                    seatsToAdd -= added;
-                }
-
-                if (seatsToAdd > 0) assignment = null;
-            } else {
-                let seatsToRemove = reservation.party_size - party_size;
-
-                for (let i = assignment.length - 1; i >= 0; i--) {
-                    const removed = Math.min(
-                        seatsToRemove,
-                        assignment[i].assigned_seats
-                    );
-
-                    assignment[i].assigned_seats -= removed;
-                    seatsToRemove -= removed;
-                }
-
-                assignment = assignment.filter(
-                    (table) => table.assigned_seats > 0
-                );
+        // MH-06 clarification: a new slot or party size is treated as a new booking.
+        // The seats are released first, or they would count as taken; if the tables cannot
+        // be assigned again, the throw rolls back the release and the booking stays as it was.
+        let seatings = reservation.seatings;
+        if (slotChanged || party_size !== reservation.party_size) {
+            deleteSeatings(reservation_id);
+            const assignment = getBookingAvailability(date, start_time, party_size);
+            if (!assignment || assignment.length === 0) {
+                throw new ConflictError("The requested capacity is no longer available");
             }
+            seatings = insertSeatings(reservation_id, date, start_time, assignment);
         }
 
-        deleteSeatings(reservation_id);
+        const dietary_requirements = request.requirements === undefined
+            ? reservation.dietary_requirements
+            : replaceRequirements(reservation_id, requirementDTOsToInputs(request.requirements));
 
-        if (assignment === null) {
-            assignment = getBookingAvailability(date, start_time, party_size);
-        }
-
-        if (!assignment || assignment.length === 0) {
-            throw new ConflictError(
-                "The requested capacity is no longer available"
-            );
-        }
-
-        seatings = insertSeatings(
-            reservation_id,
+        return reservationToResponseDTO({
+            ...reservation,
             date,
             start_time,
-            assignment
-        );
+            party_size,
+            seatings,
+            dietary_requirements,
+        });
+    });
+
+    // Only after the commit: a refused or rolled back change must not be notified
+    notifyBookingChanged(reservation_id);
+    return response;
+};
+
+/**
+ * Cancels a reservation for the authenticated hiker.
+ * @param hiker_id The ID of the authenticated hiker.
+ * @param reservation_id The ID of the reservation to cancel.
+ * @throws NotFoundError if the reservation does not exist.
+ * @throws ForbiddenError if the reservation does not belong to the authenticated hiker.
+ * @throws ConflictError if the reservation could not be cancelled.
+ */
+export const cancelReservation = (hiker_id: number, reservation_id: number): void => inTransaction(() => {
+    const reservation = getBooking(reservation_id);
+    if (!reservation) {
+        throw new NotFoundError("The reservation does not exist");
+    }
+    if (reservation.booking.hiker_id !== hiker_id) {
+        throw new ForbiddenError("This reservation does not belong to the authenticated hiker");
     }
 
-    const requirements = request.requirements === undefined ? reservation.dietary_requirements: replaceRequirements(
-            reservation_id,
-            request.requirements.map((requirement) => ({
-                allergy_flag: requirement.hasAllergies,
-                description: requirement.details,
-            }))
-        );
+    const deleted = deleteBooking(reservation_id);
 
-    return reservationToResponseDTO({
-        ...reservation,
-        date,
-        start_time,
-        party_size,
-        seatings,
-        dietary_requirements: requirements,
-    });
+    if (!deleted) {
+        throw new ConflictError("The reservation could not be cancelled");
+    }
 });

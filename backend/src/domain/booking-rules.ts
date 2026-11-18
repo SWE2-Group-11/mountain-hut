@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { Slot } from "../models/entities/slot";
-import { BOOKING_CUTOFF_HOURS, HUT_TIMEZONE } from "../config/config";
+import { BOOKING_CUTOFF_HOURS, CHANGE_BOOKING_CUTOFF_HOURS, HUT_TIMEZONE } from "../config/config";
 
 export type TableAvailability = {
     table_number: number;
@@ -21,10 +21,24 @@ export type Assignment = {
  * @param now The current instant (injectable for testing).
  * @returns true if the booking window is still open, false otherwise.
  */
-export const isBookingOpen = (slot: Slot, now: Date = new Date()): boolean => {
-    const slot_start = DateTime.fromISO(`${slot.date}T${slot.start_time}`, { zone: HUT_TIMEZONE });
-    const deadline = slot_start.minus({ hours: BOOKING_CUTOFF_HOURS });
-    return now.getTime() <= deadline.toMillis();
+export const isBookingOpen = (slot: Slot, now: Date = new Date()): boolean =>
+    isBeforeCutoff(slot.date, slot.start_time, BOOKING_CUTOFF_HOURS, now);
+
+/**
+ * Checks whether an existing reservation can still be changed: changes are allowed
+ * up to CHANGE_BOOKING_CUTOFF_HOURS hours before the reserved slot starts.
+ * @param date The day of the reserved slot (YYYY-MM-DD).
+ * @param start_time The start time of the reserved slot (HH:MM).
+ * @param now The current instant (injectable for testing).
+ * @returns true if the change window is still open, false otherwise.
+ */
+export const isChangeOpen = (date: string, start_time: string, now: Date = new Date()): boolean =>
+    isBeforeCutoff(date, start_time, CHANGE_BOOKING_CUTOFF_HOURS, now);
+
+/** true if `now` is at most `hours` hours before the slot start (in HUT_TIMEZONE). */
+const isBeforeCutoff = (date: string, start_time: string, hours: number, now: Date): boolean => {
+    const slot_start = DateTime.fromISO(`${date}T${start_time}`, { zone: HUT_TIMEZONE });
+    return now.getTime() <= slot_start.minus({ hours }).toMillis();
 };
 
 /**
@@ -58,3 +72,4 @@ export const assignSeats = (tables: TableAvailability[], party_size: number): As
     }
     return assignment;
 };
+
