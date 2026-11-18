@@ -16,6 +16,11 @@ import {
 } from "../models/dto/slot-dto";
 import { requireRole } from "../services/auth-service";
 import { validateBody, validateQuery } from "../services/middleware-service";
+import { repeatWeeklySchedule } from "../controllers/weekly-schedule-controller";
+import {
+    CopyWeeklyScheduleRequestSchema,
+    CopyWeeklyScheduleResponseDTO,
+} from "../models/dto/weekly-schedule-dto";
 
 const router = express.Router();
 
@@ -57,4 +62,14 @@ router.get(
         res.json(getAvailability(req.parsedQuery));
     });
 
+// Copy the schedule of a week into one or more later weeks
+router.post(
+    "/copy-week",
+    requireRole("employee", "warden"),
+    validateBody(CopyWeeklyScheduleRequestSchema),
+    (req: Request, res: Response<CopyWeeklyScheduleResponseDTO>) => {
+
+        res.status(201).json(repeatWeeklySchedule(req.body));
+    });
+    
 export default router;

@@ -3,10 +3,12 @@ import express from "express";
 import request from "supertest";
 import slotRouter from "../../routes/slot-route";
 import { createSlot, getConfigurations, getSlots } from "../../controllers/slot-controller";
+import { repeatWeeklySchedule } from "../../controllers/weekly-schedule-controller";
 import { sendAppError } from "../../services/error-service";
 import { BadRequestError } from "../../models/errors/badrequest-error";
 import { ConflictError } from "../../models/errors/conflict-error";
 import { NotFoundError } from "../../models/errors/notfound-error";
+import type { CopyWeeklyScheduleResponseDTO } from "../../models/dto/weekly-schedule-dto";
 import type { SlotConfigurationDTO, SlotDTO } from "../../models/dto/slot-dto";
 
 
@@ -14,6 +16,9 @@ vi.mock("../../controllers/slot-controller", () => ({
     getSlots: vi.fn(),
     getConfigurations: vi.fn(),
     createSlot: vi.fn(),
+}));
+vi.mock("../../controllers/weekly-schedule-controller", () => ({
+    repeatWeeklySchedule: vi.fn(),
 }));
 
 // Stand-in for the role check: it answers 401/403 like the real one and records the roles each protected route asks for.
@@ -56,6 +61,9 @@ const CONFIGURATIONS: SlotConfigurationDTO[] = [
     CONFIGURATION,
     { date: DAY, startTime: "19:30", endTime: "21:00", tables: [{ tableNumber: 1, seats: 8 }], totalSeats: 8 },
 ];
+const COPY_WEEK_URL = `${URL}/copy-week`;
+const COPY_WEEK = { sourceWeekStart: "2030-06-10", targetWeekStarts: ["2030-06-17", "2030-06-24"] };
+const COPY_WEEK_RESULT: CopyWeeklyScheduleResponseDTO = { ...COPY_WEEK, slotsPerWeek: 14 };
 
 // Minimal app: the router and the error format are the real ones
 const app = express();
@@ -75,6 +83,7 @@ beforeEach(() => {
     vi.mocked(getSlots).mockReturnValue(SLOTS);
     vi.mocked(getConfigurations).mockReturnValue(CONFIGURATIONS);
     vi.mocked(createSlot).mockReturnValue(CONFIGURATION);
+    vi.mocked(repeatWeeklySchedule).mockReturnValue(COPY_WEEK_RESULT);
 });
 
 describe("GET /slots — route", () => {
@@ -158,8 +167,9 @@ describe("GET /slots — route", () => {
 });
 
 describe("slot-route — role guards", () => {
-    it("protects the configurations and the creation of a slot with employee and warden", () => {
+    it("protects the configurations, the creation of a slot and the copy of a week with employee and warden", () => {
         expect(auth.guards).toEqual([
+            ["employee", "warden"],
             ["employee", "warden"],
             ["employee", "warden"],
         ]);
