@@ -70,7 +70,7 @@ export function useStaffReservation() {
             setPrefillNotice(`The ${pending.slot} table is not available on this day any more. Please choose another time.`);
           } else if (pending.partySize !== null && pending.partySize > checked.available_seats) {
             setPrefillNotice(
-              `Only ${checked.available_seats} ${checked.available_seats === 1 ? 'seat is' : 'seats are'} left at ${pending.slot}, so the party size was lowered.`
+              `Only ${checked.available_seats} ${checked.available_seats === 1 ? 'seat is' : 'seats are'} left at ${pending.slot}, but the party is ${pending.partySize}. Lower the party size or choose another time.`
             );
           }
         }
@@ -97,8 +97,10 @@ export function useStaffReservation() {
 
   const selectedSlot = slots.find((s) => s.start_time === selectedTime) ?? null;
   const maxAvailableSeats = selectedSlot?.available_seats ?? 0;
-  // Never more people than the seats left, even when they shrink after a reload
-  const partySize = selectedSlot ? Math.max(1, Math.min(chosenPartySize, maxAvailableSeats)) : chosenPartySize;
+  // The party size is never changed behind the employee's back: when the free seats shrink below it
+  // (e.g. after a refused reservation) it stays as requested, the form says so and the button waits
+  const partySize = chosenPartySize;
+  const tooManyPeople = selectedSlot !== null && partySize > maxAvailableSeats;
 
   // Any choice made by the employee ends the hand-over from the availability page
   const settlePrefill = useCallback(() => {
@@ -119,21 +121,19 @@ export function useStaffReservation() {
   const setSelectedTime = useCallback(
     (time: string) => {
       settlePrefill();
-      const available = slots.find((s) => s.start_time === time)?.available_seats ?? 0;
       setSelectedTimeState(time);
-      setChosenPartySize((prev) => (available > 0 ? Math.min(prev, available) : 1));
       setError(null);
     },
-    [slots, settlePrefill]
+    [settlePrefill]
   );
 
   const setPartySize = useCallback(
     (size: number) => {
       settlePrefill();
-      setChosenPartySize(Math.max(1, Math.min(size, maxAvailableSeats || 1)));
+      setChosenPartySize(Math.max(1, size));
       setError(null);
     },
-    [maxAvailableSeats, settlePrefill]
+    [settlePrefill]
   );
 
   // Who the reservation is for
@@ -169,8 +169,8 @@ export function useStaffReservation() {
   // Why the button is not ready yet (shown under it), or null when everything is in place
   const missing: string | null = !selectedTime
     ? 'Choose a time.'
-    : partySize < 1 || partySize > maxAvailableSeats
-      ? 'Choose the number of people.'
+    : tooManyPeople
+      ? `Only ${maxAvailableSeats} ${maxAvailableSeats === 1 ? 'seat is' : 'seats are'} left at ${selectedTime}, but the party is ${partySize}. Lower the party size or choose another time.`
       : !requirementsValid
         ? 'Check the food needs: describe every allergy and do not list more people than the party.'
         : hikerIssue;

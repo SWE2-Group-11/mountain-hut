@@ -45,7 +45,24 @@ export const PartyPanel: React.FC<PartyPanelProps> = ({ partySize, maxSeats, has
           </button>
         ))}
       </div>
-      <p className="text-xs text-[#7C8885] w-full">{maxSeats} seats free in this service.</p>
+      {partySize > maxSeats ? (
+        <div role="alert" className="w-full flex flex-wrap items-center gap-3 p-3 bg-[#FDF6E3] border border-[#EBD9A8] rounded-xl text-xs text-[#6B5200]">
+          <span>
+            Only {maxSeats} {maxSeats === 1 ? 'seat is' : 'seats are'} free in this service, but the party is {partySize}.
+          </span>
+          {maxSeats > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange(maxSeats)}
+              className="px-3 py-1.5 bg-white border border-[#D4CDBA] rounded-lg font-medium text-[#1C2826] cursor-pointer"
+            >
+              Set the party to {maxSeats}
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-[#7C8885] w-full">{maxSeats} seats free in this service.</p>
+      )}
     </div>
   );
 };
