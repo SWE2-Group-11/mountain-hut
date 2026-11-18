@@ -175,3 +175,19 @@ Base URL: `http://localhost:3000/api/v1`
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user is not a hiker
   - `500 Internal Server Error`: unexpected server error
+
+### DELETE /reservations/:reservationId - Cancel a reservation
+
+- **Description:** cancels a reservation belonging to the authenticated hiker, releasing its seats so they can be booked by other guests; there are no time constraints, a reservation can be cancelled at any time
+- **Authentication:** required
+- **Permissions:** hiker
+- **Path parameters:**
+  - `reservationId`: required positive integer, reservation identifier
+- **Responses:**
+  - `204 No Content`: reservation cancelled; no response body
+  - `400 Bad Request`: invalid `reservationId`
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user is not a hiker, or the reservation belongs to another user
+  - `404 Not Found`: the reservation does not exist
+  - `409 Conflict`: the reservation could not be cancelled
+  - `500 Internal Server Error`: unexpected server error

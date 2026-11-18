@@ -1,5 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
 import {
+    cancelReservation,
     createReservation,
     createStaffReservation,
     getReservations,
@@ -58,6 +59,20 @@ router.patch("/:reservationId",
     try {
         const { reservationId } = req.parsedParams as ReservationIdParamsDTO;
         res.json(updateReservation(req.user!.id, reservationId, req.body));
+    } catch (err) {
+        sendAppError(err, res);
+    }
+});
+
+// Cancel a reservation of the logged-in hiker
+router.delete("/:reservationId",
+    requireRole("hiker"),
+    validateParams(ReservationIdParamsSchema),
+    (req: Request, res: Response) => {
+    try {
+        const { reservationId } = req.parsedParams as ReservationIdParamsDTO;
+        cancelReservation(req.user!.id, reservationId);
+        res.status(204).end();
     } catch (err) {
         sendAppError(err, res);
     }
