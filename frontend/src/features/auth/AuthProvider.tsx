@@ -44,7 +44,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Throws on failure (e.g. ApiError 401) so the login form can show the message
   const login = async (email: string, password: string) => {
-    // The backend expects { email, password }
     const data: SessionResponse = await apiClient.post('/session', { email, password });
     setUser(toUser(data));
   };
@@ -57,10 +56,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Throws on failure (ApiError 400 weak/same password, 403 wrong current password) so the form can say why
+  // PUT /accounts/current/password. Throws on failure so the form can say why:
+  // 400 = weak/too short password, 401 = wrong current password (or session expired).
   const changePassword = async (currentPassword: string, newPassword: string) => {
-    await apiClient.patch('/accounts/current/password', { currentPassword, newPassword });
-    setUser((prev) => (prev ? { ...prev, mustChangePassword: false } : prev));
+    const data: SessionResponse = await apiClient.put('/accounts/current/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    setUser(toUser(data));
   };
 
   return (
