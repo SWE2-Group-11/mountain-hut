@@ -9,6 +9,7 @@ interface RequirementsStepProps {
   onAdd: () => void;
   onRemove: (key: number) => void;
   onChange: (key: number, changes: Partial<Omit<RequirementRow, 'key'>>) => void;
+  staff?: boolean; // staff page: no title (the panel has one) and wording about "the party"
 }
 
 const chipClass = (selected: boolean, allergy: boolean): string =>
@@ -23,22 +24,26 @@ const chipClass = (selected: boolean, allergy: boolean): string =>
 const stepButton =
   'w-8 h-8 rounded-lg bg-white border border-[#EFEADF] flex items-center justify-center text-[#1C2826] hover:bg-[#EFE4D2] disabled:opacity-40 disabled:hover:bg-white transition-colors';
 
-export const RequirementsStep: React.FC<RequirementsStepProps> = ({ rows, partySize, onAdd, onRemove, onChange }) => {
+export const RequirementsStep: React.FC<RequirementsStepProps> = ({ rows, partySize, onAdd, onRemove, onChange, staff = false }) => {
   const assigned = peopleAssigned(rows);
   const mentioned = peopleMentioned(rows);
   const everyoneCovered = assigned >= partySize;
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#5A6865] flex items-center gap-2">
-          <UtensilsCrossed className="w-4 h-4 text-[#234E39]" />
-          4. Food needs <span className="font-normal normal-case tracking-normal">(optional)</span>
-        </span>
-      </div>
+    <div className={staff ? '' : 'mb-8'}>
+      {!staff && (
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#5A6865] flex items-center gap-2">
+            <UtensilsCrossed className="w-4 h-4 text-[#234E39]" />
+            4. Food needs <span className="font-normal normal-case tracking-normal">(optional)</span>
+          </span>
+        </div>
+      )}
 
       <p className="text-sm text-[#5A6865] mb-3">
-        Does anyone in your party have a food need or an allergy? Say how many people and pick what applies.
+        {staff
+          ? 'Does anyone in the party have a food need or an allergy? Say how many people and pick what applies.'
+          : 'Does anyone in your party have a food need or an allergy? Say how many people and pick what applies.'}
       </p>
 
       {rows.length > 0 && (
@@ -175,11 +180,11 @@ export const RequirementsStep: React.FC<RequirementsStepProps> = ({ rows, partyS
       {mentioned > partySize && (
         <p role="alert" className="flex items-center gap-1.5 text-xs text-red-700 mb-3">
           <AlertTriangle className="w-3.5 h-3.5" />
-          You listed {mentioned} people, but your party has {partySize}. Remove a note or lower the numbers.
+          You listed {mentioned} people, but {staff ? 'the' : 'your'} party has {partySize}. Remove a note or lower the numbers.
         </p>
       )}
 
-          {rows.length > 0 && everyoneCovered && mentioned <= partySize && (
+      {rows.length > 0 && everyoneCovered && mentioned <= partySize && (
         <p
           role="status"
           className="flex items-center gap-2 text-sm font-medium text-[#234E39] bg-[#EAF3EE] border border-[#BFD8C9] rounded-xl px-3 py-2 mb-3"

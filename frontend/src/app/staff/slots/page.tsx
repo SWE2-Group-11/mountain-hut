@@ -1,18 +1,16 @@
-import { Header } from '../../../components/layout/Header';
-import { HeroBanner } from '../../../components/layout/HeroBanner';
+import { StaffLayout } from '../../../components/layout/StaffLayout';
 import { SlotSetupCard } from '../../../features/slot-setup/components/SlotSetupCard';
 
 export default function SlotSetupPage() {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] flex flex-col font-sans">
-      <Header />
-      <HeroBanner
-        title="Set up slots"
-        subtitle="Choose the day and time, then define the tables and seats, or reuse a previous setup."
-      />
-      <main className="flex-1 w-full mx-auto px-6 pb-16 flex justify-center">
+    <StaffLayout
+      title="Set up slots"
+      subtitle="Choose the day and time, then define the tables and seats, or reuse a previous setup."
+    >
+      {/* The card was made to overlap a banner (-mt-20); here there is no banner */}
+      <div className="*:mt-0! *:mx-0!">
         <SlotSetupCard />
-      </main>
-    </div>
+      </div>
+    </StaffLayout>
   );
 }

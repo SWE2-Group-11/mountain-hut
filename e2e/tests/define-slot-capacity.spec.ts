@@ -83,7 +83,7 @@ test.describe('Define slot capacity - who can open the page', () => {
   test('the employee is taken to the page after login and sees the link to it', async ({ page }) => {
     await openSlotSetup(page, EMPLOYEE);
 
-    await expect(page.getByRole('banner').getByRole('link', { name: 'Manage slots' })).toBeVisible();
+       await expect(page.getByRole('navigation', { name: 'Staff' }).getByRole('link', { name: 'Manage slots' })).toBeVisible();
   });
 
   test('the warden can use the page too', async ({ page }) => {
