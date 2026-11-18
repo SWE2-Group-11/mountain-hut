@@ -15,7 +15,7 @@ const DEMO_REQUIREMENTS = [
     { allergy_flag: 1, description: "1 shellfish allergy" },
     { allergy_flag: 1, description: "1 egg allergy" },
     { allergy_flag: 0, description: "1 vegan" },
-    { allergy_flag: 0, description: "2 vegetarians" },
+    { allergy_flag: 0, description: "1 vegetarian" },
     { allergy_flag: 0, description: "1 lactose-free" },
 ] as const;
 
@@ -112,8 +112,8 @@ export const insertRandomBookings = (db: Database.Database, random: Random = Mat
             for (const a of assignment) {
                 insertSeats.run(booking_id, slot.date, slot.start_time, a.table_number, a.assigned_seats);
             }
-            const requirements = pickDistinct(random, DEMO_REQUIREMENTS,
-                randomInt(random, 0, DEMO_REQUIREMENTS.length));
+            const requirements = pickDistinct(random, DEMO_REQUIREMENTS, 
+                randomInt(random, 0, Math.min(DEMO_REQUIREMENTS.length, party_size)));
             for (const r of requirements) {
                 insertRequirement.run(booking_id, r.allergy_flag, r.description);
             }
