@@ -248,6 +248,27 @@ def absolute_error(units):
     return statistics.mean(abs(u.act / u.est - 1) for u in units) if units else None
 
 
+NO_TIME = "(no time logged)"
+
+
+def per_work_type(units):
+    """Estimated and logged minutes per work type.
+
+    YouTrack has one estimation per task, not per work type: the estimation of a task is split
+    among its work types in proportion to the time logged on each. A task with no time logged
+    has no work type, so its estimation goes to NO_TIME."""
+    est, act = {}, {}
+    for u in units:
+        if u.act:
+            for work_type, minutes in u.work.items():
+                est[work_type] = est.get(work_type, 0) + u.est * minutes / u.act
+                act[work_type] = act.get(work_type, 0) + minutes
+        else:
+            est[NO_TIME] = est.get(NO_TIME, 0) + u.est
+            act[NO_TIME] = act.get(NO_TIME, 0)
+    return est, act
+
+
 # ----------------------------------------------------------------------- formatting
 
 def hours(minutes):
@@ -423,19 +444,21 @@ def render(info, sprint, tests_dir, team):
               "- Absolute relative task estimation error = (1/n) Σ |spent / estimation − 1|")
 
     # 6. Quality measures
-    done_units = [u for u in units if u.done]
-    total_all = sum(u.act for u in units)
-    work_types = sorted({t for u in units for t in u.work})
-    rows = []
-    for t in work_types:
-        logged_all = sum(u.work.get(t, 0) for u in units)
-        logged_done = sum(u.work.get(t, 0) for u in done_units)
-        share = f"{logged_all / total_all:.0%}" if total_all else "-"
-        rows.append([t, hours(logged_all), hours(logged_done), share])
+    est_all, act_all = per_work_type(units)
+    est_done, act_done = per_work_type([u for u in units if u.done])
+    total_act = sum(act_all.values())
+    rows = [[t, hours(est_all[t]), hours(act_all[t]), hours(est_done.get(t, 0)), hours(act_done.get(t, 0)),
+             f"{act_all[t] / total_act:.0%}" if total_act else "-"]
+            for t in sorted(est_all, key=lambda t: (t == NO_TIME, t))]
+    rows.append(["**Total**"] + [f"**{hours(sum(d.values()))}**" for d in (est_all, act_all, est_done, act_done)]
+                + ["**100%**" if total_act else "-"])
     md.append("## 6. Quality measures")
-    md.append("### Time logged per work type")
-    md.append(table(rows, ["Work type", "Logged (all tasks)", "Logged (done tasks)", "Share of the total"])
-              if rows else "_No time logged._")
+    md.append("### Hours per work type")
+    md.append(table(rows, ["Work type", "Est. (all)", "Actual (all)", "Est. (done)", "Actual (done)",
+                           "Share of the actual"]) if units else "_No tasks._")
+    md.append("YouTrack has one estimation per task, not per work type: the estimation of each task is split "
+              "among its work types in proportion to the time logged on each. "
+              f"Tasks with no time logged are in \"{NO_TIME}\".")
     md.append("### Automated tests")
     md.append(tests_section(tests_dir))
 
