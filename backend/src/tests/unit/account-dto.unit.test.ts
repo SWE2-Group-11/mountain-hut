@@ -15,7 +15,7 @@ const VALID = {
     fullname: "Mario Rossi",
     mobile_number: "+39 333 123 4567",
     email: "mario@mountainhut.test",
-    password: "secret",
+    password: "secret-pass",
     notes: "Vegetarian",
     emergency_contact: "Anna Rossi +39 333 000 0000",
 };
@@ -59,9 +59,9 @@ describe("POST /accounts — AccountRegistrationRequestSchema", () => {
 
         it("does not trim the password", () => {
             // spaces can be part of a password
-            const result = register({ ...VALID, password: " secret " });
+            const result = register({ ...VALID, password: " secret-pass " });
 
-            expect(result.success && result.data.password).toBe(" secret ");
+            expect(result.success && result.data.password).toBe(" secret-pass ");
         });
 
         it("ignores any other field, such as role", () => {
@@ -162,14 +162,16 @@ describe("POST /api/v1/session — AccountLoginRequestSchema", () => {
 });
 
 describe("AccountResponseDTO", () => {
-    it("keeps the id, the email and the role", () => {
-        const dto = new AccountResponseDTO(7, "mario@mountainhut.test", "hiker");
+    it("keeps the account fields and password-change flag", () => {
+        const dto = new AccountResponseDTO(7, "mario@mountainhut.test", "hiker", false);
 
-        expect(dto).toEqual({ id: 7, email: "mario@mountainhut.test", role: "hiker" });
+        expect(dto).toEqual({ id: 7, email: "mario@mountainhut.test", role: "hiker", must_change_password: false });
     });
 
     it("exposes no other field", () => {
         // the response must never carry password data
-        expect(Object.keys(new AccountResponseDTO(1, "warden@mountainhut.test", "warden"))).toEqual(["id", "email", "role"]);
+        const dto = new AccountResponseDTO(1, "warden@mountainhut.test", "warden", true);
+
+        expect(Object.keys(dto)).toEqual(["id", "email", "role", "must_change_password"]);
     });
 });
