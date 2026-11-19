@@ -11,12 +11,14 @@ export function useMyBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-
+  // Bookings cancelled during this visit: they stay on the page, greyed out, until it is reloaded
+  const [cancelledIds, setCancelledIds] = useState<number[]>([]);
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
       setError(null);
+      setCancelledIds([]);
       try {
         const data: Reservation[] = await apiClient.get('/reservations');
         if (!cancelled) setBookings(data);
@@ -39,5 +41,10 @@ export function useMyBookings() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)).sort(byDateAndTime));
   }, []);
 
-  return { bookings, loading, error, reload, replaceBooking };
+   // A cancelled booking stays in the list, marked as cancelled
+  const markCancelled = useCallback((id: number) => {
+    setCancelledIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
+   return { bookings, loading, error, reload, replaceBooking, markCancelled, cancelledIds };
 }
