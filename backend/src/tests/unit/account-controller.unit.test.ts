@@ -18,7 +18,7 @@ const REQUEST: AccountRegistrationRequestDTO = {
     fullname: "Mario Rossi",
     mobile_number: "+39 333 123 4567",
     email: "mario@mountainhut.test",
-    password: "secret",
+    password: "secret-pass",
     notes: "Vegetarian",
     emergency_contact: "Anna Rossi +39 333 000 0000",
 };
@@ -65,11 +65,11 @@ describe("POST /accounts — registerHiker controller", () => {
         expect(vi.mocked(createHikerAccount).mock.calls[0][0]).not.toHaveProperty("must_change_password");
     });
 
-    it("returns the id, the email and the hiker role of the new account", () => {
+    it("returns the new hiker account with the password-change flag cleared", () => {
         const response = registerHiker(REQUEST);
 
         expect(response).toBeInstanceOf(AccountResponseDTO);
-        expect(response).toEqual(new AccountResponseDTO(ACCOUNT_ID, REQUEST.email, "hiker"));
+        expect(response).toEqual(new AccountResponseDTO(ACCOUNT_ID, REQUEST.email, "hiker", false));
     });
 
     it("returns no password data", () => {

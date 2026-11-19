@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { db, inTransaction } from "../../database/database";
 import { createHikerAccount, getAccountByCredentials, type HikerInput } from "../../dao/account-dao";
-import { generatePasswordHash, hashPassword } from "../../services/password-service";
+import { generatePasswordHash, verifyPassword } from "../../services/password-service";
 import { Hiker, Staff } from "../../models/entities/account";
 
 /*
@@ -18,7 +18,7 @@ vi.mock("../../database/database", () => ({
 
 vi.mock("../../services/password-service", () => ({
     generatePasswordHash: vi.fn(),
-    hashPassword: vi.fn(),
+    verifyPassword: vi.fn(),
 }));
 
 const ACCOUNT_ID = 7;
@@ -70,15 +70,15 @@ beforeEach(() => {
 describe("getAccountByCredentials (unit)", () => {
     beforeEach(() => {
         rows = { account: accountRow(), hiker: HIKER_ROW };
-        vi.mocked(hashPassword).mockReturnValue(HASH);
+        vi.mocked(verifyPassword).mockReturnValue(true);
     });
 
-    it("returns null for an unknown email, without hashing the password", () => {
+    it("returns null for an unknown email, without verifying the password", () => {
         // nothing to compare the password with: the login must just fail
         rows.account = undefined;
 
         expect(getAccountByCredentials(EMAIL, PASSWORD)).toBeNull();
-        expect(hashPassword).not.toHaveBeenCalled();
+        expect(verifyPassword).not.toHaveBeenCalled();
     });
 
     it("looks the account up by email", () => {
@@ -88,26 +88,17 @@ describe("getAccountByCredentials (unit)", () => {
         expect(statement.get).toHaveBeenNthCalledWith(1, EMAIL);
     });
 
-    it("hashes the given password with the salt of the account", () => {
-        // the same password gives the same hash only with the same salt
+    it("verifies the password with the salt and hash of the account", () => {
         getAccountByCredentials(EMAIL, PASSWORD);
 
-        expect(hashPassword).toHaveBeenCalledExactlyOnceWith(PASSWORD, SALT);
+        expect(verifyPassword).toHaveBeenCalledExactlyOnceWith(PASSWORD, SALT, HASH);
     });
 
     it("returns null for a wrong password, without reading the profile", () => {
-        vi.mocked(hashPassword).mockReturnValue("ffffffff");
+        vi.mocked(verifyPassword).mockReturnValue(false);
 
         expect(getAccountByCredentials(EMAIL, "wrong")).toBeNull();
         expect(prepared).toHaveLength(1);
-    });
-
-    it("returns null instead of throwing when the hashes have a different length", () => {
-        // timingSafeEqual throws on buffers of different length
-        vi.mocked(hashPassword).mockReturnValue("a1b2");
-
-        expect(() => getAccountByCredentials(EMAIL, "wrong")).not.toThrow();
-        expect(getAccountByCredentials(EMAIL, "wrong")).toBeNull();
     });
 
     it("returns the hiker with its profile for a hiker account", () => {

@@ -39,7 +39,12 @@ describe("POST /api/v1/accounts - successful registration", () => {
         const res = await register(BODY);
 
         expect(res.status).toBe(201);
-        expect(res.body).toEqual({ id: expect.any(Number), email: NEW_HIKER, role: "hiker" });
+        expect(res.body).toEqual({
+            id: expect.any(Number),
+            email: NEW_HIKER,
+            role: "hiker",
+            must_change_password: false,
+        });
         expect(hikerByEmail(NEW_HIKER)).toEqual({
             full_name: "New Hiker",
             mobile_number: "+39 300 000 0000",

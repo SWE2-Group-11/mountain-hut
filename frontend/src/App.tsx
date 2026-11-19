@@ -12,6 +12,7 @@ import RegisterPage from './app/register/page';
 import ChangePasswordPage from './app/change-password/page';
 import ForgotPasswordPage from './app/forgot-password/page';
 import ResetPasswordPage from './app/reset-password/page';
+import RepeatWeekPage from './app/staff/slots/repeat/page';
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
       <Route element={<ProtectedRoute allowedRoles={['employee', 'warden']} />}>
         <Route path="/staff/slots" element={<SlotSetupPage />} />
         <Route path="/staff/reserve" element={<StaffReservePage />} />
+        <Route path="/staff/slots/repeat" element={<RepeatWeekPage />} />
       </Route>
     </Routes>
   );

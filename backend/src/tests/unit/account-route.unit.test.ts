@@ -27,11 +27,11 @@ const VALID_BODY = {
     fullname: "Anna Neri",
     mobile_number: "+39 333 444 5555",
     email: "anna.neri@mountainhut.test",
-    password: "secret",
+    password: "secret-pass",
     notes: "Arrives late",
     emergency_contact: "Luca Neri +39 333 000 0000",
 };
-const CREATED = new AccountResponseDTO(11, VALID_BODY.email, "hiker");
+const CREATED = new AccountResponseDTO(11, VALID_BODY.email, "hiker", false);
 
 // Who is logged in for the current test (undefined = nobody)
 let currentUser: Express.User | undefined;
@@ -130,7 +130,12 @@ describe("POST /accounts — route", () => {
             const res = await request(app).post(URL).send(VALID_BODY);
 
             expect(res.status).toBe(201);
-            expect(res.body).toEqual({ id: 11, email: VALID_BODY.email, role: "hiker" });
+            expect(res.body).toEqual({
+                id: 11,
+                email: VALID_BODY.email,
+                role: "hiker",
+                must_change_password: false,
+            });
             expect(errorService.sendAppError).not.toHaveBeenCalled();
         });
     });
