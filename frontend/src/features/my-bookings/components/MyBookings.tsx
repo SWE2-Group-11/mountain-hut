@@ -15,8 +15,7 @@ export const MyBookings: React.FC = () => {
   // The booking that was just changed: confirmed in a pop-up and highlighted in the list for a few seconds
   const [saved, setSaved] = useState<{ id: number; reference: string } | null>(null);
   // A booking that was just cancelled: only confirmed in a pop-up, it is no longer in the list
-  const [cancelled, setCancelled] = useState<{ reference: string; alreadyGone: boolean } | null>(null);
-
+  const [cancelled, setCancelled] = useState<{ alreadyGone: boolean } | null>(null);
   useEffect(() => {
     if (!saved) return;
     const timer = setTimeout(() => setSaved(null), 6000);
@@ -38,7 +37,7 @@ export const MyBookings: React.FC = () => {
   const handleCancelled = (id: number, outcome: CancelOutcome) => {
      markCancelled(id);
     setCancellingId(null);
-    setCancelled({ reference: bookingReference(id), alreadyGone: outcome === 'gone' });
+  setCancelled({ alreadyGone: outcome === 'gone' });
   };
 
   return (
@@ -81,11 +80,11 @@ export const MyBookings: React.FC = () => {
           <CheckCircle2 className="w-6 h-6 shrink-0" />
           <div className="text-sm">
             <p className="font-bold">{cancelled.alreadyGone ? 'Booking already cancelled' : 'Booking cancelled'}</p>
-            <p className="text-white/85">
-              {cancelled.alreadyGone
-                ? `Booking ${cancelled.reference} no longer exists.`
-                : `Booking ${cancelled.reference} was cancelled. The places are free again.`}
-            </p>
+   <p className="text-white/85">
+  {cancelled.alreadyGone
+    ? 'This booking no longer exists.'
+    : 'Your booking was cancelled. The places are free again.'}
+</p>
           </div>
           <button
             type="button"
