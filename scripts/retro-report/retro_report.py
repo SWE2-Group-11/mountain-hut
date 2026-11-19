@@ -14,6 +14,7 @@ import json
 import os
 import statistics
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -35,7 +36,6 @@ STATE = "State"
 DONE_STATES = ["Done"]
 ESTIMATION = "Estimation"
 STORY_POINTS = "Story points"  # an issue with story points is a user story
-CATEGORY = "Type"              # Development, Unit testing, Integration testing, ...
 
 BOARD_FIELDS = "id,name,projects(shortName),sprints(id,name,start,finish)"
 ISSUE_FIELDS = "idReadable,summary,customFields(name,value(name,minutes)),parent(issues(idReadable)),subtasks(issues(idReadable))"
@@ -71,7 +71,7 @@ class YouTrack:
 
     def board(self):
         project = env("YOUTRACK_PROJECT")
-        boards = [b for b in self.get_all("/api/agiles", "id,name,projects(shortName),sprints(id,name,start,finish)")
+        boards = [b for b in self.get_all("/api/agiles", BOARD_FIELDS)
                   if project in [p["shortName"] for p in b["projects"]]]
         for board in boards:
             if board["name"] == BOARD:
@@ -87,9 +87,21 @@ class YouTrack:
     def issue(self, issue_id):
         return self.get(f"/api/issues/{issue_id}", ISSUE_FIELDS)
 
-    def work_minutes(self, issue_id):
-        items = self.get_all(f"/api/issues/{issue_id}/timeTracking/workItems", "duration(minutes)")
-        return sum(i["duration"]["minutes"] for i in items)
+    def work_items(self, issue_id):
+        """Time logged on the issue: one (work type, person, minutes) entry per work item."""
+        items = self.get_all(f"/api/issues/{issue_id}/timeTracking/workItems",
+                             "duration(minutes),type(name),author(login,fullName)")
+        return [((i.get("type") or {}).get("name") or "(no type)",
+                 person_name(i.get("author")),
+                 (i.get("duration") or {}).get("minutes") or 0) for i in items]
+
+    def team(self):
+        """Names of the project team members, or None if the team cannot be read."""
+        try:
+            users = self.get_all(f"/api/admin/projects/{env('YOUTRACK_PROJECT')}/team/users", "login,fullName")
+        except SystemExit:
+            return None
+        return [person_name(u) for u in users]
 
 
 # ---------------------------------------------------------------------- issue model
@@ -101,6 +113,11 @@ def field(raw, name):
     return None
 
 
+def person_name(user):
+    user = user or {}
+    return user.get("fullName") or user.get("login") or "(unknown)"
+
+
 def name_of(value):
     if isinstance(value, dict):
         return value.get("name") or value.get("presentation")
@@ -110,15 +127,19 @@ def name_of(value):
 
 
 class Issue:
-    def __init__(self, raw, in_sprint, actual):
+    def __init__(self, raw, in_sprint, work_items):
         self.id = raw["idReadable"]
         self.title = raw["summary"]
         self.in_sprint = in_sprint
         self.state = name_of(field(raw, STATE)) or "-"
-        self.category = name_of(field(raw, CATEGORY)) or "-"
         self.points = field(raw, STORY_POINTS)
-        self.est = (field(raw, ESTIMATION) or {}).get("minutes", 0)
-        self.act = actual
+        self.est = (field(raw, ESTIMATION) or {}).get("minutes") or 0
+        self.work = {}                    # minutes logged per work type
+        self.people = {}                  # minutes logged per person
+        for work_type, person, minutes in work_items:
+            self.work[work_type] = self.work.get(work_type, 0) + minutes
+            self.people[person] = self.people.get(person, 0) + minutes
+        self.act = sum(self.work.values())  # total minutes logged
         parents = [i["idReadable"] for i in raw["parent"]["issues"]]
         self.parent = parents[0] if parents else None
         self.children = [i["idReadable"] for i in raw["subtasks"]["issues"]]
@@ -130,17 +151,25 @@ class Issue:
 
 
 def load(yt, sprint_ids):
-    """Sprint issues, their subtasks and their ancestors (to find the parent story)."""
-    raw, queue = {}, list(sprint_ids)
+    """Sprint issues with all their subtasks, plus their ancestors (to find the parent story)."""
+    raw = {}
+    # 1. Down: the issues on the board and all their subtasks
+    queue = list(sprint_ids)
     while queue:
         issue_id = queue.pop()
         if issue_id not in raw:
             raw[issue_id] = yt.issue(issue_id)
             queue += [i["idReadable"] for i in raw[issue_id]["subtasks"]["issues"]]
-            queue += [i["idReadable"] for i in raw[issue_id]["parent"]["issues"]]
-    issues = {i: Issue(r, i in sprint_ids, yt.work_minutes(i)) for i, r in raw.items()}
+    # 2. Up: the parents, without their other subtasks (they may belong to other sprints)
+    queue = [p["idReadable"] for r in raw.values() for p in r["parent"]["issues"]]
+    while queue:
+        issue_id = queue.pop()
+        if issue_id not in raw:
+            raw[issue_id] = yt.issue(issue_id)
+            queue += [p["idReadable"] for p in raw[issue_id]["parent"]["issues"]]
+    issues = {i: Issue(r, i in sprint_ids, yt.work_items(i)) for i, r in raw.items()}
     for issue in issues.values():
-        issue.children = [c for c in issue.children if c in issues]
+        issue.children = sorted((c for c in issue.children if c in issues), key=sort_key)
     return issues
 
 
@@ -149,9 +178,10 @@ def load(yt, sprint_ids):
 class Sprint:
     def __init__(self, issues):
         self.issues = issues
-        in_scope = {i for i, issue in issues.items() if self._in_sprint_tree(issue)}
+        in_scope = {i for i, issue in issues.items() if issue.in_sprint or self._in_sprint_tree(issue)}
         # A story is in scope if it is on the board or one of its tasks is.
         in_scope |= {self._story_of(issues[i]).id for i in in_scope if self._story_of(issues[i])}
+        self.in_scope = in_scope
         self.stories = sorted((issues[i] for i in in_scope if issues[i].is_story), key=lambda s: sort_key(s.id))
         self.groups = [(s, [issues[c] for c in s.children if c in in_scope]) for s in self.stories]
         uncategorized = [issues[i] for i in in_scope
@@ -160,7 +190,9 @@ class Sprint:
         self.groups.append((None, sorted(uncategorized, key=lambda t: sort_key(t.id))))
 
     def _in_sprint_tree(self, issue):
-        while issue:
+        """On the board, or a subtask of a task on the board. A story on the board does not
+        bring in its tasks: those of other sprints must not be counted again."""
+        while issue and not issue.is_story:
             if issue.in_sprint:
                 return True
             issue = self.issues.get(issue.parent)
@@ -181,8 +213,13 @@ class Sprint:
     def descendants(self, issue):
         return [d for c in issue.children for d in [c] + self.descendants(self.issues[c])]
 
-    def units(self, tasks):
+    def all_leaves(self, tasks):
+        """All the tasks without subtasks and the subtasks, estimated or not."""
         return [leaf for t in tasks for leaf in self.leaves(t)]
+
+    def units(self, tasks):
+        """The tasks used in the calculations: the leaves with an estimation."""
+        return [leaf for leaf in self.all_leaves(tasks) if leaf.est]
 
     @property
     def all_units(self):
@@ -208,8 +245,7 @@ def error_ratio(units):
 
 def absolute_error(units):
     """Absolute relative task estimation error: mean of |spent / estimation - 1|."""
-    estimated = [u for u in units if u.est > 0]
-    return statistics.mean(abs(u.act / u.est - 1) for u in estimated) if estimated else None
+    return statistics.mean(abs(u.act / u.est - 1) for u in units) if units else None
 
 
 # ----------------------------------------------------------------------- formatting
@@ -235,12 +271,13 @@ def table(rows, headers):
 
 def task_rows(sprint, task, depth=0):
     if task.children:
-        est, act = (f"Σ {hours(m)}" for m in sums(sprint.leaves(task))[:2])
+        est, act = (f"Σ {hours(m)}" for m in sums([l for l in sprint.leaves(task) if l.est])[:2])
+    elif not task.est:
+        est, act = "not estimated", hours(task.act)
     else:
         est, act = hours(task.est), hours(task.act)
-    indent = "&nbsp;&nbsp;" * 2 * depth + ("↳ " if depth else "")
-    rows = [[indent + task.id, cell(task.title), task.category, task.state,
-             len(task.children) or "-", est, act]]
+    indent = "↳ " * depth
+    rows = [[indent + task.id, cell(task.title), task.state, len(task.children) or "-", est, act]]
     for child in task.children:
         rows += task_rows(sprint, sprint.issues[child], depth + 1)
     return rows
@@ -249,7 +286,7 @@ def task_rows(sprint, task, depth=0):
 def warnings(sprint):
     notes = []
     for story, tasks in sprint.groups:
-        units = sprint.units(tasks)
+        units = sprint.all_leaves(tasks)
         if story:
             open_units = [u.id for u in units if not u.done]
             if not story.in_sprint:
@@ -263,12 +300,13 @@ def warnings(sprint):
             if story.act:
                 notes.append(f"{hours(story.act)} logged directly on story {story.id}: not counted.")
         for issue in tasks + [sprint.issues[d] for t in tasks for d in sprint.descendants(t)]:
-            if issue.children and (issue.est or issue.act):
+            leaves_est = sum(leaf.est for leaf in sprint.leaves(issue))
+            if issue.children and (issue.act or (issue.est and issue.est != leaves_est)):
                 notes.append(f"{issue.id} has subtasks and its own estimation/time "
                              f"({hours(issue.est)} / {hours(issue.act)}): not counted.")
         for unit in units:
             if not unit.est:
-                notes.append(f"{unit.id} has no estimation.")
+                notes.append(f"{unit.id} has no estimation: not counted in the calculations.")
             if unit.done and not unit.act:
                 notes.append(f"{unit.id} is done with no time logged.")
     return notes
@@ -298,16 +336,29 @@ def tests_section(directory):
         s = e2e["stats"]
         passed = s["expected"] + s["flaky"]
         rows.append(["e2e", passed + s["unexpected"] + s["skipped"], passed, s["unexpected"], s["skipped"], "-"])
-    rows.append(["**backend, all tests**", "", "", "", "", coverage("all-coverage")])
+    if not rows:
+        return "_No test results found._"
     ref = (d / "ref.txt").read_text().strip() if (d / "ref.txt").exists() else "?"
     return f"Code tested: `{ref}`\n\n" + table(
         rows, ["Suite", "Tests", "Passed", "Failed", "Skipped", "Line coverage"])
 
 
-def render(sprint_name, sprint, tests_dir):
-    md = [f"# Sprint data report: {sprint_name}",
+def sprint_dates(info):
+    """Start and end date of the sprint as text, and its length in weeks (None if unknown)."""
+    start, finish = info.get("start"), info.get("finish")
+    if not start or not finish:
+        return "unknown", None
+    day = lambda ms: datetime.fromtimestamp(ms / 1000, tz=timezone.utc).date().isoformat()
+    return f"{day(start)} → {day(finish)}", (finish - start) / (7 * 24 * 3600 * 1000)
+
+
+def render(info, sprint, tests_dir, team):
+    dates, weeks = sprint_dates(info)
+    md = [f"# Sprint data report: {info['name']}",
+          f"Sprint dates: {dates}" + (f" ({weeks:.1f} weeks)." if weeks else "."),
           f"Project: {env('YOUTRACK_PROJECT')}. Done states: {', '.join(DONE_STATES)}. "
-          "Hours marked with Σ are the sum of the subtasks."]
+          "Hours marked with Σ are the sum of the subtasks. "
+          "Tasks without estimation are listed but not counted in any calculation (see Warnings)."]
 
     # 1. Stories, tasks and subtasks
     md.append("## 1. User stories, tasks and subtasks")
@@ -319,7 +370,7 @@ def render(sprint_name, sprint, tests_dir):
         else:
             md.append(f"### Uncategorized\n\nTasks: {len(tasks)} · Subtasks: {n_sub}")
         rows = [row for t in tasks for row in task_rows(sprint, t)]
-        md.append(table(rows, ["ID", "Title", "Category", "State", "Subtasks", "Est.", "Actual"])
+        md.append(table(rows, ["ID", "Title", "State", "Subtasks", "Est.", "Actual"])
                   if rows else "_No tasks._")
 
     # 2. Stories committed vs done
@@ -364,24 +415,45 @@ def render(sprint_name, sprint, tests_dir):
                            "Actual mean", "Actual std dev"]))
     md.append("Standard deviation: population, over tasks without subtasks and subtasks.")
 
-    rows = [[label, ratio(error_ratio(s)), ratio(absolute_error(s)), sum(1 for u in s if not u.est)]
-            for label, s in sets]
+    rows = [[label, ratio(error_ratio(s)), ratio(absolute_error(s))] for label, s in sets]
     md.append("## 5. Estimation error")
-    md.append(table(rows, ["", "Total error ratio", "Absolute relative error",
-                           "Tasks without estimation (excluded from the relative error)"]))
+    md.append(table(rows, ["", "Total error ratio", "Absolute relative error"]))
     md.append("- Total task estimation error ratio = Σ spent / Σ estimation − 1 "
               "(positive = more time than estimated, negative = less)\n"
               "- Absolute relative task estimation error = (1/n) Σ |spent / estimation − 1|")
 
-    # 7. Quality measures
-    rows = [[c, len(cu)] + [hours(m) for m in sums(cu)]
-            for c in sorted({u.category for u in units})
-            for cu in [[u for u in units if u.category == c]]]
+    # 6. Quality measures
+    done_units = [u for u in units if u.done]
+    total_all = sum(u.act for u in units)
+    work_types = sorted({t for u in units for t in u.work})
+    rows = []
+    for t in work_types:
+        logged_all = sum(u.work.get(t, 0) for u in units)
+        logged_done = sum(u.work.get(t, 0) for u in done_units)
+        share = f"{logged_all / total_all:.0%}" if total_all else "-"
+        rows.append([t, hours(logged_all), hours(logged_done), share])
     md.append("## 6. Quality measures")
-    md.append(f"### Hours per category (field `{CATEGORY}`)")
-    md.append(table(rows, ["Category", "Tasks", "Est. (all)", "Actual (all)", "Est. (done)", "Actual (done)"]))
+    md.append("### Time logged per work type")
+    md.append(table(rows, ["Work type", "Logged (all tasks)", "Logged (done tasks)", "Share of the total"])
+              if rows else "_No time logged._")
     md.append("### Automated tests")
     md.append(tests_section(tests_dir))
+
+    # 7. Time logged per person
+    logged = {}
+    for issue_id in sprint.in_scope:
+        for person, minutes in sprint.issues[issue_id].people.items():
+            logged[person] = logged.get(person, 0) + minutes
+    total = sum(logged.values())
+    people = sorted(set(logged) | set(team or []), key=lambda p: (-logged.get(p, 0), p))
+    rows = [[p, hours(logged.get(p, 0)),
+             hours(logged.get(p, 0) / weeks) if weeks else "-",
+             f"{logged.get(p, 0) / total:.0%}" if total else "-"] for p in people]
+    md.append("## 7. Time logged per person")
+    md.append(table(rows, ["Person", "Logged", "Per week", "Share of the total"]) if rows else "_No time logged._")
+    md.append("All the time logged on the issues of the sprint, including the tasks not counted in the "
+              "other sections." + ("" if team is not None else
+                                   " The project team could not be read: only the people who logged time are listed."))
 
     # Warnings
     notes = warnings(sprint)
@@ -410,6 +482,7 @@ def choose_sprint(board, name):
 
 
 def main():
+    sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--sprint", help="sprint name; if omitted, choose it from a list")
     parser.add_argument("--tests-dir", help="folder with the test results")
@@ -420,7 +493,7 @@ def main():
     board = yt.board()
     sprint = choose_sprint(board, args.sprint)
     issues = load(yt, set(yt.sprint_issue_ids(board, sprint)))
-    report = render(sprint["name"], Sprint(issues), args.tests_dir)
+    report = render(sprint, Sprint(issues), args.tests_dir, yt.team())
 
     out = Path(args.out)
     out.mkdir(exist_ok=True)

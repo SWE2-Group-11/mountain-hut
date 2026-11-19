@@ -1,4 +1,5 @@
 name: Retrospective data report
+run-name: Retrospective report - ${{ inputs.sprint }}
 
 on:
   workflow_dispatch:
@@ -6,103 +7,16 @@ on:
       sprint:
         description: "Sprint name exactly as on the YouTrack board, e.g. Sprint 2"
         required: true
-      code_ref:
-        description: "Branch, tag or SHA whose tests are run (e.g. main or v2.0.0)"
+      branch:
+        description: "Branch whose last successful CI run provides the test results (main or dev)"
         default: main
-      run_tests:
-        description: "Run unit, integration and E2E tests"
-        type: boolean
-        default: true
 
 permissions:
   contents: read
-
-env:
-  RESULTS: ${{ github.workspace }}/test-results
+  actions: read   # to download the test results of a CI run
 
 jobs:
-  tests:
-    if: inputs.run_tests
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout code to test
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.code_ref }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
-            e2e/package-lock.json
-
-      - name: Install dependencies
-        env:
-          CODE_REF: ${{ inputs.code_ref }}
-        run: |
-          npm ci --prefix backend
-          npm ci --prefix frontend
-          npm ci --prefix e2e
-          mkdir -p "$RESULTS"
-          echo "$CODE_REF ($(git rev-parse --short HEAD))" > "$RESULTS/ref.txt"
-
-      # continue-on-error: failing tests must not stop the report, their numbers are part of it
-      - name: Unit tests
-        working-directory: backend
-        continue-on-error: true
-        run: >
-          npx vitest run unit.test
-          --reporter=json --outputFile="$RESULTS/unit.json"
-          --coverage.enabled --coverage.reporter=json-summary
-          --coverage.reportsDirectory="$RESULTS/unit-coverage"
-          --coverage.include='src/**' --coverage.exclude='src/tests/**'
-
-      - name: Integration tests
-        working-directory: backend
-        continue-on-error: true
-        run: >
-          npx vitest run integration.test
-          --reporter=json --outputFile="$RESULTS/integration.json"
-          --coverage.enabled --coverage.reporter=json-summary
-          --coverage.reportsDirectory="$RESULTS/integration-coverage"
-          --coverage.include='src/**' --coverage.exclude='src/tests/**'
-
-      - name: Backend coverage, all tests
-        working-directory: backend
-        continue-on-error: true
-        run: >
-          npx vitest run
-          --coverage.enabled --coverage.reporter=json-summary
-          --coverage.reportsDirectory="$RESULTS/all-coverage"
-          --coverage.include='src/**' --coverage.exclude='src/tests/**'
-
-      - name: Install Playwright browser
-        working-directory: e2e
-        run: npx playwright install --with-deps chromium
-
-      - name: E2E tests
-        working-directory: e2e
-        continue-on-error: true
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ env.RESULTS }}/e2e.json
-        run: npx playwright test --reporter=json
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: test-results/
-          retention-days: 30
-
   report:
-    needs: tests
-    # Runs also when the tests are skipped or broken.
-    if: always()
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout script
@@ -118,13 +32,35 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r scripts/retro-report/requirements.txt
 
+      # The tests are not run again: the report uses the results of the last successful CI run.
+      - name: Find last successful CI run
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          run=$(gh run list --workflow ci.yml --branch "$BRANCH" --event push --status success --limit 1 \
+                --json databaseId,headSha --jq '.[0] // empty | "\(.databaseId) \(.headSha[0:7])"')
+          if [ -z "$run" ]; then
+            echo "::warning::No successful CI run on $BRANCH: the report has no test results."
+            exit 0
+          fi
+          read -r id sha <<< "$run"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          mkdir -p test-results
+          echo "$BRANCH @ $sha (CI run $id)" > test-results/ref.txt
+
       - name: Download test results
-        if: needs.tests.result != 'skipped'
+        if: steps.ci.outputs.id != ''
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
-          name: test-results
+          pattern: '*-test-results'
+          merge-multiple: true
           path: test-results/
+          run-id: ${{ steps.ci.outputs.id }}
+          github-token: ${{ github.token }}
 
       - name: Build report
         env:
@@ -133,14 +69,12 @@ jobs:
           YOUTRACK_TOKEN: ${{ secrets.YOUTRACK_TOKEN }}
           SPRINT: ${{ inputs.sprint }}
         run: |
-          tests=()
-          [ -d test-results ] && tests=(--tests-dir test-results)
-          python scripts/retro-report/retro_report.py --sprint "$SPRINT" "${tests[@]}" --out retro-report > /dev/null
+          python scripts/retro-report/retro_report.py --sprint "$SPRINT" --tests-dir test-results --out retro-report > /dev/null
           cat retro-report/*.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload report
         uses: actions/upload-artifact@v4
         with:
-          name: retro-report
+          name: retro-report-${{ inputs.sprint }}
           path: retro-report/
           retention-days: 90
