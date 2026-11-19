@@ -5,7 +5,7 @@ import { expect, test, request as apiRequest, type APIRequestContext, type Locat
 // The backend runs on one in-memory database for the whole run (see playwright.config.ts), so the specs
 // share it. To stay independent:
 //   - every test registers its own hikers, so no other spec books for them;
-//   - the far bookings use their own days, today + 60 and + 61 (+ 70 / + 71 when CI retries a test, so a
+//   - the far bookings use their own days, today + 120 and + 121 (+ 130 / + 131 when CI retries a test, so a
 //     retry never finds the seats taken by the first attempt), one slot per test, created by the warden.
 //     Every slot has the tables of the seeded slots: T1 = 4, T2 = 4, T3 = 6, T4 = 2 (16 seats). Keep it so:
 //     define-slot-capacity.spec.ts looks for that setup ("4 tables · 16 seats") in the list of previous
@@ -19,6 +19,10 @@ const MAILPIT_API = 'http://localhost:8025/api/v1';
 const PASSWORD = 'password';
 const WARDEN = 'warden@mountainhut.test';
 const HIKER_NAME = 'Mia Change';
+// Change emails are sent in the background after the response, so "no email" can only be checked over a
+// period of time: during this window Mailpit is polled and the number of emails must not change.
+const NO_MORE_EMAILS_WINDOW_MS = 3_000;
+const MAILPIT_POLL_INTERVAL_MS = 250;
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -46,7 +50,7 @@ const TOMORROW = dayFromToday(1);
 
 /** The two own days of the running test. */
 const ownDays = () => {
-  const offset = 60 + 10 * test.info().retry;
+  const offset = 120 + 10 * test.info().retry;
   return { dayA: dayFromToday(offset), dayB: dayFromToday(offset + 1) };
 };
 
@@ -156,6 +160,16 @@ const changeEmailsTo = async (to: string): Promise<MailpitSummary[]> => {
   const response = await api.get(`${MAILPIT_API}/messages`, { params: { limit: 200 } });
   const { messages } = (await response.json()) as { messages: MailpitSummary[] };
   return messages.filter((m) => m.Subject.startsWith('Booking changed') && m.To.some((r) => r.Address === to));
+};
+
+/** Polls Mailpit for NO_MORE_EMAILS_WINDOW_MS: the hiker must have exactly `count` "Booking changed" emails throughout. */
+const expectChangeEmailCountStays = async (to: string, count: number) => {
+  const end = Date.now() + NO_MORE_EMAILS_WINDOW_MS;
+  do {
+    expect(await changeEmailsTo(to), `"Booking changed" emails to ${to}`).toHaveLength(count);
+    await new Promise((resolve) => setTimeout(resolve, MAILPIT_POLL_INTERVAL_MS));
+  } while (Date.now() < end);
+  expect(await changeEmailsTo(to), `"Booking changed" emails to ${to}`).toHaveLength(count);
 };
 
 /** Waits until the given "Booking changed" email arrives, and returns it. */
@@ -695,6 +709,8 @@ test.describe('Change a booking - email', () => {
     await timeButton(bookingCard, '13:00').click();
     await saveChanges(bookingCard);
     await expect(notChangedAlert(bookingCard)).toBeVisible();
+    // No email for the refused change, not even a late one
+    await expectChangeEmailCountStays(hiker.email, 0);
     await bookingCard.getByRole('button', { name: 'Discard changes' }).click();
 
     // Then a change that is saved
@@ -703,10 +719,10 @@ test.describe('Change a booking - email', () => {
     await saveChanges(bookingCard);
     await expect(changedPopup(page)).toBeVisible();
 
-    // Emails are sent in order, so the refused change would already be there
+    // Its email arrives, and no other one follows
     const message = await waitForChangeEmail(hiker.email, reference);
     expect(message.Text).toContain('Time slot: 12:00–13:00');
     expect(message.Text).toContain('Party size: 3 people');
-    expect(await changeEmailsTo(hiker.email)).toHaveLength(1);
+    await expectChangeEmailCountStays(hiker.email, 1);
   });
 });
