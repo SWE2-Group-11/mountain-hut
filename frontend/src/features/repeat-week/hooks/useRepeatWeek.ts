@@ -70,7 +70,7 @@ export function useRepeatWeek() {
 
   const toggleTarget = (start: string) => {
     reset();
-    setTargets((prev) => (prev.includes(start) ? prev.filter((t) => t !== start) : [...prev, start].sort()));
+       setTargets((prev) => (prev.includes(start) ? prev.filter((t) => t !== start) : [...prev, start].sort((a, b) => a.localeCompare(b))));
   };
 
   // Tick or untick several weeks at once (a whole month)
@@ -78,7 +78,7 @@ export function useRepeatWeek() {
     reset();
     setTargets((prev) => {
       const rest = prev.filter((t) => !starts.includes(t));
-      return on ? [...rest, ...starts.filter((w) => w !== sourceWeek)].sort() : rest;
+     return on ? [...rest, ...starts.filter((w) => w !== sourceWeek)].sort((a, b) => a.localeCompare(b)) : rest;
     });
   };
 
