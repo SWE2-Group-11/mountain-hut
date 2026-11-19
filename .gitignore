@@ -23,6 +23,6 @@ node_modules/
 /package-lock.json
 
 # Retrospective report (local runs)
-.venv/
-retro-report/
-test-results/
+/.venv/
+/retro-report/
+/test-results/
