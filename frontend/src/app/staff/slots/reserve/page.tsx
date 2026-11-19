@@ -1,12 +1,13 @@
 import { StaffLayout } from '../../../../components/layout/StaffLayout';
-import { StaffReservationDesk } from '../../../../features/staff-reservation/components/StaffReservationDesk';
+import { RepeatWeekCard } from '../../../../features/repeat-week/components/RepeatWeekCard';
 
-export default function StaffReservePage() {
+export default function RepeatWeekPage() {
   return (
-    <StaffLayout title="Reserve for a hiker" subtitle="Enter a reservation for a guest who is here or on the phone.">
-      <div className="max-w-5xl">
-        <StaffReservationDesk />
-      </div>
+    <StaffLayout
+      title="Copy a week"
+      subtitle="Set up many weeks at once: copy the slots of a week you already prepared into the weeks that follow."
+    >
+      <RepeatWeekCard />
     </StaffLayout>
   );
 }
