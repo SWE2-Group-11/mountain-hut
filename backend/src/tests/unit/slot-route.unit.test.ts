@@ -45,6 +45,7 @@ vi.mock("../../services/auth-service", () => ({
 
 const URL = "/slots";
 const CONFIGURATIONS_URL = `${URL}/configurations`;
+const COPY_WEEK_URL = `${URL}/copy-week`;
 const DAY = "2030-06-15";
 const SLOTS: SlotDTO[] = [
     { date: DAY, start_time: "12:00", duration: 60, total_seats: 16, available_seats: 7 },
