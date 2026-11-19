@@ -25,11 +25,11 @@ export type SlotConfiguration = {
  * @returns The slot, or null if it does not exist.
  */
 export const getSlot = (date: string, start_time: string): Slot | null => {
-    const sql = "SELECT date, start_time, duration FROM slot WHERE date = ? AND start_time = ?";
+    const sql = "SELECT date, start_time, duration, menu FROM slot WHERE date = ? AND start_time = ?";
     const row = db
-        .prepare<[string, string], { date: string; start_time: string; duration: number }>(sql)
+        .prepare<[string, string], { date: string; start_time: string; duration: number; menu: string | null }>(sql)
         .get(date, start_time);
-    return row ? new Slot(row.date, row.start_time, row.duration) : null;
+    return row ? new Slot(row.date, row.start_time, row.duration, row.menu) : null;
 };
 
 /**
@@ -40,7 +40,7 @@ export const getSlot = (date: string, start_time: string): Slot | null => {
  */
 export const getAvailableSlotsByDate = (date: string): SlotAvailability[] => {
     const sql = `
-        SELECT s.date, s.start_time, s.duration,
+        SELECT s.date, s.start_time, s.duration, s.menu,
                COALESCE(SUM(st.seats), 0) AS total_seats,
                COALESCE(SUM(st.seats), 0) - COALESCE((
                    SELECT SUM(sa.assigned_seats)
@@ -55,12 +55,12 @@ export const getAvailableSlotsByDate = (date: string): SlotAvailability[] => {
         ORDER BY s.start_time`;
     const rows = db
         .prepare<[string], {
-            date: string; start_time: string; duration: number;
+            date: string; start_time: string; duration: number; menu: string | null;
             total_seats: number; available_seats: number;
         }>(sql)
         .all(date);
     return rows.map((r) => ({
-        slot: new Slot(r.date, r.start_time, r.duration),
+        slot: new Slot(r.date, r.start_time, r.duration, r.menu),
         total_seats: r.total_seats,
         available_seats: r.available_seats,
     }));
@@ -98,7 +98,7 @@ export const getSavedConfigurations = (
     to: string | null,
     limit: number
 ): SlotConfiguration[] => {
-    const sql = `SELECT date, start_time, duration
+    const sql = `SELECT date, start_time, duration, menu
                  FROM slot
                  WHERE (@from IS NULL OR date >= @from)
                    AND (@to IS NULL OR date <= @to)
@@ -107,11 +107,11 @@ export const getSavedConfigurations = (
     const rows = db
         .prepare<
             { from: string | null; to: string | null; limit: number },
-            { date: string; start_time: string; duration: number }
+            { date: string; start_time: string; duration: number; menu: string | null }
         >(sql)
         .all({ from, to, limit });
     return rows.map((r) => ({
-        slot: new Slot(r.date, r.start_time, r.duration),
+        slot: new Slot(r.date, r.start_time, r.duration, r.menu),
         tables: getSlotTables(r.date, r.start_time),
     }));
 };
