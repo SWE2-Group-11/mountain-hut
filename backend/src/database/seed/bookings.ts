@@ -27,10 +27,14 @@ const DEMO_TEMPORARY_HIKERS = [
     { full_name: "Sara Bruno", mobile_number: "+39 300 000 0104" },
 ] as const;
 
-type SlotRow = { date: string; start_time: string };
+type SlotRow = { date: string; start_time: string; menu: string | null };
 type Guest =
     | { kind: "hiker"; account_id: number; full_name: string }
     | { kind: "temporary"; full_name: string; mobile_number: string | null };
+
+/** Title of a Markdown menu for the log: its first line without emphasis marks, e.g. "Alpine Menu". */
+const menuTitle = (menu: string | null): string =>
+    menu === null ? "no menu" : menu.split("\n")[0].replace(/[*_]/g, "").trim();
 
 const guestLabel = (guest: Guest): string =>
     guest.kind === "hiker"
@@ -44,7 +48,7 @@ const guestLabel = (guest: Guest): string =>
  */
 export const insertRandomBookings = (db: Database.Database, random: Random = Math.random): void => {
     const slots = db.prepare<[], SlotRow>(
-        "SELECT date, start_time FROM slot ORDER BY date, start_time").all();
+        "SELECT date, start_time, menu FROM slot ORDER BY date, start_time").all();
     const hikers = db.prepare<[], { account_id: number; full_name: string }>(
         "SELECT account_id, full_name FROM hiker ORDER BY account_id").all();
 
@@ -75,7 +79,7 @@ export const insertRandomBookings = (db: Database.Database, random: Random = Mat
     for (const slot of slots) {
         const tables = tablesOf.all(slot.date, slot.start_time);
         const layout = tables.map((t) => `T${t.table_number}=${t.seats}`).join(", ");
-        console.log(`  ${slot.date} ${slot.start_time}: ${capacityOf(tables)} seats (${layout})`);
+        console.log(`  ${slot.date} ${slot.start_time}: ${capacityOf(tables)} seats (${layout}); menu: ${menuTitle(slot.menu)}`);
     }
 
     // Some hikers with an account and some temporary hikers, at least one of each
