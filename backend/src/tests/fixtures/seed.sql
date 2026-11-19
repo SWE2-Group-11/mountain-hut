@@ -4,11 +4,26 @@ PRAGMA foreign_keys = ON;
 -- The bookings belong to accounts 3 and 4, the hikers Mario and Laura in seed-accounts.json (same folder).
 
 -- Slots
-INSERT INTO slot (date, start_time, duration) VALUES
-    (date('now', 'localtime', '+1 day'),  '12:00', 60),
-    (date('now', 'localtime', '+1 day'),  '13:00', 60),
-    (date('now', 'localtime', '+1 day'),  '19:30', 90),
-    (date('now', 'localtime', '+2 days'), '12:00', 60);
+INSERT INTO slot (date, start_time, duration, menu) VALUES
+    (date('now', 'localtime', '+1 day'),  '12:00', 60,
+'**Alpine Menu**
+- Barley soup
+- Polenta with mushrooms
+- *Apple strudel*'),
+    (date('now', 'localtime', '+1 day'),  '13:00', 60,
+'**Alpine Menu**
+- Barley soup
+- Polenta with mushrooms
+- *Apple strudel*'),
+    (date('now', 'localtime', '+1 day'),  '19:30', 90,
+'**Dinner Menu**
+- Starters
+  - Cured meats and cheese board
+- Main course
+  - Venison stew with polenta
+  - *Vegetarian*: spinach dumplings
+- Blueberry tart'),
+    (date('now', 'localtime', '+2 days'), '12:00', 60, NULL);
 
 -- Same table layout for every slot
 INSERT INTO slot_table (slot_date, slot_start_time, table_number, seats) VALUES

@@ -17,7 +17,7 @@ Primary keys in **bold**, `*` = nullable.
 - password_reset_token(**token_hash**, account_id → account, created_at, expires_at)
 - hiker(**account_id** → account, full_name, mobile_number, notes\*, emergency_contact\*)
 - staff(**account_id** → account, name, role)
-- slot(**date**, **start_time**, duration)
+- slot(**date**, **start_time**, duration, menu\*)
 - slot_table(**(slot_date, slot_start_time)** → slot, **table_number**, seats)
 - booking(**id**, hiker_id\* → hiker)
 - temporary_hiker(**booking_id** → booking, full_name, mobile_number\*)
@@ -32,6 +32,7 @@ Primary keys in **bold**, `*` = nullable.
 - Every account is either a hiker or a staff member, never both: exactly one row in `hiker` or `staff` per `account` (generalization (t,e), checked by the backend).
 - `staff.role` ∈ {`employee`, `warden`}; a warden can also perform employee functions.
 - `slot.duration` is expressed in minutes.
+- `slot.menu` is free text in Markdown (bold, italic, nested lists); NULL means the menu is not defined yet, the empty string is not allowed.
 - All `seated_at` rows of the same booking refer to the same slot.
 - For each `slot_table`: SUM(`assigned_seats`) ≤ `seats`.
 - `assigned_seats` ≥ 1.
