@@ -9,7 +9,9 @@ import { DietaryRequirement } from '../models/entities/dietary_requirement';
 import { SeatedAt } from '../models/entities/seated_at';
 import { AppError } from '../models/errors/app-error';
 import type { Assignment } from '../domain/booking-rules';
+import type { Reservation } from '../dao/booking-dao';
 import { minutesToTime, timeToMinutes } from './date-service';
+import type { RequirementInput } from '../dao/dietary-requirement-dao';
 
 /**
  * Maps an operational AppError or a generic internal error into an ErrorDTO instance.
@@ -39,7 +41,7 @@ export const appErrorToDTO = (error: unknown): ErrorDTO => {
  * Maps an Account entity into a client-ready AccountResponseDTO instance (no password data).
  */
 export const accountEntityToResponseDTO = (account: Account): AccountResponseDTO => {
-    return new AccountResponseDTO(account.id, account.email, account.role);
+    return new AccountResponseDTO(account.id, account.email, account.role, account.must_change_password);
 };
 
 /**
@@ -90,3 +92,25 @@ export const assignmentsToAvailabilityResponseDTO = (
 
     return new GetAvailabilityResponseDTO(available);
 };
+
+/**
+ * Maps a complete reservation returned by the DAO to its response DTO.
+ */
+export const reservationToResponseDTO = (
+    reservation: Reservation
+): CreateReservationResponseDTO =>
+    bookingDataToCreateReservationResponseDTO(
+        reservation.booking,
+        reservation.seatings,
+        reservation.dietary_requirements,
+        reservation.date,
+        reservation.start_time
+    );
+
+/**
+ * Maps the dietary requirements of a request to the shape the DAO persists.
+ * @param requirements The requirements of the request.
+ * @returns The requirements to save, in the same order.
+ */
+export const requirementDTOsToInputs = (requirements: RequirementDTO[] = []): RequirementInput[] =>
+    requirements.map((r) => ({ allergy_flag: r.hasAllergies, description: r.details }));

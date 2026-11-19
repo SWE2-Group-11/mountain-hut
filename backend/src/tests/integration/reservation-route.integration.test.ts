@@ -3,7 +3,7 @@ import request from "supertest";
 import { app } from "../../app";
 import {
     resetTestDatabase, dayFromToday, huTime, loginAs, createHikerWithoutBookings,
-    MARIO, LAURA, EMPLOYEE, NEW_HIKER,
+    MARIO, LAURA, NEW_HIKER,
 } from "../helpers";
 
 const RESERVATIONS_URL = "/api/v1/reservations";
@@ -39,15 +39,6 @@ describe("POST /api/v1/reservations", () => {
 
             expect(res.status).toBe(401);
             expect(res.body).toMatchObject({ code: 401 });
-        });
-
-        it("answers 403 for a staff account", async () => {
-            const employee = await loginAs(EMPLOYEE);
-
-            const res = await employee.post(RESERVATIONS_URL).send(book("13:00", 2));
-
-            expect(res.status).toBe(403);
-            expect(res.body).toMatchObject({ code: 403 });
         });
     });
 

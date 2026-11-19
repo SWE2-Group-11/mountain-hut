@@ -1,19 +1,190 @@
 # Mountain Hut
 
-## Documentation
+- [Install and run](#install-and-run): for mountain huts, with Docker only
+- [Development](#development): for contributors, from the source code
+- [Repository layout](#repository-layout), [documentation](#documentation) and [license](#license)
 
-- [Architecture](docs/architecture.md): components and backend layers
-- [API](docs/api.md): REST endpoints
-- [Database](docs/database.md): schema, rules and SQL scripts
-- [Working agreement](docs/working-agreement.md): branches, commits, pull requests
+## Install and run
 
-## License motivations
+The whole system runs in a single Docker image: web application, REST API and Mailpit (which catches the booking confirmation emails). Only requisite is a Docker installation.
 
-We want our project to be used commercially by mountain huts.
-We want to be credited when the code gets modified and redistributed.
-We are free to use any license based on npm packages used to build this project.
+### Quick start
 
-Considering these main motivations, we choose to adopt the EUPL-1.2 license, included in the root directory of the repository inside the [LICENSE](LICENSE) file
+1. Create a folder:
+
+   ```bash
+   mkdir mountain-hut && cd mountain-hut
+   ```
+
+2. Create `.env` with a random session secret:
+
+   ```bash
+   echo "SESSION_SECRET=$(openssl rand -hex 32)" > .env
+   ```
+
+3. Create `seed-accounts.json` with your own accounts (see [Accounts file](#accounts-file) for the rules):
+
+   ```bash
+   cat > seed-accounts.json <<'EOF'
+   [
+       { "role": "warden", "email": "anna@rifugio-example.it", "password": "a-strong-password", "name": "Anna" },
+       { "role": "employee", "email": "luca@rifugio-example.it", "password": "another-strong-password", "name": "Luca" },
+       {
+           "role": "hiker", "email": "demo1@rifugio-example.it", "password": "demo-hiker-1",
+           "name": "Demo Hiker One", "mobile": "+39 300 000 0001"
+       },
+       {
+           "role": "hiker", "email": "demo2@rifugio-example.it", "password": "demo-hiker-2",
+           "name": "Demo Hiker Two", "mobile": "+39 300 000 0002"
+       }
+   ]
+   EOF
+   chmod 600 .env seed-accounts.json
+   ```
+
+4. Start the container from the same folder:
+
+   ```bash
+   docker run -d --name mountain-hut --restart unless-stopped \
+     --env-file .env \
+     -v "$PWD/seed-accounts.json:/run/secrets/seed_accounts:ro" \
+     -v mountain-hut-data:/app/data \
+     -p 5173:5173 -p 3000:3000 -p 8025:8025 \
+     ghcr.io/swe2-group-11/mountain-hut:latest
+   ```
+
+   The `seed-accounts.json` path must be absolute (in PowerShell use `${PWD}`). If the file is missing, Docker mounts an empty directory instead and the backend stops with `Cannot read the seed accounts file /run/secrets/seed_accounts`.
+
+5. Check that it started:
+
+   ```bash
+   docker logs mountain-hut    # the demo slots and bookings, "Database reset completed." and "Server listening ..."
+   ```
+
+   Then open `http://localhost:5173` and log in with an account from `seed-accounts.json`.
+
+### Use the system
+
+| URL | Description |
+|---|---|
+| `http://localhost:5173` | Web application |
+| `http://localhost:3000/api/v1` | REST API |
+| `http://localhost:8025` | Mailpit: booking confirmation emails (no real email is ever sent) |
+
+Keep the ports as they are: the web application calls the API on port 3000, and the API accepts requests only from port 5173.
+
+### Accounts file
+
+`seed-accounts.json` is a JSON array of accounts:
+
+| Field | Required for | Description |
+|---|---|---|
+| `role` | everyone | `warden`, `employee` or `hiker` |
+| `email`, `password`, `name` | everyone | Login and display name |
+| `mobile` | hikers | Mobile number |
+| `notes`, `emergency_contact` | optional, hikers only | Free text |
+
+- The file must contain at least one account. Every hiker in the file may get some random demo bookings (see [Demo data](#demo-data)).
+- Unknown fields are rejected.
+- The accounts are created only together with the database (first start). Editing the file later has no effect unless you [reset the database](#manage-the-installation); after a successful first start the file is no longer read.
+- If seeding fails (for example an invalid file), the backend stops with the error and retries on the next start, once the file is fixed.
+
+### Demo data
+
+When the database is created (first start, or after a reset), it is filled with random demo data:
+
+- slots for the next 3 days, 1 to 3 per day, each with 1 to 6 tables of 2 to 8 seats;
+- bookings for the hikers in `seed-accounts.json` and for a few temporary hikers (people without an account), with random party sizes and dietary requirements.
+
+The data is different at every reset. `docker logs mountain-hut` lists the slots with their tables and every booking created.
+
+### Manage the installation
+
+| Task | Command |
+|---|---|
+| Stop / start | `docker stop mountain-hut` / `docker start mountain-hut` |
+| Run a specific release | Replace `latest` with its version in step 4, e.g. `1.0.0` |
+| Reset the database (deletes all data) | `docker rm -f mountain-hut && docker volume rm mountain-hut-data`, then repeat step 4 |
+
+## Development
+
+For contributors: run the system from the source code. To install and use it, see [Install and run](#install-and-run).
+
+### Setup
+
+Requires Node 22 or newer and Docker. From the repository root, create the two secret files from the templates and replace every value (both are gitignored):
+
+```bash
+cp .env.example .env                                # session secret
+cp seed-accounts.example.json seed-accounts.json    # demo accounts
+```
+
+### Run with Docker
+
+Builds the image from the source code and starts it like [Install and run](#install-and-run), using the two files above:
+
+```bash
+docker compose up --build
+```
+
+### Run without Docker
+
+1. Start Mailpit, which catches the emails sent by the backend:
+
+   ```bash
+   docker run --rm -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.27.0
+   ```
+
+2. Start the backend on `http://localhost:3000` (`npm run dev` reads `../.env`, database resets read `../seed-accounts.json`):
+
+   ```bash
+   cd backend
+   npm install
+   npm run dev
+   ```
+
+   The database is created and seeded on the first run. To recreate it (this also recreates the demo accounts from `seed-accounts.json` and new random [demo data](#demo-data)):
+
+   ```bash
+   RESET_DB=true npm run dev
+   ```
+
+3. Start the frontend on `http://localhost:5173`:
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+Email settings (environment variables): `SMTP_HOST` (default `localhost`), `SMTP_PORT` (default `1025`) and `MAIL_FROM` (default `Mountain Hut <no-reply@mountainhut.local>`).
+
+### Tests
+
+Backend tests run on an in-memory database with their own accounts and fixed slots and bookings instead of random ones (`backend/src/tests/fixtures/test.env` sets `SEED_MODE=fixed` and points to `backend/src/tests/fixtures/seed-accounts.json`), never the real `.env`:
+
+```bash
+cd backend
+npm test
+```
+
+End-to-end tests: Playwright starts everything they need, namely Mailpit (with Docker, or reusing one already listening on port 8025, whose emails the tests read), the backend on a fresh in-memory database and the frontend.
+
+First time:
+
+```bash
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
+cd e2e && npm install
+npx playwright install chromium
+```
+
+Every time, with Docker running and ports 3000 and 5173 free (stop the `mountain-hut` container and any `npm run dev`):
+
+```bash
+cd e2e
+npm test
+```
 
 ## Repository layout
 
@@ -24,137 +195,18 @@ e2e/        End-to-end tests: full user flows across frontend and backend
 docs/       Project documentation
 ```
 
-## Running with Docker
+## Documentation
 
-```bash
-docker compose up --build
-```
+- [Architecture](docs/architecture.md): components and backend layers
+- [API](docs/api.md): REST endpoints
+- [Database](docs/database.md): schema, rules and SQL scripts
+- [Stack](docs/stack.md): libraries and tools used by backend, frontend and E2E tests
+- [Working agreement](docs/working-agreement.md): branches, commits, pull requests
 
-This starts three containers:
+## License
 
-| Service | URL | Description |
-|---|---|---|
-| `frontend` | `http://localhost:5173` | Production bundle served by `vite preview`, proxies `/api` to the backend |
-| `backend` | `http://localhost:3000` | REST API |
-| `mailpit` | `http://localhost:8025` | Development inbox: catches every email the backend sends |
+We want our project to be used commercially by mountain huts.
+We want to be credited when the code gets modified and redistributed.
+We are free to use any license based on npm packages used to build this project.
 
-The SQLite database is stored in the `db-data` volume. It is created and seeded on the first start and kept on later starts. To reset it:
-
-```bash
-RESET_DB=true docker compose up
-```
-
-or remove the volume with `docker compose down -v`.
-
-### Email in development
-
-Booking confirmations are sent over SMTP. With `docker compose up`, the `mailpit` service catches every email: open `http://localhost:8025` to read them. No real email is ever sent.
-
-Without Docker (for example with `npm run dev`), start Mailpit on its own:
-
-```bash
-docker run --rm -d --name mailpit -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.27.0
-```
-
-Settings: `SMTP_HOST` (default `localhost`), `SMTP_PORT` (default `1025`) and `MAIL_FROM`. See `backend/.env.example`.
-
-The end-to-end tests (`cd e2e && npm test`) read the confirmation emails from Mailpit: Playwright starts it with Docker, or reuses one already listening on port 8025.
-
-## Backend
-
-### Tech stack
-
-| Package | Used for |
-|---|---|
-| `express` | HTTP server and REST routes |
-| `cors` | Allows the frontend origin to call the API |
-| `better-sqlite3` | SQLite database (synchronous driver) |
-| `express-session` | Session cookies |
-| `passport`, `passport-local` | Login with email and password |
-| `typescript` | Type checking and compilation (pinned to v6) |
-| `tsx` | Runs TypeScript directly in development, with auto-restart |
-| `oxlint` | Linting |
-| `vitest` | Test runner |
-| `supertest` | HTTP API integration tests |
-| `socket.io-client` | Testing socket events |
-| `@types/*` | Type definitions for Node, Express, cors, better-sqlite3 and supertest |
-
-### Getting started
-
-Requires Node 22 or newer.
-
-```bash
-cd backend
-npm install
-npm run dev
-```
-
-If running for the first time or in need to recreate the database:
-
-```bash
-RESET_DB=true npm run dev
-```
-
-The server listens on `http://localhost:3000`.
-
-### Scripts
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Start in development mode with auto-restart |
-| `npm run build` | Compile to `dist/` |
-| `npm start` | Run the compiled server |
-| `npm run lint` | Lint with oxlint |
-| `npm run typecheck` | Type-check without emitting files |
-| `npm test` | Run tests once |
-| `npm run test:watch` | Run tests in watch mode |
-
-### Demo accounts
-
-All demo accounts have the password `password`.
-
-| Email | Role |
-|---|---|
-| `warden@mountainhut.test` | Warden |
-| `employee@mountainhut.test` | Employee |
-| `mario@mountainhut.test` | Hiker |
-| `laura@mountainhut.test` | Hiker |
-
-## Frontend
-
-### Tech stack
-
-| Package | Used for |
-|---|---|
-| `react` | UI library |
-| `vite` | Development server and bundler with HMR |
-| `typescript` | Type checking and compilation (pinned to v6) |
-| `oxlint` | Linting |
-
-### Getting started
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The application runs on `http://localhost:5173`.
-
-### Scripts
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Start development server with HMR |
-| `npm run build` | Type-check and compile production bundle |
-| `npm run lint` | Lint with oxlint |
-| `npm run preview` | Preview production build locally |
-
-### Project structure
-
-```
-src/
-  main.tsx      React entry point
-  App.tsx       Root application component
-  index.css     Global styles
-```
+Considering these main motivations, we choose to adopt the EUPL-1.2 license, included in the root directory of the repository inside the [LICENSE](LICENSE) file.

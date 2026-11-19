@@ -1,0 +1,91 @@
+PRAGMA foreign_keys = ON;
+
+-- Accounts
+CREATE TABLE account (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    email         TEXT    NOT NULL UNIQUE,
+    password_salt TEXT    NOT NULL,
+    password_hash TEXT    NOT NULL,
+    must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1))
+);
+
+-- Password reset links sent by email; at most one live token per account
+CREATE TABLE password_reset_token (
+    token_hash TEXT    PRIMARY KEY CHECK (length(token_hash) = 64),   -- hex SHA-256 of the emailed token
+    account_id INTEGER NOT NULL UNIQUE REFERENCES account(id) ON DELETE CASCADE,
+    created_at TEXT    NOT NULL CHECK (created_at IS strftime('%Y-%m-%dT%H:%M:%SZ', created_at)),
+    expires_at TEXT    NOT NULL CHECK (expires_at IS strftime('%Y-%m-%dT%H:%M:%SZ', expires_at)),
+    CHECK (expires_at > created_at)
+);
+
+-- Hikers
+CREATE TABLE hiker (
+    account_id        INTEGER PRIMARY KEY REFERENCES account(id) ON DELETE CASCADE,
+    full_name         TEXT    NOT NULL,
+    mobile_number     TEXT    NOT NULL,
+    notes             TEXT,
+    emergency_contact TEXT
+);
+
+-- Staff
+CREATE TABLE staff (
+    account_id INTEGER PRIMARY KEY REFERENCES account(id) ON DELETE CASCADE,
+    name       TEXT    NOT NULL,
+    role       TEXT    NOT NULL CHECK (role IN ('employee', 'warden'))
+);
+
+-- Meal slots
+CREATE TABLE slot (
+    date       TEXT    NOT NULL CHECK (date IS strftime('%Y-%m-%d', date)),
+    start_time TEXT    NOT NULL CHECK (start_time IS strftime('%H:%M', start_time)),
+    duration   INTEGER NOT NULL CHECK (duration > 0),
+    menu       TEXT             CHECK (menu IS NULL OR trim(menu) <> ''),
+    PRIMARY KEY (date, start_time),
+    -- A slot must end within the day it starts (at 23:59 at the latest)
+    CHECK (CAST(substr(start_time, 1, 2) AS INTEGER) * 60
+           + CAST(substr(start_time, 4, 2) AS INTEGER) + duration < 1440)
+);
+
+-- Tables available in each slot
+CREATE TABLE slot_table (
+    slot_date       TEXT    NOT NULL,
+    slot_start_time TEXT    NOT NULL,
+    table_number    INTEGER NOT NULL CHECK (table_number > 0),
+    seats           INTEGER NOT NULL CHECK (seats > 0),
+    PRIMARY KEY (slot_date, slot_start_time, table_number),
+    FOREIGN KEY (slot_date, slot_start_time)
+        REFERENCES slot(date, start_time) ON UPDATE CASCADE
+);
+
+-- Bookings
+CREATE TABLE booking (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    hiker_id INTEGER REFERENCES hiker(account_id)
+);
+
+-- Temporary hikers
+CREATE TABLE temporary_hiker (
+    booking_id    INTEGER PRIMARY KEY REFERENCES booking(id) ON DELETE CASCADE,
+    full_name     TEXT    NOT NULL,
+    mobile_number TEXT
+);
+
+-- Seats assigned to a booking at each table
+CREATE TABLE seated_at (
+    booking_id      INTEGER NOT NULL REFERENCES booking(id) ON DELETE CASCADE,
+    slot_date       TEXT    NOT NULL,
+    slot_start_time TEXT    NOT NULL,
+    table_number    INTEGER NOT NULL,
+    assigned_seats  INTEGER NOT NULL CHECK (assigned_seats >= 1),
+    PRIMARY KEY (booking_id, slot_date, slot_start_time, table_number),
+    FOREIGN KEY (slot_date, slot_start_time, table_number)
+        REFERENCES slot_table(slot_date, slot_start_time, table_number) ON UPDATE CASCADE
+);
+
+-- Dietary requirements of a booking
+CREATE TABLE dietary_requirement (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id   INTEGER NOT NULL REFERENCES booking(id) ON DELETE CASCADE,
+    allergy_flag INTEGER NOT NULL CHECK (allergy_flag IN (0, 1)),
+    description  TEXT    NOT NULL
+);

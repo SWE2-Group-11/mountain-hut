@@ -82,3 +82,84 @@ export const CreateReservationRequestSchema = z.object({
  * Data Transfer Object for Reservation request payloads, inferred from the schema.
  */
 export type CreateReservationRequestDTO = z.infer<typeof CreateReservationRequestSchema>;
+
+/**
+ * Partial update schema for Reservation request payloads.
+ * Used in PATCH /reservations/:id
+ */
+export const UpdateReservationRequestSchema = CreateReservationRequestSchema.partial().refine(
+    (request) => Object.values(request).some((value) => value !== undefined),
+    {message: "At least one field must be provided for update."}
+);
+
+export type UpdateReservationRequestDTO = z.infer<typeof UpdateReservationRequestSchema>;
+
+export type UpdateReservationResponseDTO = CreateReservationResponseDTO;
+
+/**
+ * Validation schema for the path parameters identifying a reservation.
+ * Used in PATCH and DELETE /reservations/:reservationId
+ */
+export const ReservationIdParamsSchema = z.object({
+    // coerce is needed because url params are always a string
+    reservationId: z.coerce.number().int().positive(),
+});
+
+export type ReservationIdParamsDTO = z.infer<typeof ReservationIdParamsSchema>;
+const StaffReservationHikerSchema = z.discriminatedUnion("mode", [
+    z.object({
+        mode: z.literal("existing"),
+        hikerId: z.number().int().positive(),
+    }).strict(),
+
+    z.object({
+        mode: z.literal("temporary"),
+        fullname: z.string().trim().min(1),
+        mobile_number: z.string().trim().min(1).optional(),
+    }).strict(),
+
+    z.object({
+        mode: z.literal("registered"),
+        fullname: z.string().trim().min(1),
+        mobile_number: z.string().trim().min(1),
+        email: z.string().trim().toLowerCase().pipe(z.email()),
+        notes: z.string().trim().max(200).optional(),
+        emergency_contact: z.string().trim().max(200).optional(),
+    }).strict(),
+]);
+
+export const CreateStaffReservationRequestSchema =
+    CreateReservationRequestSchema.extend({
+        hiker: StaffReservationHikerSchema,
+    }).strict();
+
+export type CreateStaffReservationRequestDTO =
+    z.infer<typeof CreateStaffReservationRequestSchema>;
+
+export type CreateStaffReservationResponseDTO = CreateReservationResponseDTO & {
+    hikerId: number | null;
+    // Only for a newly created regular account; deliver to authorized staff.
+    initialPassword?: string;
+};
+
+/** At least one search criterion; multiple criteria are combined with AND. */
+export const SearchStaffHikersRequestSchema = z.object({
+    name: z.string().trim().min(1).optional(),
+    phone: z.string().trim().min(1).optional(),
+    email: z.string().trim().toLowerCase().pipe(z.email()).optional(),
+}).strict().refine(
+    (query) => Object.values(query).some((value) => value !== undefined),
+    { message: "Provide at least one of name, phone or email" }
+);
+
+export type SearchStaffHikersRequestDTO =
+    z.infer<typeof SearchStaffHikersRequestSchema>;
+
+export type StaffHikerDTO = {
+    id: number | null;
+    bookingId: number | null;
+    fullname: string;
+    mobile_number: string | null;
+    email: string | null;
+    hasAccount: boolean;
+};

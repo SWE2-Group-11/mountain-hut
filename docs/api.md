@@ -2,27 +2,80 @@
 
 Base URL: `http://localhost:3000/api/v1`
 
-## Service
+## Accounts
 
-### POST /reservations - Create a reservation
+### POST /accounts - Register a hiker account
 
-- **Description:** create the reservation to book a table for an authenticated hiker, optionally declaring the dietary requirements of the party
-- **Authentication:** required
-- **Permissions:** hiker
+- **Description:** registers a new account; every registered account is a hiker account. The user is not logged in by the registration
+- **Authentication:** not required
 - **Request body:**
-  - `date`: required, formatted `YYYY-MM-DD`
-  - `slot`: required, start time of the slot, formatted `HH:mm`
-  - `partySize`: required positive integer
-  - `requirements`: optional list of objects, each describing the dietary requirements of a subset of the party; if omitted, no dietary requirements are declared
-    - `hasAllergies`: required boolean
-    - `details`: required string with at least one non-space character, describing the people of the subset and their dietary restrictions or allergies (e.g. `"2 vegetarians"`)
+  - `fullname`: required string with at least one non-space character; surrounding spaces are removed
+  - `mobile_number`: required string with at least one non-space character; surrounding spaces are removed
+  - `email`: required, valid email address; stored lowercase, so it is case-insensitive for registration and login
+  - `password`: required string, 8 to 128 characters (`PASSWORD_MIN_LENGTH`/`PASSWORD_MAX_LENGTH` in `backend/src/config/config.ts`); stored as a salted hash, never in plain text. Login accepts any non-empty password, so the limits never lock out existing accounts
+  - `notes`: optional string, at most 200 characters after removing surrounding spaces; `null` if omitted
+  - `emergency_contact`: optional string, at most 200 characters after removing surrounding spaces; `null` if omitted
+  - Any other field (e.g. `role`) is ignored
 - **Responses:**
-  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`)
-  - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement), slot that does not exist, or slot that starts in less than 2 hours
+  - `201 Created`: account created; returns `id`, `email`, `role` (always `"hiker"`) and `must_change_password` (always `false`)
+  - `400 Bad Request`: missing or invalid request fields, a password shorter than 8 or longer than 128 characters, or `notes`/`emergency_contact` longer than 200 characters
+  - `409 Conflict`: an account (hiker or staff) with the same email already exists
+  - `500 Internal Server Error`: unexpected server error
+
+### GET /accounts - Search hiker profiles
+
+- **Description:** searches hiker profiles: registered hikers and temporary hikers (hikers without an account, created by a staff booking). Staff accounts are never returned
+- **Authentication:** required
+- **Permissions:** employee, warden
+- **Query parameters:** at least one is required; when several are given they are combined with AND. Any other parameter is rejected
+  - `name`: partial, case-insensitive match on the full name; surrounding spaces are removed
+  - `phone`: partial match on the mobile number; spaces are ignored
+  - `email`: exact, case-insensitive match; only registered hikers have an email, so temporary hikers never match
+- **Ordering:** by full name; at most 50 results
+- **Responses:**
+  - `200 OK`: returns the matching hikers, each with `id` (account id, `null` for a temporary hiker), `bookingId` (booking of a temporary hiker, `null` for a registered hiker), `fullname`, `mobile_number`, `email` (`null` for a temporary hiker) and `hasAccount`; returns `[]` if no hiker matches
+  - `400 Bad Request`: no search parameter, an empty parameter, an invalid `email`, or an unknown parameter
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
-  - `409 Conflict`: the user already has a booking in the same slot (date and time), or the requested capacity is no longer available
   - `500 Internal Server Error`: unexpected server error
+
+### PUT /accounts/current/password - Change the password
+
+- **Description:** changes the password of the logged-in account. Accounts created by staff with a temporary password have `must_change_password: true` in the login response: until they call this endpoint, every other route that requires authentication answers `403 Forbidden` ("Password change required"). The change clears the flag (also in the current session) and invalidates any pending reset link
+- **Authentication:** required; allowed even while `must_change_password` is `true`
+- **Request body:**
+  - `current_password`: required, non-empty string
+  - `new_password`: required string, 8 to 128 characters, different from `current_password`
+- **Responses:**
+  - `200 OK`: password changed; returns `id`, `email`, `role` and `must_change_password` (`false`)
+  - `400 Bad Request`: missing or invalid request fields
+  - `401 Unauthorized`: user is not authenticated, or `current_password` is wrong
+  - `500 Internal Server Error`: unexpected server error
+
+### POST /accounts/password-reset - Request a password reset email
+
+- **Description:** if a hiker account has this email, sends it a link to `<CLIENT_ORIGIN>/reset-password?token=<token>`. The link expires after 24 hours, works only once and replaces any earlier link. A new email is sent at most every 5 minutes per account. Staff accounts never receive the email
+- **Authentication:** not required
+- **Request body:**
+  - `email`: required, valid email address; case-insensitive
+- **Responses:**
+  - `202 Accepted`: always, whether or not the email is registered or the email was sent, so the endpoint does not reveal which addresses have an account
+  - `400 Bad Request`: missing or invalid `email`
+  - `500 Internal Server Error`: unexpected server error
+
+### POST /accounts/password-reset/confirm - Set a new password with a reset link
+
+- **Description:** sets a new password with the token of a reset email and clears `must_change_password`. Sessions already open are not logged out
+- **Authentication:** not required
+- **Request body:**
+  - `token`: required, the `token` query parameter of the link
+  - `new_password`: required string, 8 to 128 characters
+- **Responses:**
+  - `204 No Content`: password changed
+  - `400 Bad Request`: missing or invalid request fields, or the token is unknown, already used, replaced by a newer link or expired
+  - `500 Internal Server Error`: unexpected server error
+
+## Service
 
 ### GET /slots - Get slots for the selected date
 
@@ -99,36 +152,95 @@ Base URL: `http://localhost:3000/api/v1`
   - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error
 
+### POST /reservations - Create a reservation
+
+- **Description:** create the reservation to book a table, optionally declaring the dietary requirements of the party. A hiker books for themself; an employee book on behalf of the hiker described in `hiker`
+- **Authentication:** required
+- **Permissions:** hiker, employee, warden
+- **Request body:**
+  - `date`: required, formatted `YYYY-MM-DD`
+  - `slot`: required, start time of the slot, formatted `HH:mm`
+  - `partySize`: required positive integer
+  - `requirements`: optional list of objects, each describing the dietary requirements of a subset of the party; if omitted, no dietary requirements are declared
+    - `hasAllergies`: required boolean
+    - `details`: required string with at least one non-space character, describing the people of the subset and their dietary restrictions or allergies (e.g. `"2 vegetarians"`)
+  - `hiker`: required for staff, ignored for hikers; who the booking is for, selected by `mode` (no other fields are accepted in a staff request):
+    - `{ "mode": "existing", "hikerId" }`: an existing hiker account (positive integer id)
+    - `{ "mode": "temporary", "fullname", "mobile_number"? }`: a hiker without an account
+    - `{ "mode": "registered", "fullname", "mobile_number", "email", "notes"?, "emergency_contact"? }`: creates a hiker account (with a generated initial password that must be changed) and books for it
+- **Rules for staff:** the booking is allowed until the slot starts (the 2-hour cutoff applies only to hikers); no confirmation email is sent
+- **Responses:**
+  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`). For staff, also `hikerId` (`null` for a temporary hiker) and, only in `registered` mode, `initialPassword` to deliver to the hiker
+  - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement, or a missing/invalid `hiker` in a staff request), slot that does not exist (hiker), slot that starts in less than 2 hours (hiker), or slot that has already started (staff)
+  - `401 Unauthorized`: user is not authenticated
+  - `404 Not Found`: (staff) the slot or the `existing` hiker does not exist
+  - `409 Conflict`: the hiker already has a booking in the same slot (date and time), the requested capacity is no longer available, or (staff, `registered` mode) an account with the given email already exists
+  - `500 Internal Server Error`: unexpected server error
+
 ### PATCH /reservations/:reservationId - Update a reservation
 
-- **Description:** updates a reservation belonging to the authenticated user
+- **Description:** updates a reservation belonging to the authenticated hiker
 - **Authentication:** required
-- **Permissions:** user
+- **Permissions:** hiker
 - **Path parameters:**
-  - `reservationId`: required reservation identifier
+  - `reservationId`: required positive integer, reservation identifier
 - **Request Body:**
   - `date`: optional date, formatted `YYYY-MM-DD`
-  - `slot`: optional slot identifier
+  - `slot`: optional start time of the slot, formatted `HH:mm`
   - `partySize`: optional positive integer
   - `requirements`: optional list of objects; when provided, replaces all the previous requirements (an empty list removes them)
     - `hasAllergies`: required boolean
     - `details`: required string describing dietary restrictions or preferences
   - At least one field must be provided
 - **Responses:**
-  - `200 OK`: returns the updated reservation
-  - `400 Bad Request`: empty body, invalid fields or inconsistent date and slot or the reservation cannot be modified under the applicable business rules
+  - `200 OK`: returns the updated reservation (`id`, `date`, `slot`, `partySize`, `seatings`, `requirements`)
+  - `400 Bad Request`: invalid `reservationId`, empty body, invalid fields, change attempted less than 48 hours before the original slot, or requested slot starting in less than 2 hours
   - `401 Unauthorized`: user is not authenticated
-  - `403 Forbidden`: the reservation belongs to another user
+  - `403 Forbidden`: user is not a hiker, or the reservation belongs to another user
   - `404 Not Found`: the reservation or requested slot does not exist
-  - `409 Conflict`: insufficient availability
+  - `409 Conflict`: the user already has a reservation in the requested slot, or insufficient availability
   - `500 Internal Server Error`: unexpected server error
 
-### GET /reservations — Get the authenticated user's reservations
+### GET /reservations - Get the authenticated hiker's reservations
 
-- **Description:** returns active reservations (reservation_date>now) belonging to the authenticated user
+- **Description:** returns the active reservations (slot not started yet) belonging to the authenticated hiker
 - **Authentication:** required
-- **Permissions:** user
+- **Permissions:** hiker
 - **Responses:**
-  - `200 OK`: returns only reservations whose slot has not started yet ordered by start date and time; returns `[]` if no reservations match
+  - `200 OK`: returns the reservations ordered by slot date and time, each with `id`, `date`, `slot`, `partySize`, `seatings`, `requirements`; returns `[]` if no reservations match
   - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user is not a hiker
+  - `500 Internal Server Error`: unexpected server error
+
+### DELETE /reservations/:reservationId - Cancel a reservation
+
+- **Description:** cancels a reservation belonging to the authenticated hiker, releasing its seats so they can be booked by other guests; there are no time constraints, a reservation can be cancelled at any time
+- **Authentication:** required
+- **Permissions:** hiker
+- **Path parameters:**
+  - `reservationId`: required positive integer, reservation identifier
+- **Responses:**
+  - `204 No Content`: reservation cancelled; no response body
+  - `400 Bad Request`: invalid `reservationId`
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user is not a hiker, or the reservation belongs to another user
+  - `404 Not Found`: the reservation does not exist
+  - `409 Conflict`: the reservation could not be cancelled
+  - `500 Internal Server Error`: unexpected server error
+
+### POST /slots/copy-week - Repeat a weekly schedule
+
+- **Description:** copies the slots, tables and seats of a week into one or more later weeks, so that recurring slots do not have to be configured one by one; bookings are never copied. A target week without reservations has its existing schedule completely replaced; if any target week has reservations, nothing is copied. All the target weeks are copied together, or none is. The copied slots can later be adjusted individually
+- **Authentication:** required
+- **Permissions:** employee, warden
+- **Request body:**
+  - `sourceWeekStart`: required, Monday of the week to copy, formatted `YYYY-MM-DD`
+  - `targetWeekStarts`: required non-empty array (at most 52 elements) of Mondays of the weeks receiving the copy, formatted `YYYY-MM-DD`; no duplicates, must not contain `sourceWeekStart`, each week must start after the current week (Europe/Rome)
+- **Responses:**
+  - `201 Created`: returns `sourceWeekStart` (Monday date of the copied week), `targetWeekStarts` (dates of Mondays of the weeks that received the copy, without duplicates) and `slotsPerWeek` (number of slots copied into each target week)
+  - `400 Bad Request`: missing or invalid fields (dates that are not Mondays, duplicate target weeks, source week among the targets, more than 52 targets), or a target week that has already started or is in the past
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
+  - `404 Not Found`: the source week has no slots to copy
+  - `409 Conflict`: a target week already has reservations, so its schedule cannot be replaced; nothing was copied
   - `500 Internal Server Error`: unexpected server error

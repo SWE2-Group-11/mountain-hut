@@ -1,9 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import Database from "better-sqlite3";
 import { DB_FILE_PATH } from "../config/config.js";
-
-const SQL_DIR = path.resolve(process.cwd(), "src/database/sql");
+import { seedDatabase } from "./seed/index.js";
+import { readSql } from "./sql-files.js";
 
 function openDatabase(): Database.Database {
   try {
@@ -24,24 +22,24 @@ function openDatabase(): Database.Database {
 export const db = openDatabase();
 
 /**
- * Reads a SQL script from the database/sql folder.
+ * Tells whether the database has no schema yet: a new file, or one whose first
+ * reset failed and was rolled back (the file exists but has no tables).
  */
-export const readSql = (file: string): string =>
-    fs.readFileSync(path.join(SQL_DIR, file), "utf-8");
+export const isDatabaseEmpty = (): boolean =>
+    !db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'account'").get();
 
 /**
- * Drops, recreates and seeds the whole database in a single transaction.
+ * Drops, recreates and seeds the whole database in a single transaction (see seed/index.ts).
  * If any step fails, the database is left unchanged.
  */
 export const resetDatabase = (): void => {
-    const drop = readSql("drop-core.sql");
-    const init = readSql("init-core.sql");
-    const seed = readSql("seed-core.sql");
+    const drop = readSql("schema", "drop.sql");
+    const init = readSql("schema", "init.sql");
 
     db.transaction(() => {
         db.exec(drop);
         db.exec(init);
-        db.exec(seed);
+        seedDatabase(db);
     })();
 };
 

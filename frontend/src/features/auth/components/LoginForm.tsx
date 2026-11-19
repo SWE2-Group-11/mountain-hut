@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate , useLocation, Link  } from 'react-router-dom';
 import { useAuth } from '../useAuth';
+import { destinationAfterLogin } from '../utils/loginDestination';
 import { ApiError } from '../../../api/client';
 import { Mail, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -8,14 +9,16 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const LoginForm: React.FC = () => {
   const { user, loading: authLoading, login } = useAuth();
-
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!authLoading && user) {
-    const destination = user.role === 'hiker' ? '/book-table' : '/staff/slots';
+    // Someone who was sent here from another page goes back to it with what was already chosen
+    const from = (location.state as { from?: string } | null)?.from;
+    const destination = destinationAfterLogin(from, user.role);
     return <Navigate to={destination} replace />;
   }
 
@@ -117,6 +120,11 @@ export const LoginForm: React.FC = () => {
               className="w-full pl-11 pr-4 py-3 bg-[#FDFBF7] border border-[#EFEADF] rounded-xl text-sm text-[#1C2826] focus:outline-none focus:border-[#234E39] transition-all"
             />
           </div>
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-xs font-semibold text-[#234E39] hover:underline">
+              Forgot your password?
+            </Link>
+          </div>
         </div>
 
         {/* Submit button */}
@@ -138,6 +146,12 @@ export const LoginForm: React.FC = () => {
           )}
         </button>
       </form>
+      <p className="text-xs text-[#5A6865] text-center">
+        New to the hut?{' '}
+        <Link to="/register" className="font-semibold text-[#234E39] hover:underline">
+          Create an account
+        </Link>
+      </p>
     </div>
   );
 };

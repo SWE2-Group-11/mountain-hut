@@ -6,6 +6,7 @@ import { ROUTES, CLIENT_ORIGIN, SESSION_SECRET } from "./config/config";
 import { sendAppError, sendNotFoundError, sendBadRequestError } from "./services/error-service";
 import { authenticateSession } from "./services/auth-service";
 import authRouter from "./routes/auth-route";
+import accountRouter from "./routes/account-route";
 import reservationRouter from "./routes/reservation-route";
 import slotRouter from "./routes/slot-route";
 
@@ -32,6 +33,7 @@ app.use(authenticateSession);
 
 // Routes
 app.use(ROUTES.V1_AUTH, authRouter);
+app.use(ROUTES.V1_ACCOUNTS, accountRouter);
 app.use(ROUTES.V1_RESERVATIONS, reservationRouter);
 app.use(ROUTES.V1_SLOTS, slotRouter);
 

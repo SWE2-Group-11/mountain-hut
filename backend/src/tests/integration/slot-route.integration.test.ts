@@ -33,7 +33,7 @@ describe("GET /api/v1/slots", () => {
 
         expect(res.status).toBe(200);
         expect(res.body).toHaveLength(1);
-        expect(res.body[0]).toMatchObject({ start_time: "12:00", available_seats: 16 });
+        expect(res.body[0]).toMatchObject({ start_time: "12:00", available_seats: 13 });
     });
 
     it("returns an empty list when the day has no slots", async () => {

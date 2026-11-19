@@ -3,10 +3,12 @@ import express from "express";
 import request from "supertest";
 import slotRouter from "../../routes/slot-route";
 import { createSlot, getConfigurations, getSlots } from "../../controllers/slot-controller";
+import { repeatWeeklySchedule } from "../../controllers/weekly-schedule-controller";
 import { sendAppError } from "../../services/error-service";
 import { BadRequestError } from "../../models/errors/badrequest-error";
 import { ConflictError } from "../../models/errors/conflict-error";
 import { NotFoundError } from "../../models/errors/notfound-error";
+import type { CopyWeeklyScheduleResponseDTO } from "../../models/dto/weekly-schedule-dto";
 import type { SlotConfigurationDTO, SlotDTO } from "../../models/dto/slot-dto";
 
 
@@ -14,6 +16,9 @@ vi.mock("../../controllers/slot-controller", () => ({
     getSlots: vi.fn(),
     getConfigurations: vi.fn(),
     createSlot: vi.fn(),
+}));
+vi.mock("../../controllers/weekly-schedule-controller", () => ({
+    repeatWeeklySchedule: vi.fn(),
 }));
 
 // Stand-in for the role check: it answers 401/403 like the real one and records the roles each protected route asks for.
@@ -40,6 +45,7 @@ vi.mock("../../services/auth-service", () => ({
 
 const URL = "/slots";
 const CONFIGURATIONS_URL = `${URL}/configurations`;
+const COPY_WEEK_URL = `${URL}/copy-week`;
 const DAY = "2030-06-15";
 const SLOTS: SlotDTO[] = [
     { date: DAY, start_time: "12:00", duration: 60, total_seats: 16, available_seats: 7 },
@@ -56,6 +62,8 @@ const CONFIGURATIONS: SlotConfigurationDTO[] = [
     CONFIGURATION,
     { date: DAY, startTime: "19:30", endTime: "21:00", tables: [{ tableNumber: 1, seats: 8 }], totalSeats: 8 },
 ];
+const COPY_WEEK = { sourceWeekStart: "2030-06-10", targetWeekStarts: ["2030-06-17", "2030-06-24"] };
+const COPY_WEEK_RESULT: CopyWeeklyScheduleResponseDTO = { ...COPY_WEEK, slotsPerWeek: 14 };
 
 // Minimal app: the router and the error format are the real ones
 const app = express();
@@ -75,6 +83,7 @@ beforeEach(() => {
     vi.mocked(getSlots).mockReturnValue(SLOTS);
     vi.mocked(getConfigurations).mockReturnValue(CONFIGURATIONS);
     vi.mocked(createSlot).mockReturnValue(CONFIGURATION);
+    vi.mocked(repeatWeeklySchedule).mockReturnValue(COPY_WEEK_RESULT);
 });
 
 describe("GET /slots — route", () => {
@@ -158,8 +167,9 @@ describe("GET /slots — route", () => {
 });
 
 describe("slot-route — role guards", () => {
-    it("protects the configurations and the creation of a slot with employee and warden", () => {
+    it("protects the configurations, the creation of a slot and the copy of a week with employee and warden", () => {
         expect(auth.guards).toEqual([
+            ["employee", "warden"],
             ["employee", "warden"],
             ["employee", "warden"],
         ]);
@@ -474,6 +484,98 @@ describe("POST /slots — route", () => {
             expect(res.status).toBe(500);
             expect(res.body.code).toBe(500);
             expect(JSON.stringify(res.body)).not.toContain("SQLITE_BUSY");
+        });
+    });
+});
+
+describe("POST /slots/copy-week — route", () => {
+    describe("access", () => {
+        it.each([
+            { label: "a visitor", role: null, status: 401, name: "UnauthorizedError" },
+            { label: "a hiker", role: "hiker", status: 403, name: "ForbiddenError" },
+        ])("answers $status and skips the controller for $label", async ({ role, status, name }) => {
+            actingAs(role);
+
+            const res = await request(app).post(COPY_WEEK_URL).send(COPY_WEEK);
+
+            expect(res.status).toBe(status);
+            expect(res.body).toMatchObject({ code: status, name });
+            expect(repeatWeeklySchedule).not.toHaveBeenCalled();
+        });
+
+        it("checks permissions before validating the body", async () => {
+            actingAs("hiker");
+
+            const res = await request(app).post(COPY_WEEK_URL).send({});
+
+            expect(res.status).toBe(403);
+            expect(repeatWeeklySchedule).not.toHaveBeenCalled();
+        });
+    });
+    describe("successful request", () => {
+        it.each(["employee", "warden"])("answers 201 and forwards the validated body for a %s", async (role) => {
+            actingAs(role);
+
+            const res = await request(app).post(COPY_WEEK_URL).send({ ...COPY_WEEK, extra: "ignored" });
+
+            expect(res.status).toBe(201);
+            expect(res.body).toEqual(COPY_WEEK_RESULT);
+            expect(repeatWeeklySchedule).toHaveBeenCalledExactlyOnceWith(COPY_WEEK);
+        });
+    });
+
+    describe("validation", () => {
+        beforeEach(() => actingAs("employee"));
+
+        it.each([
+            { label: "a missing source week", body: { targetWeekStarts: COPY_WEEK.targetWeekStarts } },
+            { label: "a source date that is not a Monday", body: { ...COPY_WEEK, sourceWeekStart: "2030-06-11" } },
+            { label: "an empty target list", body: { ...COPY_WEEK, targetWeekStarts: [] } },
+            { label: "the source week as a target", body: { ...COPY_WEEK, targetWeekStarts: [COPY_WEEK.sourceWeekStart] } },
+        ])("answers 400 and skips the controller for $label", async ({ body }) => {
+            const res = await request(app).post(COPY_WEEK_URL).send(body);
+
+            expect(res.status).toBe(400);
+            expect(res.body).toMatchObject({ code: 400, name: "BadRequestError", message: expect.any(String) });
+            expect(repeatWeeklySchedule).not.toHaveBeenCalled();
+        });
+    });
+    describe("controller errors", () => {
+        beforeEach(() => actingAs("employee"));
+
+        it.each([
+            { label: "a target week has already started", status: 400, error: new BadRequestError("A target week has already started") },
+            { label: "the source week has no slots", status: 404, error: new NotFoundError("The source week has no slots") },
+            { label: "a target week has bookings", status: 409, error: new ConflictError("A target week already has bookings") },
+        ])("answers $status when $label", async ({ status, error }) => {
+            vi.mocked(repeatWeeklySchedule).mockImplementation(() => {
+                throw error;
+            });
+
+            const res = await request(app).post(COPY_WEEK_URL).send(COPY_WEEK);
+
+            expect(res.status).toBe(status);
+            expect(res.body).toEqual({ code: status, name: error.name, message: error.message });
+        });
+
+        it("answers with a generic 500 for an unexpected error", async () => {
+            const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+            vi.mocked(repeatWeeklySchedule).mockImplementation(() => {
+                throw new Error("SQLITE_BUSY: database is locked");
+            });
+
+            try {
+                const res = await request(app).post(COPY_WEEK_URL).send(COPY_WEEK);
+
+                expect(res.status).toBe(500);
+                expect(res.body).toEqual({
+                    code: 500,
+                    name: "InternalServerError",
+                    message: "An unexpected error occurred",
+                });
+            } finally {
+                log.mockRestore();
+            }
         });
     });
 });
