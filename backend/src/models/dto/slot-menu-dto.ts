@@ -5,14 +5,21 @@ export const DefineMenuRequestSchema = z.object({
     date: DateSchema,
     startTime: TimeSchema,
     // Validate without trimming, since leading spaces can be meaningful in Markdown.
-    menu: z.string().refine((menu) => menu.trim().length > 0, "The menu must not be blank"),
+    menu: z.string().refine((menu) => menu.trim().length > 0, "The menu must not be blank").nullable(),
 });
 
 export type DefineMenuRequestDTO = z.infer<typeof DefineMenuRequestSchema>;
 
-export const GetReusableMenusRequestSchema = z.object({
-    limit: z.coerce.number().int().positive().max(100).default(20),
-});
+export const GetReusableMenusRequestSchema = z
+    .object({
+        from: DateSchema.optional(),
+        to: DateSchema.optional(),
+        limit: z.coerce.number().int().positive().max(100).default(20),
+    })
+    .refine(({ from, to }) => !from || !to || from <= to, {
+        path: ["from"],
+        message: "from must not be after to",
+    });
 
 export type GetReusableMenusRequestDTO = z.infer<typeof GetReusableMenusRequestSchema>;
 
@@ -20,6 +27,6 @@ export class SlotMenuDTO {
     constructor(
         public date: string,
         public startTime: string,
-        public menu: string
+        public menu: string | null
     ) {}
 }
