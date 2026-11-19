@@ -1,0 +1,13 @@
+[
+    { "role": "warden", "email": "warden@mountainhut.test", "password": "password", "name": "Anna" },
+    { "role": "employee", "email": "employee@mountainhut.test", "password": "password", "name": "Luca" },
+    {
+        "role": "hiker", "email": "mario@mountainhut.test", "password": "password",
+        "name": "Mario Rossi", "mobile": "+39 333 123 4567",
+        "notes": "Registered mountain guide", "emergency_contact": "Giulia Rossi, +39 333 765 4321"
+    },
+    {
+        "role": "hiker", "email": "laura@mountainhut.test", "password": "password",
+        "name": "Laura Bianchi", "mobile": "+39 347 987 6543"
+    }
+]

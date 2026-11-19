@@ -5,11 +5,11 @@ import { BadRequestError } from "../../models/errors/badrequest-error";
 import { ConflictError } from "../../models/errors/conflict-error";
 import { notifyBookingCreated } from "../../notifications/booking-confirmation";
 import { DietaryRequirement } from "../../models/entities/dietary_requirement";
-import { createReservation, updateReservation } from "../../controllers/reservation-controller";
+import { cancelReservation, createReservation, updateReservation } from "../../controllers/reservation-controller";
 import { getSlot } from "../../dao/slot-dao";
 import {
-    saveBooking, hasBookingInSlot, getBooking, getActiveBookingsByHiker, 
-    getBookingAvailability, deleteSeatings, insertSeatings, type Reservation,
+    saveBooking, hasBookingInSlot, getBooking, getActiveBookingsByHiker,
+    getBookingAvailability, deleteSeatings, insertSeatings, deleteBooking, type Reservation,
 } from "../../dao/booking-dao";
 import { replaceRequirements } from "../../dao/dietary-requirement-dao";
 import { inTransaction } from "../../database/database";
@@ -17,17 +17,22 @@ import { RequirementDTO, type CreateReservationRequestDTO, type UpdateReservatio
 import { NotFoundError } from "../../models/errors/notfound-error";
 import { ForbiddenError } from "../../models/errors/forbidden-error";
 import { Booking } from "../../models/entities/booking";
+import { notifyBookingChanged } from "../../notifications/booking-change";
+
 
 // Isolate persistence; keep real booking rules and response mapping
-vi.mock("../../dao/slot-dao", () => ({ getSlot: vi.fn() }));
 vi.mock("../../dao/booking-dao", () => ({
     hasBookingInSlot: vi.fn(), saveBooking: vi.fn(), getBooking: vi.fn(),
     getActiveBookingsByHiker: vi.fn(), getBookingAvailability: vi.fn(),
-    deleteSeatings: vi.fn(), insertSeatings: vi.fn(),
+    deleteSeatings: vi.fn(), insertSeatings: vi.fn(), deleteBooking: vi.fn(),
 }));
 vi.mock("../../dao/dietary-requirement-dao", () => ({ replaceRequirements: vi.fn() }));
 vi.mock("../../database/database", () => ({ inTransaction: vi.fn() }));
 vi.mock("../../notifications/booking-confirmation", () => ({ notifyBookingCreated: vi.fn() }));
+vi.mock("../../notifications/booking-change", () => ({ notifyBookingChanged: vi.fn() }));
+vi.mock("../../dao/slot-dao", () => ({ getSlot: vi.fn() }));
+vi.mock("../../dao/hiker-dao", () => ({ searchHikersFilter: vi.fn(), getHikerById: vi.fn() }));
+vi.mock("../../dao/account-dao", () => ({ createHikerAccount: vi.fn() }));
 
 const DAY = "2030-06-15";
 const START_TIME = "12:00";
@@ -526,5 +531,135 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
             expect(replaceRequirements).not.toHaveBeenCalled();
         });
     });
+
+    describe("notifications", () => {
+        beforeEach(() => {
+            vi.mocked(notifyBookingChanged).mockResolvedValue(undefined);
+        });
+
+        it("notifies exactly once after a successful update", () => {
+            update({ partySize: 2 });
+
+            expect(notifyBookingChanged).toHaveBeenCalledExactlyOnceWith(RES_ID);
+        });
+
+        it("notifies only after the transaction has committed", () => {
+            let committed = false;
+            vi.mocked(inTransaction).mockImplementation(((callback: () => unknown) => {
+                const result = callback();
+                committed = true;
+                return result;
+            }) as any);
+            vi.mocked(notifyBookingChanged).mockImplementation(() => {
+                expect(committed).toBe(true);
+                return Promise.resolve();
+            });
+
+            update({ partySize: 2 });
+
+            expect(notifyBookingChanged).toHaveBeenCalledTimes(1);
+        });
+
+        it.each([
+            {
+                label: "the reservation does not exist",
+                setup: () => vi.mocked(getBooking).mockReturnValue(null),
+                error: NotFoundError,
+            },
+            {
+                label: "the reservation belongs to another hiker",
+                setup: () => vi.mocked(getBooking).mockReturnValue(makeReservation([[1, 4]], [], 99)),
+                error: ForbiddenError,
+            },
+            {
+                label: "the change deadline has passed",
+                setup: () => vi.setSystemTime(new Date("2030-06-13T10:00:00.001Z")),
+                error: BadRequestError,
+            },
+            {
+                label: "the capacity is refused and the release is rolled back",
+                setup: () => vi.mocked(getBookingAvailability).mockReturnValue(null),
+                error: ConflictError,
+            },
+        ])("does not notify when $label", ({ setup, error }) => {
+            setup();
+
+            expect(() => update({ partySize: 2 })).toThrow(error);
+            expect(notifyBookingChanged).not.toHaveBeenCalled();
+        });
+
+        it("returns the response without waiting for the notification promise", () => {
+            vi.mocked(notifyBookingChanged).mockReturnValue(new Promise<void>(() => {}));
+
+            expect(update({ partySize: 2 })).toMatchObject({ id: RES_ID, partySize: 2 });
+        });
+    });
 });
 
+
+describe("DELETE /reservations/:id — cancelReservation controller", () => {
+    const OTHER_HIKER_ID = 99;
+
+    function makeReservation(hikerId = HIKER_ID): Reservation {
+        return {
+            booking: new Booking(BOOKING_ID, hikerId),
+            date: DAY,
+            start_time: START_TIME,
+            party_size: 4,
+            seatings: [makeSeating(1, 4)],
+            dietary_requirements: [],
+        } as Reservation;
+    }
+
+    beforeEach(() => {
+        vi.mocked(getBooking).mockReturnValue(makeReservation());
+        vi.mocked(deleteBooking).mockReturnValue(true);
+    });
+
+    it("deletes the hiker's own reservation inside a transaction", () => {
+        expect(cancelReservation(HIKER_ID, BOOKING_ID)).toBeUndefined();
+
+        expect(inTransaction).toHaveBeenCalledTimes(1);
+        expect(getBooking).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
+        expect(deleteBooking).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
+    });
+
+    it.each([
+        { label: "after the change cutoff", now: "2030-06-15T09:30:00Z" },
+        { label: "after the slot has started", now: "2030-06-15T10:30:00Z" },
+        { label: "after the slot has ended", now: "2030-06-16T12:00:00Z" },
+    ])("cancels $label (MH-08: no time constraints)", ({ now }) => {
+        vi.setSystemTime(new Date(now));
+
+        expect(() => cancelReservation(HIKER_ID, BOOKING_ID)).not.toThrow();
+        expect(deleteBooking).toHaveBeenCalledExactlyOnceWith(BOOKING_ID);
+    });
+
+    it("throws NotFoundError for an unknown reservation without deleting", () => {
+        vi.mocked(getBooking).mockReturnValue(null);
+
+        expect(() => cancelReservation(HIKER_ID, BOOKING_ID)).toThrow(NotFoundError);
+        expect(deleteBooking).not.toHaveBeenCalled();
+    });
+
+    it("throws ForbiddenError for another hiker's reservation without deleting", () => {
+        vi.mocked(getBooking).mockReturnValue(makeReservation(OTHER_HIKER_ID));
+
+        expect(() => cancelReservation(HIKER_ID, BOOKING_ID)).toThrow(ForbiddenError);
+        expect(deleteBooking).not.toHaveBeenCalled();
+    });
+
+    it("throws ConflictError if the DAO deletes nothing", () => {
+        vi.mocked(deleteBooking).mockReturnValue(false);
+
+        expect(() => cancelReservation(HIKER_ID, BOOKING_ID)).toThrow(ConflictError);
+        expect(deleteBooking).toHaveBeenCalledTimes(1);
+    });
+
+    it("propagates a DAO failure for the global 500 handler", () => {
+        const failure = new Error("simulated booking delete failure");
+        vi.mocked(deleteBooking).mockImplementation(() => { throw failure; });
+
+        expect(() => cancelReservation(HIKER_ID, BOOKING_ID)).toThrow(failure);
+    });
+});

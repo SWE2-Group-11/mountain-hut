@@ -38,7 +38,7 @@ flowchart TD
 | `models/dto/` | Shape of API payloads |
 | `models/errors/` | `AppError` and subclasses |
 | `services/` | Helpers: entity → DTO mapping, error → response, authentication |
-| `database/` | DB connection (`database.ts`) and SQL scripts (`sql/`) |
+| `database/` | DB connection and reset (`database.ts`), SQL file loading (`sql-files.ts`), demo data seed (`seed/`) and schema scripts (`sql/`) |
 | `notifications/` | Outgoing emails: templates, building their data, sending (fire-and-forget) |
 | `config/` | Configuration from environment variables |
 | `tests/` | Vitest + Supertest tests |

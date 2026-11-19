@@ -1,8 +1,9 @@
 import { app } from "./app";
 import { APP_PORT, RESET_DB } from "./config/config";
-import { resetDatabase } from "./database/database.js";
+import { isDatabaseEmpty, resetDatabase } from "./database/database.js";
 
-if (RESET_DB) {
+// Also on an empty database, so a start whose seeding failed is retried on the next start
+if (RESET_DB || isDatabaseEmpty()) {
     resetDatabase();
     console.log("Database reset completed.");
 }

@@ -55,9 +55,16 @@ const login = async (page: Page, email: string) => {
 
 /** Opens the check page from the header link and waits for it. */
 const openCheckFromHeader = async (page: Page) => {
-  await page.getByRole('banner').getByRole('link', { name: 'Check availability' }).click();
+  await page
+    .getByRole('banner')
+    .or(page.getByRole('navigation', { name: 'Staff' }))
+    .getByRole('link', { name: 'Check availability' })
+    .click();
   await expect(page).toHaveURL(/\/availability$/);
-  await expect(page.getByRole('heading', { name: 'Is there a table for us?' })).toBeVisible();
+  // Staff see the page inside their workspace, with its own title
+  await expect(
+    page.getByRole('heading', { name: 'Is there a table for us?' }).or(page.getByRole('heading', { name: 'Check availability', level: 1 })),
+  ).toBeVisible();
 };
 
 /** The "HH:mm – HH:mm" choice of a start time, inside the "Time" group. */

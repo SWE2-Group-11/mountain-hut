@@ -24,6 +24,7 @@ RUN npm run build
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production
 ENV DB_PATH=/app/data/database.sqlite
+ENV SEED_ACCOUNTS_FILE=/run/secrets/seed_accounts
 
 ## tini as PID 1: forwards stop signals to all processes and reaps zombies
 RUN apt-get update \
