@@ -1,10 +1,9 @@
 import React from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { CalendarClock, CalendarPlus, ExternalLink, Search } from 'lucide-react';
 import logoImage from '../../assets/logo.jpeg';
 import { useAuth } from '../../features/auth/useAuth';
 import { UserMenu } from './UserMenu';
-
+import { CalendarClock, CalendarPlus, CalendarRange, ExternalLink, Search } from 'lucide-react';
 interface StaffLayoutProps {
   title: string;
   subtitle?: string;
@@ -13,7 +12,8 @@ interface StaffLayoutProps {
 
 const STAFF_PAGES = [
   { to: '/staff/reserve', label: 'Reserve for a hiker', icon: CalendarPlus },
-  { to: '/staff/slots', label: 'Manage slots', icon: CalendarClock },
+   { to: '/staff/slots', label: 'Manage slots', icon: CalendarClock, end: true },
+  { to: '/staff/slots/repeat', label: 'Copy a week', icon: CalendarRange, end: true },
   { to: '/availability', label: 'Check availability', icon: Search },
 ];
 
@@ -64,8 +64,8 @@ export const StaffLayout: React.FC<StaffLayoutProps> = ({ title, subtitle, child
           className="md:w-64 md:shrink-0 md:border-r border-b md:border-b-0 border-[#EFEADF] bg-white/60 p-3 md:p-4 flex md:flex-col gap-1 overflow-x-auto md:sticky md:top-16 md:self-start md:h-[calc(100vh-4rem)]"
         >
           <p className="hidden md:block px-3.5 pt-2 pb-3 text-[10px] font-bold uppercase tracking-widest text-[#7C8885]">Workspace</p>
-          {STAFF_PAGES.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => itemClass(isActive)}>
+         {STAFF_PAGES.map(({ to, label, icon: Icon, end }) => (
+  <NavLink key={to} to={to} end={end} className={({ isActive }) => itemClass(isActive)}>
               <Icon className="w-4 h-4 shrink-0" />
               {label}
             </NavLink>
