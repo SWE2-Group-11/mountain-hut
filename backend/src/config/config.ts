@@ -62,3 +62,11 @@ export const CHANGE_BOOKING_CUTOFF_HOURS = 48;
 
 // timezone in which the dates and start_time of the slots are expressed
 export const HUT_TIMEZONE = "Europe/Rome"; 
+
+// Demo accounts file
+export const SEED_ACCOUNTS_FILE = process.env.SEED_ACCOUNTS_FILE
+    ?? path.resolve(process.cwd(), "../seed-accounts.json");
+
+// Demo slots and bookings: "random" for the app, "fixed" (the layout the tests rely on) for the tests
+export const SEED_MODE: "random" | "fixed" =
+    process.env.SEED_MODE === "fixed" ? "fixed" : "random";
