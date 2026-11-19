@@ -5,10 +5,11 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 // seats become free again. A cancellation is allowed at any time.
 //
 // The backend runs on one in-memory database for the whole run (see playwright.config.ts), so the
-// specs share it. To stay independent, these tests work on their own day (today + 60), where every
+// specs share it. To stay independent, these tests work on their own day (today + 120), where every
 // slot has T1 = 4 and T2 = 4 seats (8 in total) and each test books its own slot:
 //   12:00  Mario: keep the booking, then cancel it so that Laura can book the seats
 //   13:00  Mario: cancel, the seats are free again      14:00  Mario: cancelled elsewhere first
+//   15:00  Mario: cancel when changes are closed        16:00  Mario: cancel after the slot has ended
 
 const API = 'http://localhost:3000/api/v1';
 const PASSWORD = 'password';
@@ -25,11 +26,13 @@ const dayFromToday = (n: number): string => {
   return `${d.getFullYear()}-${month}-${day}`;
 };
 
-const OWN_DAY = dayFromToday(60);
+const OWN_DAY = dayFromToday(120);
 const SLOTS = [
   ['12:00', '13:00'],
   ['13:00', '14:00'],
   ['14:00', '15:00'],
+  ['15:00', '16:00'],
+  ['16:00', '17:00'],
 ] as const;
 
 type PublicSlot = { start_time: string; total_seats: number; available_seats: number };
@@ -228,5 +231,55 @@ test.describe('Cancel a booking', () => {
       await mario.dispose();
       await laura.dispose();
     }
+  });
+
+  // A cancellation has no time limit. The browser clock is moved (only the clock of the page: the
+  // server keeps the real one, and it accepts a cancellation at any time anyway).
+  test.describe('there is no time limit', () => {
+    const at = (utcTime: string) => new Date(`${OWN_DAY}T${utcTime}:00Z`);
+
+    test('cancelling is still possible when changes are already closed', async ({ page, playwright }) => {
+      const hiker = await playwright.request.newContext();
+      try {
+        await apiLogin(hiker, MARIO);
+        const id = await ensureBooking(hiker, '15:00', 2);
+        await login(page, MARIO);
+        // 06:00 UTC is 07:00 or 08:00 in the hut, hours before the 15:00 slot
+        await page.clock.setFixedTime(at('06:00'));
+        const card = await openCard(page, id);
+
+        await expect(card.getByRole('button', { name: 'Change booking' })).toBeDisabled();
+        await expect(card.getByText(/can no longer be changed/)).toBeVisible();
+        await card.getByRole('button', { name: 'Cancel booking' }).click();
+        await confirmation(page).getByRole('button', { name: 'Yes, cancel booking' }).click();
+
+        await expect(page.getByRole('status').filter({ hasText: 'Booking cancelled' })).toBeVisible();
+        await expect(card.getByText('Cancelled', { exact: true })).toBeVisible();
+        expect(await freeSeats(hiker, '15:00')).toBe(8);
+      } finally {
+        await hiker.dispose();
+      }
+    });
+
+    test('cancelling is possible even after the slot has ended', async ({ page, playwright }) => {
+      const hiker = await playwright.request.newContext();
+      try {
+        await apiLogin(hiker, MARIO);
+        const id = await ensureBooking(hiker, '16:00', 2);
+        await login(page, MARIO);
+        // 20:00 UTC is 21:00 or 22:00 in the hut, after the 16:00 - 17:00 slot
+        await page.clock.setFixedTime(at('20:00'));
+        const card = await openCard(page, id);
+
+        await expect(card.getByRole('button', { name: 'Change booking' })).toBeDisabled();
+        await card.getByRole('button', { name: 'Cancel booking' }).click();
+        await confirmation(page).getByRole('button', { name: 'Yes, cancel booking' }).click();
+
+        await expect(card.getByText('Cancelled', { exact: true })).toBeVisible();
+        expect(await freeSeats(hiker, '16:00')).toBe(8);
+      } finally {
+        await hiker.dispose();
+      }
+    });
   });
 });
