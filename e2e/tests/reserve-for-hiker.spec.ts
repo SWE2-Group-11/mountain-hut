@@ -77,16 +77,14 @@ async function expectAvailableSeats(page: Page, date: string, count: number) {
   ]));
 }
 
-async function expectBookingInHikerAccount(
-  request: APIRequestContext,
-  date: string,
-  email: string,
-  password: string,
-) {
+async function signInHiker(request: APIRequestContext, email: string, password: string) {
   // The request fixture has a separate session from the browser used by staff.
   const login = await request.post(`${API}/session`, { data: { email, password } });
   await expect(login).toBeOK();
+  return login;
+}
 
+async function expectBookingInHikerAccount(request: APIRequestContext, date: string) {
   const bookings = await request.get(`${API}/reservations`);
   await expect(bookings).toBeOK();
   expect(await bookings.json()).toEqual(expect.arrayContaining([
@@ -118,7 +116,8 @@ test.describe('Reserve for a hiker (MH-07)', () => {
 
     await expectReceipt(page, HIKER_NAME);
     await expect(page.getByText('Initial password', { exact: true })).toHaveCount(0);
-    await expectBookingInHikerAccount(request, date, HIKER, PASSWORD);
+    await signInHiker(request, HIKER, PASSWORD);
+    await expectBookingInHikerAccount(request, date);
   });
 
   test('a warden books for a quick guest without creating an account', async ({ page }, testInfo) => {
@@ -159,7 +158,16 @@ test.describe('Reserve for a hiker (MH-07)', () => {
     await expectReceipt(page, name);
     const password = page.getByRole('status').filter({ hasText: 'Initial password' }).locator('code');
     await expect(password).toHaveText(/\S+/);
-    await expectBookingInHikerAccount(request, date, email, await password.innerText());
+    const initialPassword = await password.innerText();
+    const login = await signInHiker(request, email, initialPassword);
+    expect(await login.json()).toMatchObject({ must_change_password: true });
+
+    const passwordChange = await request.put(`${API}/accounts/current/password`, {
+      data: { current_password: initialPassword, new_password: `Guest-${randomUUID()}` },
+    });
+    await expect(passwordChange).toBeOK();
+    expect(await passwordChange.json()).toMatchObject({ must_change_password: false });
+    await expectBookingInHikerAccount(request, date);
   });
 
   test('a duplicate booking is refused without taking more seats', async ({ page }, testInfo) => {
