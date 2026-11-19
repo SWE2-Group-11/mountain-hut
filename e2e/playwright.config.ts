@@ -12,7 +12,10 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  // In CI the JSON results are also saved for the retrospective report (retro-report.yml)
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never' }], ['json', { outputFile: '../test-results/e2e.json' }]]
+    : 'list',
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
