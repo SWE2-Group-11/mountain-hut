@@ -127,6 +127,10 @@ test.describe('Repeat a weekly schedule (MH-09)', () => {
     for (const offset of [2, 3, 4, 5]) {
       await expect(targetWeek(page, weekStart(offset))).toBeChecked();
     }
+    await sourcePicker(page).selectOption(weekStart(2));
+    await expect(targetWeek(page, weekStart(2))).not.toBeChecked();
+    await expect(targetWeek(page, weekStart(2))).toBeDisabled();
+    await page.getByRole('button', { name: 'Clear', exact: true }).click();
     await expect(targets.getByRole('checkbox', { checked: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Copy schedule' })).toBeDisabled();
   });
