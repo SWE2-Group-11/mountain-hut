@@ -38,6 +38,8 @@ const CREATED: CreateReservationResponseDTO = {
     requirements: [{ hasAllergies: true, details: "No peanuts" }]
 };
 
+const RESERVATION_WITH_MENU = { ...CREATED, menu: "**Lunch**\n- Soup" };
+
 // Who is logged in for the current test (undefined = nobody)
 let currentUser: Express.User | undefined;
 
@@ -57,7 +59,7 @@ beforeEach(() => {
     currentUser = HIKER;
     vi.mocked(createReservation).mockReturnValue(CREATED);
     vi.mocked(getReservations).mockReturnValue([]);
-    vi.mocked(updateReservation).mockReturnValue(CREATED);
+    vi.mocked(updateReservation).mockReturnValue(RESERVATION_WITH_MENU);
 });
 
 afterEach(() => vi.resetAllMocks());
@@ -170,7 +172,7 @@ describe("GET /reservations — route", () => {
     });
 
     it.each([
-        { label: "reservations", reservations: [CREATED] },
+        { label: "reservations", reservations: [RESERVATION_WITH_MENU] },
         { label: "an empty list", reservations: [] },
     ])("returns $label from the controller", async ({ reservations }) => {
         vi.mocked(getReservations).mockReturnValue(reservations);
@@ -259,12 +261,12 @@ describe("PATCH /reservations/:reservationId — route", () => {
                 { partySize: 4 }
             );
             expect(res.status).toBe(200);
-            expect(res.body).toEqual(CREATED);
+            expect(res.body).toEqual(RESERVATION_WITH_MENU);
         }
     );
 
     it("accepts an empty requirements array", async () => {
-        const updated = { ...CREATED, requirements: [] };
+        const updated = { ...RESERVATION_WITH_MENU, requirements: [] };
         vi.mocked(updateReservation).mockReturnValue(updated);
 
         const res = await request(app)

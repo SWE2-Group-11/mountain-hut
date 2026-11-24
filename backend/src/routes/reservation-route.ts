@@ -15,6 +15,7 @@ import {
     ReservationIdParamsSchema,
     UpdateReservationRequestSchema,
     UpdateReservationResponseDTO,
+    ReservationWithMenuResponseDTO,
 } from "../models/dto/reservation-dto";
 import { requireRole } from "../services/auth-service";
 import { sendAppError } from "../services/error-service";
@@ -42,7 +43,7 @@ router.post("/",
 });
 
 // Active reservations of the logged-in hiker
-router.get("/", requireRole("hiker"), (req: Request, res: Response<CreateReservationResponseDTO[]>) => {
+router.get("/", requireRole("hiker"), (req: Request, res: Response<ReservationWithMenuResponseDTO[]>) => {
     try {
         res.json(getReservations(req.user!.id));
     } catch (err) {

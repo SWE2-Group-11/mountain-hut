@@ -4,7 +4,7 @@ import { app } from "../../app";
 import { db } from "../../database/database";
 import {
     resetTestDatabase, dayFromToday, huTime, loginAs, createHikerWithoutBookings,
-    MARIO, LAURA, EMPLOYEE, NEW_HIKER,
+    MARIO, LAURA, EMPLOYEE, NEW_HIKER, ALPINE_MENU, DINNER_MENU,
 } from "../helpers";
 
 /*
@@ -275,6 +275,7 @@ describe("PATCH /api/v1/reservations/:reservationId", () => {
                 partySize: 4,
                 seatings: [{ table_number: 1, assigned_seats: 4 }],
                 requirements,
+                menu: DINNER_MENU,
             });
             expect(requirementsOf(3)).toEqual(requirements);
             expect(seatsOf(3)).toEqual([{ date: D1, slot: "19:30", table_number: 1, assigned_seats: 4 }]);
@@ -444,6 +445,7 @@ describe("PATCH /api/v1/reservations/:reservationId", () => {
                 partySize: 2,
                 seatings: [{ table_number: 4, assigned_seats: 2 }],
                 requirements: [],
+                menu: ALPINE_MENU,
             });
             expect(seatsOf(1)).toEqual([{ date: D1, slot: "13:00", table_number: 4, assigned_seats: 2 }]);
             expect(await availableSeats(D1, "12:00")).toBe(9);
@@ -459,7 +461,14 @@ describe("PATCH /api/v1/reservations/:reservationId", () => {
             const res = await mario.patch(`${RESERVATIONS_URL}/1`).send({ date: D2 });
 
             expect(res.status).toBe(200);
-            expect(res.body).toMatchObject({ date: D2, slot: "12:00", seatings: [{ table_number: 4, assigned_seats: 2 }] });
+            expect(res.body).toMatchObject({
+                date: D2, slot: "12:00", seatings: [{ table_number: 4, assigned_seats: 2 }], menu: null,
+            });
+            const list = await mario.get(RESERVATIONS_URL);
+            expect(list.status).toBe(200);
+            expect(list.body).toEqual(expect.arrayContaining([
+                expect.objectContaining({ id: 1, menu: null }),
+            ]));
             expect(seatsOf(1)).toEqual([{ date: D2, slot: "12:00", table_number: 4, assigned_seats: 2 }]);
             expect(await availableSeats(D2, "12:00")).toBe(11);
             expect(await availableSeats(D1, "12:00")).toBe(9);
@@ -472,7 +481,9 @@ describe("PATCH /api/v1/reservations/:reservationId", () => {
             const res = await mario.patch(`${RESERVATIONS_URL}/3`).send({ slot: "13:00", partySize: 5 });
 
             expect(res.status).toBe(200);
-            expect(res.body).toMatchObject({ slot: "13:00", partySize: 5, seatings: [{ table_number: 3, assigned_seats: 5 }] });
+            expect(res.body).toMatchObject({
+                slot: "13:00", partySize: 5, seatings: [{ table_number: 3, assigned_seats: 5 }], menu: ALPINE_MENU,
+            });
             expect(await availableSeats(D1, "19:30")).toBe(16);
             expect(await availableSeats(D1, "13:00")).toBe(11);
         });
@@ -628,11 +639,11 @@ describe("GET /api/v1/reservations", () => {
         expect(res.body).toEqual([
             {
                 id: 1, date: D1, slot: "12:00", partySize: 2,
-                seatings: [{ table_number: 4, assigned_seats: 2 }], requirements: [],
+                seatings: [{ table_number: 4, assigned_seats: 2 }], requirements: [], menu: ALPINE_MENU,
             },
             {
                 id: 3, date: D1, slot: "19:30", partySize: 4,
-                seatings: [{ table_number: 1, assigned_seats: 4 }], requirements: SHELLFISH,
+                seatings: [{ table_number: 1, assigned_seats: 4 }], requirements: SHELLFISH, menu: DINNER_MENU,
             },
         ]);
     });

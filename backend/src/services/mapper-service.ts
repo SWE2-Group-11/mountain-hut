@@ -48,7 +48,7 @@ export const accountEntityToResponseDTO = (account: Account): AccountResponseDTO
  * Maps a slot with its availability into a client-ready SlotDTO instance.
  */
 export const slotAvailabilityToSlotDTO = ({ slot, total_seats, available_seats }: SlotAvailability): SlotDTO => {
-    return new SlotDTO(slot.date, slot.start_time, slot.duration, total_seats, available_seats);
+    return new SlotDTO(slot.date, slot.start_time, slot.duration, total_seats, available_seats, slot.menu);
 };
 
 /**
@@ -81,7 +81,8 @@ export const bookingDataToCreateReservationResponseDTO = (
  * Converts a proposed assignment into the public availability response.
  */
 export const assignmentsToAvailabilityResponseDTO = (
-    assignments: Assignment[] | null
+    assignments: Assignment[] | null,
+    menu: string | null
 ): GetAvailabilityResponseDTO => {
     const available = (assignments ?? []).map(
         (assignment) => new AvailableTableDTO(
@@ -90,7 +91,7 @@ export const assignmentsToAvailabilityResponseDTO = (
         )
     );
 
-    return new GetAvailabilityResponseDTO(available);
+    return new GetAvailabilityResponseDTO(available, menu);
 };
 
 /**

@@ -14,6 +14,7 @@ import { inTransaction } from "../database/database";
 import {
     CreateReservationRequestDTO,
     CreateReservationResponseDTO,
+    ReservationWithMenuResponseDTO,
     UpdateReservationRequestDTO,
     UpdateReservationResponseDTO,
 } from "../models/dto/reservation-dto";
@@ -95,9 +96,13 @@ export const createReservation = (
  * Retrieves the authenticated hiker's active reservations.
  * @returns A list of the hiker's active reservations.
  */
-export const getReservations = (hiker_id: number): CreateReservationResponseDTO[] => {
+export const getReservations = (hiker_id: number): ReservationWithMenuResponseDTO[] => {
     const now = DateTime.now().setZone(HUT_TIMEZONE).toFormat("yyyy-MM-dd HH:mm");
-    return getActiveBookingsByHiker(hiker_id, now).map(reservationToResponseDTO);
+
+    return getActiveBookingsByHiker(hiker_id, now).map((reservation) => ({
+        ...reservationToResponseDTO(reservation),
+        menu: getSlot(reservation.date, reservation.start_time)?.menu ?? null,
+    }));
 };
 
 /** The route validates the query and authorizes employee/warden first. 
@@ -290,7 +295,7 @@ export const updateReservation = (
             ? reservation.dietary_requirements
             : replaceRequirements(reservation_id, requirementDTOsToInputs(request.requirements));
 
-        return reservationToResponseDTO({
+        const updatedReservation = reservationToResponseDTO({
             ...reservation,
             date,
             start_time,
@@ -298,6 +303,8 @@ export const updateReservation = (
             seatings,
             dietary_requirements,
         });
+
+        return {...updatedReservation, menu: slot.menu};
     });
 
     // Only after the commit: a refused or rolled back change must not be notified

@@ -462,6 +462,8 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
 
     describe("date and time", () => {
         it("moves the booking: releases the seats and assigns the new slot with the same party size", () => {
+            const menu = "**Dinner**\n- Soup";
+            vi.mocked(getSlot).mockReturnValue(new Slot(NEW_DATE, NEW_START, 60, menu));
             vi.mocked(getBookingAvailability).mockReturnValue(seatsOf([2, 4]));
 
             const response = update({ date: NEW_DATE, slot: NEW_START });
@@ -472,7 +474,7 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
             expect(insertSeatings).toHaveBeenCalledExactlyOnceWith(RES_ID, NEW_DATE, NEW_START, seatsOf([2, 4]));
             expect(response).toEqual({
                 id: RES_ID, date: NEW_DATE, slot: NEW_START, partySize: 4,
-                seatings: seatsOf([2, 4]), requirements: [],
+                seatings: seatsOf([2, 4]), requirements: [], menu,
             });
         });
 

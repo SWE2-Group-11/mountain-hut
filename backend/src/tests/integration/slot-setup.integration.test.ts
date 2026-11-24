@@ -126,7 +126,7 @@ describe("POST /slots - a slot with new tables", () => {
 
         // The public endpoint of the booking page, no login
         expect(await slotsOfDay(DAY)).toEqual([
-            { date: DAY, start_time: "12:00", duration: 90, total_seats: 10, available_seats: 10 },
+            { date: DAY, start_time: "12:00", duration: 90, total_seats: 10, available_seats: 10, menu: null },
         ]);
     });
 
@@ -139,7 +139,7 @@ describe("POST /slots - a slot with new tables", () => {
         const after = await slotsOfDay(TOMORROW);
         expect(after).toEqual([
             ...before,
-            { date: TOMORROW, start_time: "22:00", duration: 60, total_seats: 10, available_seats: 10 },
+            { date: TOMORROW, start_time: "22:00", duration: 60, total_seats: 10, available_seats: 10, menu: null },
         ]);
     });
 
@@ -514,7 +514,7 @@ describe("from the slot an employee defines to the booking a hiker makes", () =>
         expect(seated.reduce((sum, s) => sum + s.assigned_seats, 0)).toBe(7);
         expect(seated.every((s) => [1, 2].includes(s.table_number))).toBe(true);
         expect(await slotsOfDay(DAY)).toEqual([
-            { date: DAY, start_time: "12:00", duration: 90, total_seats: 10, available_seats: 3 },
+            { date: DAY, start_time: "12:00", duration: 90, total_seats: 10, available_seats: 3, menu: null },
         ]);
     });
 
@@ -607,7 +607,7 @@ describe("a slot the employee defines, seen through the availability check", () 
         const res = await request(app).get(AVAILABILITY).query({ date: DAY, slot: "12:00", partySize: 11 });
 
         expect(res.status).toBe(200);
-        expect(res.body).toEqual({ available: [] });
+        expect(res.body).toEqual({ available: [], menu: null });
     });
 
     it("answers 404 for a slot nobody has defined", async () => {
@@ -626,7 +626,7 @@ describe("a slot the employee defines, seen through the availability check", () 
         const tooBig = await request(app).get(AVAILABILITY).query({ date: DAY, slot: "12:00", partySize: 4 });
 
         expect(fits.body.available).not.toEqual([]);
-        expect(tooBig.body).toEqual({ available: [] });
+        expect(tooBig.body).toEqual({ available: [], menu: null });
     });
 });
 

@@ -213,7 +213,7 @@ describe("POST /slots/copy-week - copying a week", () => {
         expect(snapshot().seats.length).toBe(5 + 2); // the 5 seeded seatings and the 2 added to the source
         // The public endpoint of the booking page, no login
         expect((await request(app).get(SLOTS).query({ date: TARGET })).body).toEqual([
-            { date: TARGET, start_time: "12:00", duration: 60, total_seats: 10, available_seats: 10 },
+            { date: TARGET, start_time: "12:00", duration: 60, total_seats: 10, available_seats: 10, menu: null },
         ]);
     });
 
@@ -227,7 +227,7 @@ describe("POST /slots/copy-week - copying a week", () => {
 
         expect(res.status).toBe(201);
         expect((await request(app).get(SLOTS).query({ date: wednesday })).body).toEqual([
-            { date: wednesday, start_time: "19:30", duration: 90, total_seats: 10, available_seats: 4 },
+            { date: wednesday, start_time: "19:30", duration: 90, total_seats: 10, available_seats: 4, menu: null },
         ]);
     });
 

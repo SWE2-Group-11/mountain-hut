@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import request from "supertest";
 import { app } from "../../app";
-import { resetTestDatabase, dayFromToday, huTime, loginAs, MARIO } from "../helpers";
+import { resetTestDatabase, dayFromToday, huTime, loginAs, MARIO, ALPINE_MENU, DINNER_MENU } from "../helpers";
 
 const SLOTS_URL = "/api/v1/slots";
 
@@ -17,14 +17,14 @@ describe("GET /api/v1/slots", () => {
         vi.useRealTimers();
     });
 
-    it("is public and lists the bookable slots of a day with their seats", async () => {
+    it("is public and lists the bookable slots of a day with their seats and menus", async () => {
         const res = await request(app).get(SLOTS_URL).query({ date: tomorrow });
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual([
-            { date: tomorrow, start_time: "12:00", duration: 60, total_seats: 16, available_seats: 7 },
-            { date: tomorrow, start_time: "13:00", duration: 60, total_seats: 16, available_seats: 16 },
-            { date: tomorrow, start_time: "19:30", duration: 90, total_seats: 16, available_seats: 12 },
+            { date: tomorrow, start_time: "12:00", duration: 60, total_seats: 16, available_seats: 7, menu: ALPINE_MENU },
+            { date: tomorrow, start_time: "13:00", duration: 60, total_seats: 16, available_seats: 16, menu: ALPINE_MENU },
+            { date: tomorrow, start_time: "19:30", duration: 90, total_seats: 16, available_seats: 12, menu: DINNER_MENU },
         ]);
     });
 
@@ -33,7 +33,7 @@ describe("GET /api/v1/slots", () => {
 
         expect(res.status).toBe(200);
         expect(res.body).toHaveLength(1);
-        expect(res.body[0]).toMatchObject({ start_time: "12:00", available_seats: 13 });
+        expect(res.body[0]).toMatchObject({ start_time: "12:00", available_seats: 13, menu: null });
     });
 
     it("returns an empty list when the day has no slots", async () => {
