@@ -84,9 +84,23 @@ Base URL: `http://localhost:3000/api/v1`
 - **Query parameters:**
   - `date`: required date, formatted `YYYY-MM-DD`
 - **Responses:**
-  - `200 OK`: returns the list of the available slots; returns `[]` if no slots are available
+  - `200 OK` returns the bookable slots for the day, ordered by start time, or `[]` if none are bookable. Each slot includes `date`, `start_time`, `duration` in minutes, `total_seats`, `available_seats`, and `menu`. The `menu` field contains the original Markdown string or `null` if no menu has been set.
   - `400 Bad Request`: missing date or invalid date
   - `500 Internal Server Error`: unexpected server error
+
+### GET /slots/availability - Check availability for a party
+
+- Checks whether a party can be seated in the selected slot and proposes a table arrangement.
+- This endpoint is public.
+- **Query parameters**
+  - `date` is required in `YYYY-MM-DD` format.
+  - `slot` is the required start time in `HH:mm` format.
+  - `partySize` is required as a positive safe integer in decimal digits, without leading zeros.
+- **Responses**
+  - `200 OK` returns an object with `available` and `menu`. Each item in `available` contains `tableId` and `assignedSeats`. The array is empty when booking has closed for the slot or the party cannot be seated. The `menu` field contains the original Markdown string or `null` if no menu has been set.
+  - `400 Bad Request` indicates a missing or invalid query parameter.
+  - `404 Not Found` indicates that the requested slot does not exist.
+  - `500 Internal Server Error` indicates an unexpected server error.
 
 ### GET /slots/configurations - Get saved slots configurations
 
@@ -193,7 +207,7 @@ Base URL: `http://localhost:3000/api/v1`
     - `details`: required string describing dietary restrictions or preferences
   - At least one field must be provided
 - **Responses:**
-  - `200 OK`: returns the updated reservation (`id`, `date`, `slot`, `partySize`, `seatings`, `requirements`)
+  - `200 OK` returns the updated reservation (`id`, `date`, `slot`, `partySize`, `seatings`, `requirements`, `menu`). The `menu` field contains the original Markdown for the slot after the update, or `null` if no menu has been set.
   - `400 Bad Request`: invalid `reservationId`, empty body, invalid fields, change attempted less than 48 hours before the original slot, or requested slot starting in less than 2 hours
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user is not a hiker, or the reservation belongs to another user
@@ -207,7 +221,7 @@ Base URL: `http://localhost:3000/api/v1`
 - **Authentication:** required
 - **Permissions:** hiker
 - **Responses:**
-  - `200 OK`: returns the reservations ordered by slot date and time, each with `id`, `date`, `slot`, `partySize`, `seatings`, `requirements`; returns `[]` if no reservations match
+  - `200 OK` returns the reservations ordered by slot date and time, or `[]` if none match. Each reservation includes `id`, `date`, `slot`, `partySize`, `seatings`, `requirements`, and `menu`. The `menu` field contains the original Markdown for the booked slot, or `null` if no menu has been set.
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user is not a hiker
   - `500 Internal Server Error`: unexpected server error
