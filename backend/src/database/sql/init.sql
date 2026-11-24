@@ -89,3 +89,46 @@ CREATE TABLE dietary_requirement (
     allergy_flag INTEGER NOT NULL CHECK (allergy_flag IN (0, 1)),
     description  TEXT    NOT NULL
 );
+
+-- Hikes registered by hikers before departure
+CREATE TABLE hike (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    hiker_id            INTEGER NOT NULL REFERENCES hiker(account_id) ON DELETE CASCADE,
+    destination         TEXT    NOT NULL CHECK (trim(destination) <> ''),
+    route               TEXT    NOT NULL CHECK (trim(route) <> ''),
+    expected_arrival_at TEXT    NOT NULL CHECK (expected_arrival_at IS strftime('%Y-%m-%dT%H:%M:%SZ', expected_arrival_at)),
+    departed_at         TEXT             CHECK (departed_at IS NULL OR departed_at IS strftime('%Y-%m-%dT%H:%M:%SZ', departed_at)),
+    arrived_at          TEXT             CHECK (arrived_at IS NULL OR arrived_at IS strftime('%Y-%m-%dT%H:%M:%SZ', arrived_at)),
+    -- Arrival can be set only after departure
+    CHECK (arrived_at IS NULL OR (departed_at IS NOT NULL AND arrived_at > departed_at))
+);
+
+-- Intermediate passage points of a registered hike, in route order
+CREATE TABLE passage_point (
+    hike_id  INTEGER NOT NULL REFERENCES hike(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL CHECK (position >= 1),
+    name     TEXT    NOT NULL CHECK (trim(name) <> ''),
+    PRIMARY KEY (hike_id, position)
+);
+
+-- Predefined hikes a hiker can start from
+CREATE TABLE popular_hike (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    destination TEXT    NOT NULL CHECK (trim(destination) <> ''),
+    route       TEXT    NOT NULL CHECK (trim(route) <> '')
+);
+
+-- Passage points shared among popular hikes
+CREATE TABLE pop_passage_point (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT    NOT NULL CHECK (trim(name) <> '')
+);
+
+-- Passage points of each popular hike, in route order
+CREATE TABLE has_pop_passage_point (
+    popular_hike_id      INTEGER NOT NULL REFERENCES popular_hike(id) ON DELETE CASCADE,
+    pop_passage_point_id INTEGER NOT NULL REFERENCES pop_passage_point(id),
+    position             INTEGER NOT NULL CHECK (position >= 1),
+    PRIMARY KEY (popular_hike_id, pop_passage_point_id),
+    UNIQUE (popular_hike_id, position)
+);
