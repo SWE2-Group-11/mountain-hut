@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DateSchema, TimeSchema } from "./slot-dto";
+import { DateSchema, TimeSchema, GetConfigurationsRequestSchema } from "./slot-dto";
 
 export const DefineMenuRequestSchema = z.object({
     date: DateSchema,
@@ -10,16 +10,7 @@ export const DefineMenuRequestSchema = z.object({
 
 export type DefineMenuRequestDTO = z.infer<typeof DefineMenuRequestSchema>;
 
-export const GetReusableMenusRequestSchema = z
-    .object({
-        from: DateSchema.optional(),
-        to: DateSchema.optional(),
-        limit: z.coerce.number().int().positive().max(100).default(20),
-    })
-    .refine(({ from, to }) => !from || !to || from <= to, {
-        path: ["from"],
-        message: "from must not be after to",
-    });
+export const GetReusableMenusRequestSchema = GetConfigurationsRequestSchema;
 
 export type GetReusableMenusRequestDTO = z.infer<typeof GetReusableMenusRequestSchema>;
 
