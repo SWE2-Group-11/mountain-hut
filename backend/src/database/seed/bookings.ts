@@ -32,17 +32,8 @@ type Guest =
     | { kind: "hiker"; account_id: number; full_name: string }
     | { kind: "temporary"; full_name: string; mobile_number: string | null };
 
-/** Title of a Markdown menu for the log: its first line without emphasis marks, e.g. "Alpine Menu". */
-const menuTitle = (menu: string | null): string =>
-    menu === null ? "no menu" : menu.split("\n")[0].replace(/[*_]/g, "").trim();
-
-const guestLabel = (guest: Guest): string =>
-    guest.kind === "hiker"
-        ? `Hiker ${guest.account_id} (${guest.full_name})`
-        : `Temporary hiker ${guest.full_name}`;
-
 /**
- * Inserts random bookings for every guest, logging the slots and what it creates.
+ * Inserts random bookings for every guest.
  * @param db The database being seeded, inside the reset transaction.
  * @param random Source of randomness in [0, 1), injectable for testing.
  */
@@ -75,13 +66,6 @@ export const insertRandomBookings = (db: Database.Database, random: Random = Mat
 
     const capacityOf = (tables: TableAvailability[]) => tables.reduce((sum, t) => sum + t.seats, 0);
 
-    console.log("Seeding demo bookings. Slots:");
-    for (const slot of slots) {
-        const tables = tablesOf.all(slot.date, slot.start_time);
-        const layout = tables.map((t) => `T${t.table_number}=${t.seats}`).join(", ");
-        console.log(`  ${slot.date} ${slot.start_time}: ${capacityOf(tables)} seats (${layout}); menu: ${menuTitle(slot.menu)}`);
-    }
-
     // Some hikers with an account and some temporary hikers, at least one of each
     const guests: Guest[] = [
         ...pickSome(random, hikers).map((h) => ({ kind: "hiker" as const, ...h })),
@@ -91,21 +75,16 @@ export const insertRandomBookings = (db: Database.Database, random: Random = Mat
     // Random order, so the first guests do not always fill the slots
     for (const guest of pickDistinct(random, guests, guests.length)) {
         const chosen = pickDistinct(random, slots, randomInt(random, 0, slots.length));
-        console.log(`${guestLabel(guest)}: ${chosen.length} slot(s)`);
 
         for (const slot of chosen) {
-            const where = `${slot.date} ${slot.start_time}`;
             const tables = tablesOf.all(slot.date, slot.start_time);
             const capacity = capacityOf(tables);
             if (capacity === 0) {
-                console.log(`  ${where}: skipped, no tables`);
                 continue;
             }
             const party_size = randomInt(random, 1, Math.max(1, Math.floor(capacity / 2)));
             const assignment = assignSeats(tables, party_size);
             if (!assignment) {
-                const free = tables.reduce((sum, t) => sum + t.free_seats, 0);
-                console.log(`  ${where}: party of ${party_size} skipped, only ${free} free seats`);
                 continue;
             }
 
@@ -121,10 +100,6 @@ export const insertRandomBookings = (db: Database.Database, random: Random = Mat
             for (const r of requirements) {
                 insertRequirement.run(booking_id, r.allergy_flag, r.description);
             }
-
-            const seating = assignment.map((a) => `T${a.table_number} x${a.assigned_seats}`).join(", ");
-            const diet = requirements.map((r) => r.description).join(", ") || "none";
-            console.log(`  ${where}: booking ${booking_id}, party of ${party_size} at ${seating}; requirements: ${diet}`);
         }
     }
 };

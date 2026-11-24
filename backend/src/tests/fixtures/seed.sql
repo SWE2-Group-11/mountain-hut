@@ -64,3 +64,22 @@ INSERT INTO dietary_requirement (booking_id, allergy_flag, description) VALUES
     (2, 1, '1 vegan, peanut allergy'),
     (2, 0, '2 vegetarians'),
     (3, 1, '1 shellfish allergy');
+
+-- Hikes: one per state (active, registered, overdue, completed). Times are UTC and relative to now.
+INSERT INTO hike (id, hiker_id, destination, route, expected_arrival_at, departed_at, arrived_at) VALUES
+    (1, 3, 'Viso Mozzo', 'via the Chiaretto lake',
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+4 hours'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-2 hours'), NULL),
+    (2, 4, 'Monte Granero', 'along the ridge from the hut',
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+1 day'), NULL, NULL),
+    (3, 4, 'Colle delle Traversette', 'via the Po springs',
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 hour'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-6 hours'), NULL),
+    (4, 3, 'Chiaretto lake', 'short loop from the hut',
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-21 hours'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-24 hours'),
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-22 hours'));
+
+-- Passage points of the hikes, in route order
+INSERT INTO passage_point (hike_id, position, name) VALUES
+    (1, 1, 'Pian del Re'),
+    (1, 2, 'Chiaretto lake'),
+    (3, 1, 'Pian del Re'),
+    (3, 2, 'Fiorenza lake');
