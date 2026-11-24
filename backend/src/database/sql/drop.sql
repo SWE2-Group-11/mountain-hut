@@ -1,5 +1,10 @@
 PRAGMA foreign_keys = ON;
 
+DROP TABLE IF EXISTS has_pop_passage_point;
+DROP TABLE IF EXISTS pop_passage_point;
+DROP TABLE IF EXISTS popular_hike;
+DROP TABLE IF EXISTS passage_point;
+DROP TABLE IF EXISTS hike;
 DROP TABLE IF EXISTS dietary_requirement;
 DROP TABLE IF EXISTS seated_at;
 DROP TABLE IF EXISTS temporary_hiker;
