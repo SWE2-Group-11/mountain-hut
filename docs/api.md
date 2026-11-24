@@ -184,7 +184,9 @@ Base URL: `http://localhost:3000/api/v1`
     - `{ "mode": "registered", "fullname", "mobile_number", "email", "notes"?, "emergency_contact"? }`: creates a hiker account (with a generated initial password that must be changed) and books for it
 - **Rules for staff:** the booking is allowed until the slot starts (the 2-hour cutoff applies only to hikers); no confirmation email is sent
 - **Responses:**
-  - `201 Created`: booking created; returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) including the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`). For staff, also `hikerId` (`null` for a temporary hiker) and, only in `registered` mode, `initialPassword` to deliver to the hiker
+  - `201 Created` returns the booking details (`id`, `date`, `slot`, `partySize`, `seatings`) and the declared dietary requirements (`requirements`, each with `hasAllergies` and `details`).
+    - For hikers, `menu` contains the booked slot's original Markdown or `null` if no menu has been set. The booking confirmation screen can use this field.
+    - For staff, the response includes `hikerId` (`null` for a temporary hiker) and, in `registered` mode, `initialPassword` to deliver to the hiker.
   - `400 Bad Request`: missing or invalid request fields (including missing or empty `details` in a requirement, or a missing/invalid `hiker` in a staff request), slot that does not exist (hiker), slot that starts in less than 2 hours (hiker), or slot that has already started (staff)
   - `401 Unauthorized`: user is not authenticated
   - `404 Not Found`: (staff) the slot or the `existing` hiker does not exist

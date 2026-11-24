@@ -89,7 +89,7 @@ beforeEach(() => {
     vi.resetAllMocks();
     vi.spyOn(errorService, "sendAppError");
     currentUser = EMPLOYEE;
-    vi.mocked(createReservation).mockReturnValue(RESERVATION);
+    vi.mocked(createReservation).mockReturnValue({ ...RESERVATION, menu: null });
     vi.mocked(createStaffReservation).mockReturnValue(STAFF_CREATED);
     vi.mocked(searchStaffHikers).mockReturnValue(HIKERS_FOUND);
 });

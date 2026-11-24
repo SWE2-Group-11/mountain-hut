@@ -3,7 +3,7 @@ import request from "supertest";
 import { app } from "../../app";
 import {
     resetTestDatabase, dayFromToday, huTime, loginAs, createHikerWithoutBookings,
-    MARIO, LAURA, NEW_HIKER,
+    MARIO, LAURA, NEW_HIKER, ALPINE_MENU,
 } from "../helpers";
 
 const RESERVATIONS_URL = "/api/v1/reservations";
@@ -136,7 +136,7 @@ describe("POST /api/v1/reservations", () => {
     });
 
     describe("successful booking (201)", () => {
-        it("returns the booking with the seats assigned", async () => {
+        it("returns the booking with the assigned seats and the slot menu", async () => {
             const mario = await loginAs(MARIO);
 
             const res = await mario.post(RESERVATIONS_URL).send(book("13:00", 2));
@@ -149,7 +149,17 @@ describe("POST /api/v1/reservations", () => {
                 partySize: 2,
                 seatings: [{ table_number: 4, assigned_seats: 2 }], // smallest table that fits
                 requirements: [],
+                menu: ALPINE_MENU,
             });
+        });
+
+        it("returns a null menu when the booked slot has no menu", async () => {
+            const mario = await loginAs(MARIO);
+
+            const res = await mario.post(RESERVATIONS_URL).send(book("12:00", 2, dayFromToday(2)));
+
+            expect(res.status).toBe(201);
+            expect(res.body.menu).toBeNull();
         });
 
         it("keeps the party together on the smallest table that fits", async () => {
@@ -224,6 +234,7 @@ describe("POST /api/v1/reservations", () => {
                 partySize: 4,
                 seatings: [{ table_number: 1, assigned_seats: 4 }],
                 requirements,
+                menu: expect.any(String),
             });
         });
 

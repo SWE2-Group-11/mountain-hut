@@ -62,7 +62,7 @@ import { notifyBookingChanged } from "../notifications/booking-change";
 export const createReservation = (
     hiker_id: number,
     request: CreateReservationRequestDTO
-): CreateReservationResponseDTO => {
+): ReservationWithMenuResponseDTO => {
     const slot = getSlot(request.date, request.slot);
     if (!slot) {
         throw new BadRequestError("The selected date and time are not available");
@@ -87,9 +87,14 @@ export const createReservation = (
 
     notifyBookingCreated(result.booking.id);
 
-    return bookingDataToCreateReservationResponseDTO(
-        result.booking, result.seatings, result.dietary_requirements, slot.date, slot.start_time
+    const reservation = bookingDataToCreateReservationResponseDTO(
+        result.booking,
+        result.seatings,
+        result.dietary_requirements,
+        slot.date,
+        slot.start_time,
     );
+    return {...reservation, menu: slot.menu};
 };
 
 /**

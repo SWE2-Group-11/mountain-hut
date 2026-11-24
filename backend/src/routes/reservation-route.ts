@@ -32,7 +32,7 @@ router.post("/",
     requireRole("hiker", "employee", "warden"),
     (req: Request, res: Response, next: NextFunction) =>
         (req.user!.role === "hiker" ? validateHikerReservation : validateStaffReservation)(req, res, next),
-    (req: Request, res: Response<CreateReservationResponseDTO | CreateStaffReservationResponseDTO>) => {
+    (req: Request, res: Response<ReservationWithMenuResponseDTO | CreateStaffReservationResponseDTO>) => {
     try {
         res.status(201).json(req.user!.role === "hiker"
             ? createReservation(req.user!.id, req.body)
