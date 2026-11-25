@@ -50,10 +50,12 @@ const printSeedSummary = (db: Database.Database): void => {
     console.log("Hikers:");
     for (const h of all<{ full_name: string; hikes: string | null }>(`
         SELECT h.full_name, group_concat(k.destination || ' (' || CASE
-                   WHEN k.arrived_at IS NOT NULL THEN 'completed'
-                   WHEN k.departed_at IS NOT NULL THEN 'active'
-                   ELSE 'registered' END || ')', ', ') AS hikes
+                   WHEN k.completed_at < k.planned_departure_at THEN 'cancelled'
+                   WHEN k.completed_at IS NOT NULL THEN 'completed'
+                   WHEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now') < k.planned_departure_at THEN 'registered'
+                   WHEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now') > k.expected_return_at THEN 'overdue'
+                   ELSE 'active' END || ')', ', ') AS hikes
         FROM hiker h LEFT JOIN hike k ON k.hiker_id = h.account_id
-        GROUP BY h.account_id ORDER BY h.account_id`))
+        GROUP BY h.account_id, h.full_name ORDER BY h.account_id`))
         console.log(`  ${h.full_name}: ${h.hikes ?? "no hikes"}`);
 };
