@@ -92,15 +92,15 @@ CREATE TABLE dietary_requirement (
 
 -- Hikes registered by hikers before departure
 CREATE TABLE hike (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    hiker_id            INTEGER NOT NULL REFERENCES hiker(account_id) ON DELETE CASCADE,
-    destination         TEXT    NOT NULL CHECK (trim(destination) <> ''),
-    route               TEXT    NOT NULL CHECK (trim(route) <> ''),
-    expected_arrival_at TEXT    NOT NULL CHECK (expected_arrival_at IS strftime('%Y-%m-%dT%H:%M:%SZ', expected_arrival_at)),
-    departed_at         TEXT             CHECK (departed_at IS NULL OR departed_at IS strftime('%Y-%m-%dT%H:%M:%SZ', departed_at)),
-    arrived_at          TEXT             CHECK (arrived_at IS NULL OR arrived_at IS strftime('%Y-%m-%dT%H:%M:%SZ', arrived_at)),
-    -- Arrival can be set only after departure
-    CHECK (arrived_at IS NULL OR (departed_at IS NOT NULL AND arrived_at > departed_at))
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    hiker_id             INTEGER NOT NULL REFERENCES hiker(account_id) ON DELETE CASCADE,
+    destination          TEXT    NOT NULL CHECK (trim(destination) <> ''),
+    route                TEXT    NOT NULL CHECK (trim(route) <> ''),
+    planned_departure_at TEXT    NOT NULL CHECK (planned_departure_at IS strftime('%Y-%m-%dT%H:%M:%SZ', planned_departure_at)),
+    expected_return_at   TEXT    NOT NULL CHECK (expected_return_at IS strftime('%Y-%m-%dT%H:%M:%SZ', expected_return_at)),
+    -- Before planned_departure_at it means the hike was cancelled
+    completed_at         TEXT             CHECK (completed_at IS NULL OR completed_at IS strftime('%Y-%m-%dT%H:%M:%SZ', completed_at)),
+    CHECK (expected_return_at > planned_departure_at)
 );
 
 -- Intermediate passage points of a registered hike, in route order

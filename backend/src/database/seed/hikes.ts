@@ -9,11 +9,11 @@ import { pickOne, pickSome, type Random } from "./random";
 
 const DEMO_HIKES = [
     { destination: "Viso Mozzo", route: "via the Chiaretto lake", points: ["Pian del Re", "Chiaretto lake"],
-      expected: 4, departed: -2, arrived: null },            // active
+      departure: -2, return: 4 },          // active
     { destination: "Colle delle Traversette", route: "via the Po springs", points: ["Pian del Re", "Fiorenza lake"],
-      expected: -1, departed: -6, arrived: null },           // active, overdue
+      departure: -6, return: -1 },         // active, overdue
     { destination: "Monte Granero", route: "along the ridge from the hut", points: [],
-      expected: 24, departed: null, arrived: null },         // registered, not departed yet
+      departure: 24, return: 30 },         // registered
 ] as const;
 
 const at = (hours: number | null): string | null =>
@@ -26,13 +26,13 @@ const at = (hours: number | null): string | null =>
  */
 export const insertRandomHikes = (db: Database.Database, random: Random = Math.random): void => {
     const hikers = db.prepare<[], { account_id: number }>("SELECT account_id FROM hiker").all();
-    const insertHike = db.prepare(`INSERT INTO hike (hiker_id, destination, route, expected_arrival_at, departed_at, arrived_at)
-                                   VALUES (?, ?, ?, ?, ?, ?)`);
+    const insertHike = db.prepare(`INSERT INTO hike (hiker_id, destination, route, planned_departure_at, expected_return_at)
+                                   VALUES (?, ?, ?, ?, ?)`);
     const insertPoint = db.prepare("INSERT INTO passage_point (hike_id, position, name) VALUES (?, ?, ?)");
 
     for (const { account_id } of pickSome(random, hikers)) {
         const h = pickOne(random, DEMO_HIKES);
-        const { lastInsertRowid: id } = insertHike.run(account_id, h.destination, h.route, at(h.expected), at(h.departed), at(h.arrived));
+        const { lastInsertRowid: id } = insertHike.run(account_id, h.destination, h.route, at(h.departure), at(h.return));
         h.points.forEach((name, i) => insertPoint.run(id, i + 1, name));
     }
 };

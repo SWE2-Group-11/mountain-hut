@@ -23,7 +23,7 @@ Primary keys in **bold**, `*` = nullable.
 - temporary_hiker(**booking_id** → booking, full_name, mobile_number\*)
 - seated_at(**booking_id** → booking, **(slot_date, slot_start_time, table_number)** → slot_table, assigned_seats)
 - dietary_requirement(**id**, booking_id → booking, allergy_flag, description)
-- hike(**id**, hiker_id → hiker, destination, route, expected_arrival_at, departed_at\*, arrived_at\*)
+- hike(**id**, hiker_id → hiker, destination, route, planned_departure_at, expected_return_at, completed_at\*)
 - passage_point(**hike_id** → hike, **position**, name)
 - popular_hike(**id**, destination, route)
 - pop_passage_point(**id**, name)
@@ -46,9 +46,13 @@ Primary keys in **bold**, `*` = nullable.
 - A booking can be created only up to 2 hours before the slot start (`date` + `start_time`).
 - A booking can be changed only up to 48 hours before the slot start.
 - Every booking belongs to exactly one of: a hiker (`booking.hiker_id`) or a temporary hiker (a row in `temporary_hiker`), never both and never none.
-- `hike.expected_arrival_at`, `hike.departed_at` and `hike.arrived_at` are UTC (`YYYY-MM-DDTHH:MM:SSZ`).
-- A hike is registered when `departed_at` is NULL, active when `departed_at` is set and `arrived_at` is NULL, completed when both are set.
-- `arrived_at` can be set only if `departed_at` is set, and `arrived_at` > `departed_at`.
+- `hike.planned_departure_at`, `hike.expected_return_at` and `hike.completed_at` are UTC (`YYYY-MM-DDTHH:MM:SSZ`); `expected_return_at` > `planned_departure_at`.
+- The state of a hike is derived from its times, with no extra column:
+  - registered: `completed_at` is NULL and now < `planned_departure_at`;
+  - active: `completed_at` is NULL and now ≥ `planned_departure_at`;
+  - overdue: active and now > `expected_return_at`;
+  - completed: `completed_at` ≥ `planned_departure_at`;
+  - cancelled: `completed_at` < `planned_departure_at` (marked as completed before it started).
 - `position` starts at 1 and is consecutive within the same hike and within the same popular hike; in `has_pop_passage_point` the pair (`popular_hike_id`, `position`) is unique.
 - When a hiker selects a popular hike, its destination, route and passage points are copied into `hike` and `passage_point`: later changes to the popular hike do not affect registered hikes.
 - `popular_hike`, `pop_passage_point` and `has_pop_passage_point` are filled by the seed.
@@ -74,7 +78,7 @@ The fixed demo data for the tests is in `backend/src/tests/fixtures/seed.sql` (s
 
 | `SEED_MODE` | Used by | Data |
 |---|---|---|
-| `random` (default) | the app | `seed/slots.ts`: slots for the next 3 days, 1 to 3 per day, never overlapping and ending by 23:59, each with 1 to 6 tables of 2 to 8 seats. `seed/bookings.ts`: some of the hikers and some temporary hikers (at least one of each) book a random set of slots, with a party of 1 to half the slot capacity seated with `assignSeats` (skipped if the slot is full) and random dietary requirements (at most one per person). `seed/hikes.ts`: some of the hikers register one of 3 demo hikes (active, overdue or not departed yet). |
-| `fixed` | the tests (`src/tests/fixtures/test.env`) | `src/tests/fixtures/seed.sql`: 4 slots with the same table layout, 4 bookings with seats and dietary requirements (3 by accounts 3 and 4, 1 for a temporary hiker), 4 hikes by accounts 3 and 4, one per state (active, registered, overdue, completed). It works only with `src/tests/fixtures/seed-accounts.json`. |
+| `random` (default) | the app | `seed/slots.ts`: slots for the next 3 days, 1 to 3 per day, never overlapping and ending by 23:59, each with 1 to 6 tables of 2 to 8 seats. `seed/bookings.ts`: some of the hikers and some temporary hikers (at least one of each) book a random set of slots, with a party of 1 to half the slot capacity seated with `assignSeats` (skipped if the slot is full) and random dietary requirements (at most one per person). `seed/hikes.ts`: some of the hikers register one of 3 demo hikes (registered, active or overdue). |
+| `fixed` | the tests (`src/tests/fixtures/test.env`) | `src/tests/fixtures/seed.sql`: 4 slots with the same table layout, 4 bookings with seats and dietary requirements (3 by accounts 3 and 4, 1 for a temporary hiker), 5 hikes by accounts 3 and 4, one per state (registered, active, overdue, completed, cancelled). It works only with `src/tests/fixtures/seed-accounts.json`. |
 
 After seeding, `seed/index.ts` prints a summary: slots with their tables, bookings with guest and seats, hikers with their hikes.
