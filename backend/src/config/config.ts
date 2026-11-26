@@ -1,4 +1,5 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 /**
  * Reads a required environment variable (set in .env, see .env.example).
@@ -70,3 +71,7 @@ export const SEED_ACCOUNTS_FILE = process.env.SEED_ACCOUNTS_FILE
 // Demo slots and bookings: "random" for the app, "fixed" (the layout the tests rely on) for the tests
 export const SEED_MODE: "random" | "fixed" =
     process.env.SEED_MODE === "fixed" ? "fixed" : "random";
+
+// Seed of the random demo data (SEED_MODE=random): the same seed recreates the same data.
+// If not set, a random one is used and printed at startup.
+export const SEED_RANDOM_SEED = process.env.SEED_RANDOM_SEED || randomUUID();

@@ -1,10 +1,11 @@
 import Database from "better-sqlite3";
-import { SEED_MODE } from "../../config/config";
+import { SEED_MODE, SEED_RANDOM_SEED } from "../../config/config";
 import { insertSeedAccounts } from "./accounts";
 import { insertRandomSlots } from "./slots";
 import { insertRandomBookings } from "./bookings";
 import { insertRandomHikes } from "./hikes";
 import { readSql } from "../sql-files";
+import seedrandom from "seedrandom";
 
 /**
  * Fills freshly created tables: accounts from the seed accounts file, then slots, tables and bookings,
@@ -17,9 +18,11 @@ export const seedDatabase = (db: Database.Database): void => {
     if (SEED_MODE === "fixed") {
         db.exec(readSql("fixtures", "seed.sql"));
     } else {
-        insertRandomSlots(db);
-        insertRandomBookings(db);
-        insertRandomHikes(db);
+        const random = seedrandom(SEED_RANDOM_SEED);
+        console.log(`Random seed: ${SEED_RANDOM_SEED}`);
+        insertRandomSlots(db, random);
+        insertRandomBookings(db, random);
+        insertRandomHikes(db, random);
     }
     printSeedSummary(db);
 };

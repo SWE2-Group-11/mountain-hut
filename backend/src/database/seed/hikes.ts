@@ -25,7 +25,7 @@ const at = (hours: number | null): string | null =>
  * @param random Source of randomness in [0, 1), injectable for testing.
  */
 export const insertRandomHikes = (db: Database.Database, random: Random = Math.random): void => {
-    const hikers = db.prepare<[], { account_id: number }>("SELECT account_id FROM hiker").all();
+    const hikers = db.prepare<[], { account_id: number }>("SELECT account_id FROM hiker ORDER BY account_id").all();
     const insertHike = db.prepare(`INSERT INTO hike (hiker_id, destination, route, planned_departure_at, expected_return_at)
                                    VALUES (?, ?, ?, ?, ?)`);
     const insertPoint = db.prepare("INSERT INTO passage_point (hike_id, position, name) VALUES (?, ?, ?)");
