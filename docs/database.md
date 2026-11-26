@@ -81,4 +81,6 @@ The fixed demo data for the tests is in `backend/src/tests/fixtures/seed.sql` (s
 | `random` (default) | the app | `seed/slots.ts`: slots for the next 3 days, 1 to 3 per day, never overlapping and ending by 23:59, each with 1 to 6 tables of 2 to 8 seats. `seed/bookings.ts`: some of the hikers and some temporary hikers (at least one of each) book a random set of slots, with a party of 1 to half the slot capacity seated with `assignSeats` (skipped if the slot is full) and random dietary requirements (at most one per person). `seed/hikes.ts`: some of the hikers register one of 3 demo hikes (registered, active or overdue). |
 | `fixed` | the tests (`src/tests/fixtures/test.env`) | `src/tests/fixtures/seed.sql`: 4 slots with the same table layout, 4 bookings with seats and dietary requirements (3 by accounts 3 and 4, 1 for a temporary hiker), 5 hikes by accounts 3 and 4, one per state (registered, active, overdue, completed, cancelled). It works only with `src/tests/fixtures/seed-accounts.json`. |
 
+In `random` mode the data depends on `SEED_RANDOM_SEED`: the same value always gives the same slots, bookings and hikes. If it is not set, a new seed is chosen at every reset and printed at startup (`Random seed: ...`).
+
 After seeding, `seed/index.ts` prints a summary: slots with their tables, bookings with guest and seats, hikers with their hikes.

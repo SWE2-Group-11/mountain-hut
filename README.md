@@ -96,7 +96,13 @@ When the database is created (first start, or after a reset), it is filled with 
 - slots for the next 3 days, 1 to 3 per day, each with 1 to 6 tables of 2 to 8 seats;
 - bookings for the hikers in `seed-accounts.json` and for a few temporary hikers (people without an account), with random party sizes and dietary requirements.
 
-The data is different at every reset. `docker logs mountain-hut` lists the slots with their tables and every booking created.
+The data is different at every reset. To get the same data again:
+
+1. Copy the seed from the logs (`Random seed: ...` in `docker logs mountain-hut`), or choose any text.
+2. Put it in `.env`: `SEED_RANDOM_SEED=<seed>`.
+3. Reset the database.
+
+Only the dates change: they always start from the day of the reset.
 
 ### Manage the installation
 
