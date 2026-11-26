@@ -196,3 +196,10 @@ export class GetAvailabilityResponseDTO {
         this.available = available;
     }
 }
+
+/**
+ * Data Transfer Object for a slot with its occupancy data.
+ */
+export type SlotOccupancyDTO = SlotDTO & {
+    bookedSeats: number;
+};

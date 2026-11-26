@@ -1,8 +1,8 @@
 import { ErrorDTO } from '../models/dto/error-dto';
 import { AccountResponseDTO } from '../models/dto/account-dto';
-import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotDTO, SlotTableDTO } from '../models/dto/slot-dto';
+import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotDTO, SlotTableDTO, SlotOccupancyDTO } from '../models/dto/slot-dto';
 import { CreateReservationResponseDTO, RequirementDTO, SeatingDTO } from '../models/dto/reservation-dto';
-import { SlotAvailability, SlotConfiguration } from '../dao/slot-dao';
+import { SlotAvailability, SlotConfiguration, SlotOccupancy } from '../dao/slot-dao';
 import { Account } from '../models/entities/account';
 import { Booking } from '../models/entities/booking';
 import { DietaryRequirement } from '../models/entities/dietary_requirement';
@@ -114,3 +114,13 @@ export const reservationToResponseDTO = (
  */
 export const requirementDTOsToInputs = (requirements: RequirementDTO[] = []): RequirementInput[] =>
     requirements.map((r) => ({ allergy_flag: r.hasAllergies, description: r.details }));
+
+/**
+ * Maps a slot's occupancy data to a client-ready SlotOccupancyDTO instance.
+ * @param occupancy The occupancy of a slot with its total, available and booked seats.
+ * @returns The mapped SlotOccupancyDTO instance.
+ */
+export const slotOccupanyToDTO = (occupancy: SlotOccupancy): SlotOccupancyDTO => ({
+    ...slotAvailabilityToSlotDTO(occupancy),
+    bookedSeats: occupancy.booked_seats
+});
