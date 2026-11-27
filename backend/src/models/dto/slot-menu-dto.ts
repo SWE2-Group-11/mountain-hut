@@ -5,7 +5,7 @@ export const DefineMenuRequestSchema = z.object({
     date: DateSchema,
     startTime: TimeSchema,
     // Validate without trimming, since leading spaces can be meaningful in Markdown.
-    menu: z.string().refine((menu) => menu.trim().length > 0, "The menu must not be blank").nullable(),
+    menu: z.string().max(5_000, "The menu must not exceed 5_000 characters").refine((menu) => menu.trim().length > 0, "The menu must not be blank").nullable(),
 });
 
 export type DefineMenuRequestDTO = z.infer<typeof DefineMenuRequestSchema>;
