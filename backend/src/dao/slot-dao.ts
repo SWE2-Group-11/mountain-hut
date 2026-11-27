@@ -18,6 +18,10 @@ export type SlotConfiguration = {
     tables: SlotTable[];
 };
 
+export type SlotOccupancy = SlotAvailability & {
+    booked_seats: number;
+};
+
 /**
  * Retrieves a slot given its primary key.
  * @param date The day of the slot (YYYY-MM-DD).
@@ -33,12 +37,15 @@ export const getSlot = (date: string, start_time: string): Slot | null => {
 };
 
 /**
- * Retrieves the slots of a day that still have at least one free seat,
- * together with their booking availability.
- * @param date The day to look up (YYYY-MM-DD).
- * @returns The available slots ordered by start time, or [] if none is available.
+ * Gets the slots of a day with their total and available seats, ordered by start time.
+ * @param date The day of the slots (YYYY-MM-DD).
+ * @param only_available True to only return slots with at least one available seat, false to return all slots.
+ * @returns The slots with their total and available seats, ordered by start time.
  */
-export const getAvailableSlotsByDate = (date: string): SlotAvailability[] => {
+const getSlotsWithCapacityByDate = (
+    date: string,
+    only_available: boolean
+): SlotAvailability[] => {
     const sql = `
         SELECT s.date, s.start_time, s.duration, s.menu,
                COALESCE(SUM(st.seats), 0) AS total_seats,
@@ -51,20 +58,39 @@ export const getAvailableSlotsByDate = (date: string): SlotAvailability[] => {
         LEFT JOIN slot_table st ON st.slot_date = s.date AND st.slot_start_time = s.start_time
         WHERE s.date = ?
         GROUP BY s.date, s.start_time
-        HAVING available_seats > 0
+        ${only_available ? "HAVING available_seats > 0" : ""}
         ORDER BY s.start_time`;
+
     const rows = db
         .prepare<[string], {
             date: string; start_time: string; duration: number; menu: string | null;
             total_seats: number; available_seats: number;
         }>(sql)
         .all(date);
+
     return rows.map((r) => ({
         slot: new Slot(r.date, r.start_time, r.duration, r.menu),
         total_seats: r.total_seats,
         available_seats: r.available_seats,
     }));
 };
+
+/** Retrieves the slots of a day that still have at least one free seat. 
+ * @param date The day of the slots (YYYY-MM-DD).
+ * @returns The slots with their total and available seats, ordered by start time.
+*/
+export const getAvailableSlotsByDate = (date: string): SlotAvailability[] =>
+    getSlotsWithCapacityByDate(date, true);
+
+/** Retrieves the occupancy of every slot for the given date, ordered by start time. 
+ * @param date The day of the slots (YYYY-MM-DD).
+ * @returns The slots with their total, available and booked seats.
+*/
+export const getSlotOccupancyByDate = (date: string): SlotOccupancy[] =>
+    getSlotsWithCapacityByDate(date, false).map((availability) => ({
+        ...availability,
+        booked_seats: availability.total_seats - availability.available_seats,
+    }));
 
 /**
  * Retrieves the tables defined for a slot.
