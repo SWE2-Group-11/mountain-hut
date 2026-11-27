@@ -3,6 +3,7 @@ import { DefineMenuRequestSchema, GetReusableMenusRequestSchema } from "../../mo
 import { GetConfigurationsRequestSchema } from "../../models/dto/slot-dto";
 
 const BODY = { date: "2030-06-15", startTime: "19:00", menu: "**Dinner**\n- *Polenta*\n  - gluten free" };
+const MENU_MAX_LENGTH = 5000;
 
 describe("DefineMenuRequestSchema", () => {
     it.each([BODY.menu, "  - indented item", null])("accepts the menu %j unchanged", (menu) => {
@@ -27,6 +28,13 @@ describe("DefineMenuRequestSchema", () => {
             expect(DefineMenuRequestSchema.safeParse({ ...BODY, ...override }).success).toBe(false);
         },
     );
+
+        it("accepts a menu of exactly MENU_MAX_LENGTH chars and rejects one more", () => {
+        const menu = "a".repeat(MENU_MAX_LENGTH);
+
+        expect(DefineMenuRequestSchema.safeParse({ ...BODY, menu }).success).toBe(true);
+        expect(DefineMenuRequestSchema.safeParse({ ...BODY, menu: menu + "a" }).success).toBe(false);
+    });
 });
 
 describe("GetReusableMenusRequestSchema", () => {
