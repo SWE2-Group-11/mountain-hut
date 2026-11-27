@@ -65,17 +65,25 @@ INSERT INTO dietary_requirement (booking_id, allergy_flag, description) VALUES
     (2, 0, '2 vegetarians'),
     (3, 1, '1 shellfish allergy');
 
--- Hikes: one per state (active, registered, overdue, completed). Times are UTC and relative to now.
-INSERT INTO hike (id, hiker_id, destination, route, expected_arrival_at, departed_at, arrived_at) VALUES
+-- Hikes: one per state (registered, active, overdue, completed, cancelled). Times are UTC and relative to now.
+INSERT INTO hike (id, hiker_id, destination, route, planned_departure_at, expected_return_at, completed_at) VALUES
+    -- Mario, active
     (1, 3, 'Viso Mozzo', 'via the Chiaretto lake',
-        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+4 hours'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-2 hours'), NULL),
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-2 hours'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+4 hours'), NULL),
+    -- Laura, registered: departs tomorrow
     (2, 4, 'Monte Granero', 'along the ridge from the hut',
-        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+1 day'), NULL, NULL),
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+1 day'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+1 day', '+6 hours'), NULL),
+    -- Laura, overdue: expected back one hour ago
     (3, 4, 'Colle delle Traversette', 'via the Po springs',
-        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 hour'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-6 hours'), NULL),
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-6 hours'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 hour'), NULL),
+    -- Mario, completed yesterday
     (4, 3, 'Chiaretto lake', 'short loop from the hut',
-        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-21 hours'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-24 hours'),
-        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-22 hours'));
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-24 hours'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-21 hours'),
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-22 hours')),
+    -- Mario, cancelled: marked as completed before its departure
+    (5, 3, 'Monte Granero', 'along the ridge from the hut',
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+2 days'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+2 days', '+6 hours'),
+        strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 hour'));
 
 -- Passage points of the hikes, in route order
 INSERT INTO passage_point (hike_id, position, name) VALUES

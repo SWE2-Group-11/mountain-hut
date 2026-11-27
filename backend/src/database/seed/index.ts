@@ -1,10 +1,11 @@
 import Database from "better-sqlite3";
-import { SEED_MODE } from "../../config/config";
+import { SEED_MODE, SEED_RANDOM_SEED } from "../../config/config";
 import { insertSeedAccounts } from "./accounts";
 import { insertRandomSlots } from "./slots";
 import { insertRandomBookings } from "./bookings";
 import { insertRandomHikes } from "./hikes";
 import { readSql } from "../sql-files";
+import seedrandom from "seedrandom";
 
 /**
  * Fills freshly created tables: accounts from the seed accounts file, then slots, tables and bookings,
@@ -17,9 +18,11 @@ export const seedDatabase = (db: Database.Database): void => {
     if (SEED_MODE === "fixed") {
         db.exec(readSql("fixtures", "seed.sql"));
     } else {
-        insertRandomSlots(db);
-        insertRandomBookings(db);
-        insertRandomHikes(db);
+        const random = seedrandom(SEED_RANDOM_SEED);
+        console.log(`Random seed: ${SEED_RANDOM_SEED}`);
+        insertRandomSlots(db, random);
+        insertRandomBookings(db, random);
+        insertRandomHikes(db, random);
     }
     printSeedSummary(db);
 };
@@ -50,10 +53,12 @@ const printSeedSummary = (db: Database.Database): void => {
     console.log("Hikers:");
     for (const h of all<{ full_name: string; hikes: string | null }>(`
         SELECT h.full_name, group_concat(k.destination || ' (' || CASE
-                   WHEN k.arrived_at IS NOT NULL THEN 'completed'
-                   WHEN k.departed_at IS NOT NULL THEN 'active'
-                   ELSE 'registered' END || ')', ', ') AS hikes
+                   WHEN k.completed_at < k.planned_departure_at THEN 'cancelled'
+                   WHEN k.completed_at IS NOT NULL THEN 'completed'
+                   WHEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now') < k.planned_departure_at THEN 'registered'
+                   WHEN strftime('%Y-%m-%dT%H:%M:%SZ', 'now') > k.expected_return_at THEN 'overdue'
+                   ELSE 'active' END || ')', ', ') AS hikes
         FROM hiker h LEFT JOIN hike k ON k.hiker_id = h.account_id
-        GROUP BY h.account_id ORDER BY h.account_id`))
+        GROUP BY h.account_id, h.full_name ORDER BY h.account_id`))
         console.log(`  ${h.full_name}: ${h.hikes ?? "no hikes"}`);
 };
