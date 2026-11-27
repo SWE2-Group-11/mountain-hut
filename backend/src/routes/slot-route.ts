@@ -21,8 +21,15 @@ import {
     CopyWeeklyScheduleRequestSchema,
     CopyWeeklyScheduleResponseDTO,
 } from "../models/dto/weekly-schedule-dto";
+import { defineMenu, getReusableMenus } from "../controllers/slot-menu-controller";
+import {
+    DefineMenuRequestSchema,
+    GetReusableMenusRequestSchema,
+    SlotMenuDTO,
+} from "../models/dto/slot-menu-dto";
 
 const router = express.Router();
+
 
 // Slots of a date, with their availability
 router.get(
@@ -70,6 +77,26 @@ router.post(
     (req: Request, res: Response<CopyWeeklyScheduleResponseDTO>) => {
 
         res.status(201).json(repeatWeeklySchedule(req.body));
+    });
+
+// Reusable menus of existing slots
+router.get(
+    "/menus",
+    requireRole("employee", "warden"),
+    validateQuery(GetReusableMenusRequestSchema),
+    (req: Request, res: Response<string[]>) => {
+
+        res.json(getReusableMenus(req.parsedQuery));
+    });
+
+// Define (or replace) the menu of a slot
+router.put(
+    "/menu",
+    requireRole("employee", "warden"),
+    validateBody(DefineMenuRequestSchema),
+    (req: Request, res: Response<SlotMenuDTO>) => {
+
+        res.json(defineMenu(req.body));
     });
     
 export default router;
