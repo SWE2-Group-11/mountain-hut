@@ -8,7 +8,7 @@ const AVAILABILITY_URL = "/api/v1/slots/availability";
 const RESERVATIONS_URL = "/api/v1/reservations";
 const SLOTS_URL = "/api/v1/slots";
 
-type AvailableTable = { tableId: number; assignedSeats: number };
+type AvailableTable = { tableNumber: number; assignedSeats: number };
 type Seating = { table_number: number; assigned_seats: number };
 
 /*
@@ -54,7 +54,7 @@ describe("GET /api/v1/slots/availability", () => {
             const res = await check("13:00", 5);
 
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ available: [{ tableId: 3, assignedSeats: 5 }], menu: ALPINE_MENU });
+            expect(res.body).toEqual({ available: [{ tableNumber: 3, assignedSeats: 5 }], menu: ALPINE_MENU });
         });
 
         it("splits a larger party over the fewest tables, and the split adds up to the party size", async () => {
@@ -65,8 +65,8 @@ describe("GET /api/v1/slots/availability", () => {
 
             expect(res.status).toBe(200);
             expect(res.body.available).toEqual([
-                { tableId: 3, assignedSeats: 6 },
-                { tableId: 1, assignedSeats: 4 },
+                { tableNumber: 3, assignedSeats: 6 },
+                { tableNumber: 1, assignedSeats: 4 },
             ]);
             expect(res.body.available).toHaveLength(2);
             expect(sumSeats(res.body.available)).toBe(10);
@@ -80,8 +80,8 @@ describe("GET /api/v1/slots/availability", () => {
 
             expect(res.status).toBe(200);
             expect(res.body.available).toEqual([
-                { tableId: 2, assignedSeats: 4 },
-                { tableId: 1, assignedSeats: 3 },
+                { tableNumber: 2, assignedSeats: 4 },
+                { tableNumber: 1, assignedSeats: 3 },
             ]);
             expect(sumSeats(res.body.available)).toBe(7);
         });
@@ -102,8 +102,8 @@ describe("GET /api/v1/slots/availability", () => {
             const mario = await loginAs(MARIO);
             const before = await check("13:00", 10);
             expect(before.body.available).toEqual([
-                { tableId: 3, assignedSeats: 6 },
-                { tableId: 1, assignedSeats: 4 },
+                { tableNumber: 3, assignedSeats: 6 },
+                { tableNumber: 1, assignedSeats: 4 },
             ]);
             const booking = await mario.post(RESERVATIONS_URL).send({ date: tomorrow, slot: "13:00", partySize: 7 });
             expect(booking.status).toBe(201);
@@ -114,9 +114,9 @@ describe("GET /api/v1/slots/availability", () => {
             // 16 - 7 = 9 seats left: table 3 is full, table 4 has 1 seat left
             expect(nine.status).toBe(200);
             expect(nine.body.available).toEqual([
-                { tableId: 1, assignedSeats: 4 },
-                { tableId: 2, assignedSeats: 4 },
-                { tableId: 4, assignedSeats: 1 },
+                { tableNumber: 1, assignedSeats: 4 },
+                { tableNumber: 2, assignedSeats: 4 },
+                { tableNumber: 4, assignedSeats: 1 },
             ]);
             expect(ten.status).toBe(200);
             expect(ten.body).toEqual({ available: [], menu: ALPINE_MENU });
@@ -132,7 +132,7 @@ describe("GET /api/v1/slots/availability", () => {
 
             expect(proposal.status).toBe(200);
             expect(booking.status).toBe(201);
-            const proposed = proposal.body.available.map((t: AvailableTable) => [t.tableId, t.assignedSeats]);
+            const proposed = proposal.body.available.map((t: AvailableTable) => [t.tableNumber, t.assignedSeats]);
             const booked = booking.body.seatings.map((s: Seating) => [s.table_number, s.assigned_seats]);
             expect(proposed).toEqual([[3, 6], [4, 1]]);
             expect(booked).toEqual(proposed);
@@ -209,7 +209,7 @@ describe("GET /api/v1/slots/availability", () => {
             const res = await check("12:00", 2);
 
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ available: [{ tableId: 1, assignedSeats: 2 }], menu: ALPINE_MENU });
+            expect(res.body).toEqual({ available: [{ tableNumber: 1, assignedSeats: 2 }], menu: ALPINE_MENU });
         });
 
         it("returns an empty list one millisecond after the cutoff", async () => {
@@ -242,7 +242,7 @@ describe("GET /api/v1/slots/availability", () => {
             const res = await check("13:00", 5);
 
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ available: [{ tableId: 3, assignedSeats: 5 }], menu: ALPINE_MENU });
+            expect(res.body).toEqual({ available: [{ tableNumber: 3, assignedSeats: 5 }], menu: ALPINE_MENU });
         });
 
         it("gives the same answer to a logged-in hiker", async () => {

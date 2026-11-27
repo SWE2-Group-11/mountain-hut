@@ -97,7 +97,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `slot` is the required start time in `HH:mm` format.
   - `partySize` is required as a positive safe integer in decimal digits, without leading zeros.
 - **Responses**
-  - `200 OK` returns an object with `available` and `menu`. Each item in `available` contains `tableId` and `assignedSeats`. The array is empty when booking has closed for the slot or the party cannot be seated. The `menu` field contains the original Markdown string or `null` if no menu has been set.
+  - `200 OK` returns an object with `available` and `menu`. Each item in `available` contains `tableNumber` and `assignedSeats`. The array is empty when booking has closed for the slot or the party cannot be seated. The `menu` field contains the original Markdown string or `null` if no menu has been set.
   - `400 Bad Request` indicates a missing or invalid query parameter.
   - `404 Not Found` indicates that the requested slot does not exist.
   - `500 Internal Server Error` indicates an unexpected server error.

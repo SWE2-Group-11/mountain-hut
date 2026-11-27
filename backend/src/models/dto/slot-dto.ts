@@ -178,11 +178,11 @@ export type GetAvailabilityRequestDTO = z.infer<typeof GetAvailabilityRequestSch
  * Proposed seats for one table.
  */
 export class AvailableTableDTO {
-    public tableId: number;
+    public tableNumber: number;
     public assignedSeats: number;
 
-    constructor(tableId: number, assignedSeats: number) {
-        this.tableId = tableId;
+    constructor(tableNumber: number, assignedSeats: number) {
+        this.tableNumber = tableNumber;
         this.assignedSeats = assignedSeats;
     }
 }

@@ -138,8 +138,8 @@ describe("GET /slots/availability — getAvailability controller", () => {
         const response = getAvailability({ ...REQUEST });
 
         expect(response).toEqual({
-            available: assignment.map(([tableId, assignedSeats]) => ({
-                tableId, assignedSeats,
+            available: assignment.map(([tableNumber, assignedSeats]) => ({
+                tableNumber, assignedSeats,
             })),
             menu: MENU,
         });

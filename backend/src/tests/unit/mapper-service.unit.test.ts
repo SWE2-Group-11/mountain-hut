@@ -98,8 +98,8 @@ describe("response mappers", () => {
 
         expect(response).toEqual({
             available: [
-                { tableId: 3, assignedSeats: 6 },
-                { tableId: 1, assignedSeats: 2 },
+                { tableNumber: 3, assignedSeats: 6 },
+                { tableNumber: 1, assignedSeats: 2 },
             ],
             menu: MENU,
         });

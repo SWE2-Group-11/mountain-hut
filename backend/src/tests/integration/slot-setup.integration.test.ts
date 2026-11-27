@@ -595,9 +595,9 @@ describe("a slot the employee defines, seen through the availability check", () 
         const res = await request(app).get(AVAILABILITY).query({ date: DAY, slot: "12:00", partySize: 7 });
 
         expect(res.status).toBe(200);
-        const proposed = res.body.available as Array<{ tableId: number; assignedSeats: number }>;
+        const proposed = res.body.available as Array<{ tableNumber: number; assignedSeats: number }>;
         expect(proposed.reduce((sum, t) => sum + t.assignedSeats, 0)).toBe(7);
-        expect(proposed.every((t) => [1, 2].includes(t.tableId))).toBe(true);
+        expect(proposed.every((t) => [1, 2].includes(t.tableNumber))).toBe(true);
     });
 
     it("proposes nothing for a party larger than the defined capacity", async () => {
