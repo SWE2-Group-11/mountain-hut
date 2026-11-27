@@ -59,6 +59,7 @@ const slotsOf = async (page: Page, date: string) => {
     duration: number;
     total_seats: number;
     available_seats: number;
+    menu: string | null;
   }>;
 };
 
@@ -111,7 +112,7 @@ test.describe('Define slot capacity - define the tables', () => {
 
     // The slot really exists: it is what the hikers get from the booking page
     expect(await slotsOf(page, day)).toEqual([
-      { date: day, start_time: '12:00', duration: 90, total_seats: 10, available_seats: 10 },
+      { date: day, start_time: '12:00', duration: 90, total_seats: 10, available_seats: 10, menu: null },
     ]);
   });
 
@@ -156,7 +157,7 @@ test.describe('Define slot capacity - reuse a previous setup', () => {
     await expect(page.getByText(`${day} · 19:00-20:30`)).toBeVisible();
     await expect(page.getByText('4 tables · 16 seats').last()).toBeVisible();
     expect(await slotsOf(page, day)).toEqual([
-      { date: day, start_time: '19:00', duration: 90, total_seats: 16, available_seats: 16 },
+      { date: day, start_time: '19:00', duration: 90, total_seats: 16, available_seats: 16, menu: null },
     ]);
   });
 

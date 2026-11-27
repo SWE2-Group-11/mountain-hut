@@ -11,7 +11,7 @@ import { BadRequestError } from "../../models/errors/badrequest-error";
 import { ConflictError } from "../../models/errors/conflict-error";
 import { ForbiddenError } from "../../models/errors/forbidden-error";
 import { NotFoundError } from "../../models/errors/notfound-error";
-import type { CreateReservationResponseDTO } from "../../models/dto/reservation-dto";
+import type { ReservationWithMenuResponseDTO } from "../../models/dto/reservation-dto";
 import * as errorService from "../../services/error-service";
 
 
@@ -29,13 +29,14 @@ const EMPLOYEE = { id: 2, email: "employee@mountainhut.test", role: "employee" }
 const WARDEN = { id: 1, email: "warden@mountainhut.test", role: "warden" } as Express.User;
 
 const VALID_BODY = { date: "2030-06-15", slot: "12:00", partySize: 4 };
-const CREATED: CreateReservationResponseDTO = {
+const RESERVATION_WITH_MENU: ReservationWithMenuResponseDTO = {
     id: 42,
     date: "2030-06-15",
     slot: "12:00",
     partySize: 4,
     seatings: [{ table_number: 1, assigned_seats: 4 }],
-    requirements: [{ hasAllergies: true, details: "No peanuts" }]
+    requirements: [{ hasAllergies: true, details: "No peanuts" }],
+    menu: "**Lunch**\n- Soup",
 };
 
 // Who is logged in for the current test (undefined = nobody)
@@ -55,9 +56,9 @@ beforeEach(() => {
     vi.resetAllMocks();
     vi.spyOn(errorService, "sendAppError");;
     currentUser = HIKER;
-    vi.mocked(createReservation).mockReturnValue(CREATED);
+    vi.mocked(createReservation).mockReturnValue(RESERVATION_WITH_MENU);
     vi.mocked(getReservations).mockReturnValue([]);
-    vi.mocked(updateReservation).mockReturnValue(CREATED);
+    vi.mocked(updateReservation).mockReturnValue(RESERVATION_WITH_MENU);
 });
 
 afterEach(() => vi.resetAllMocks());
@@ -113,7 +114,7 @@ describe("POST /reservations — route", () => {
             const res = await request(app).post(URL).send(VALID_BODY);
 
             expect(res.status).toBe(201);
-            expect(res.body).toEqual(CREATED);
+            expect(res.body).toEqual(RESERVATION_WITH_MENU);
             expect(errorService.sendAppError).not.toHaveBeenCalled();
         });
     });
@@ -170,7 +171,7 @@ describe("GET /reservations — route", () => {
     });
 
     it.each([
-        { label: "reservations", reservations: [CREATED] },
+        { label: "reservations", reservations: [RESERVATION_WITH_MENU] },
         { label: "an empty list", reservations: [] },
     ])("returns $label from the controller", async ({ reservations }) => {
         vi.mocked(getReservations).mockReturnValue(reservations);
@@ -259,12 +260,12 @@ describe("PATCH /reservations/:reservationId — route", () => {
                 { partySize: 4 }
             );
             expect(res.status).toBe(200);
-            expect(res.body).toEqual(CREATED);
+            expect(res.body).toEqual(RESERVATION_WITH_MENU);
         }
     );
 
     it("accepts an empty requirements array", async () => {
-        const updated = { ...CREATED, requirements: [] };
+        const updated = { ...RESERVATION_WITH_MENU, requirements: [] };
         vi.mocked(updateReservation).mockReturnValue(updated);
 
         const res = await request(app)

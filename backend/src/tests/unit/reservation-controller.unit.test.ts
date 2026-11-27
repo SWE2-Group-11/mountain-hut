@@ -63,11 +63,12 @@ afterEach(() => vi.useRealTimers());
 
 describe("POST /reservations — createReservation controller", () => {
     it.each([
-        { label: "one table", assignment: [[1, 4]] },
-        { label: "multiple tables", assignment: [[1, 3], [2, 1]] },
-    ])("returns the created reservation with $label", ({ assignment }) => {
+        { label: "one table and a menu", assignment: [[1, 4]], menu: "**Lunch**\n- Soup" },
+        { label: "multiple tables and no menu", assignment: [[1, 3], [2, 1]], menu: null },
+    ])("returns the created reservation with $label", ({ assignment, menu }) => {
         const seatings = assignment.map(([table, seats]) =>
             makeSeating(table, seats));
+        vi.mocked(getSlot).mockReturnValue(new Slot(DAY, START_TIME, 60, menu));
         vi.mocked(saveBooking).mockReturnValue({
             booking: new Booking(BOOKING_ID, HIKER_ID),
             seatings: seatings,
@@ -91,6 +92,7 @@ describe("POST /reservations — createReservation controller", () => {
                 table_number, assigned_seats,
             })),
             requirements: [],
+            menu,
         });
         expect(response).not.toHaveProperty("hiker_id");
         expect(response.seatings[0]).not.toHaveProperty("booking_id");
@@ -462,6 +464,8 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
 
     describe("date and time", () => {
         it("moves the booking: releases the seats and assigns the new slot with the same party size", () => {
+            const menu = "**Dinner**\n- Soup";
+            vi.mocked(getSlot).mockReturnValue(new Slot(NEW_DATE, NEW_START, 60, menu));
             vi.mocked(getBookingAvailability).mockReturnValue(seatsOf([2, 4]));
 
             const response = update({ date: NEW_DATE, slot: NEW_START });
@@ -472,7 +476,7 @@ describe("PATCH /reservations/:id — updateReservation controller (MH-06)", () 
             expect(insertSeatings).toHaveBeenCalledExactlyOnceWith(RES_ID, NEW_DATE, NEW_START, seatsOf([2, 4]));
             expect(response).toEqual({
                 id: RES_ID, date: NEW_DATE, slot: NEW_START, partySize: 4,
-                seatings: seatsOf([2, 4]), requirements: [],
+                seatings: seatsOf([2, 4]), requirements: [], menu,
             });
         });
 

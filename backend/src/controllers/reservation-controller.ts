@@ -14,6 +14,7 @@ import { inTransaction } from "../database/database";
 import {
     CreateReservationRequestDTO,
     CreateReservationResponseDTO,
+    ReservationWithMenuResponseDTO,
     UpdateReservationRequestDTO,
     UpdateReservationResponseDTO,
 } from "../models/dto/reservation-dto";
@@ -61,7 +62,7 @@ import { notifyBookingChanged } from "../notifications/booking-change";
 export const createReservation = (
     hiker_id: number,
     request: CreateReservationRequestDTO
-): CreateReservationResponseDTO => {
+): ReservationWithMenuResponseDTO => {
     const slot = getSlot(request.date, request.slot);
     if (!slot) {
         throw new BadRequestError("The selected date and time are not available");
@@ -86,18 +87,27 @@ export const createReservation = (
 
     notifyBookingCreated(result.booking.id);
 
-    return bookingDataToCreateReservationResponseDTO(
-        result.booking, result.seatings, result.dietary_requirements, slot.date, slot.start_time
+    const reservation = bookingDataToCreateReservationResponseDTO(
+        result.booking,
+        result.seatings,
+        result.dietary_requirements,
+        slot.date,
+        slot.start_time,
     );
+    return {...reservation, menu: slot.menu};
 };
 
 /**
  * Retrieves the authenticated hiker's active reservations.
  * @returns A list of the hiker's active reservations.
  */
-export const getReservations = (hiker_id: number): CreateReservationResponseDTO[] => {
+export const getReservations = (hiker_id: number): ReservationWithMenuResponseDTO[] => {
     const now = DateTime.now().setZone(HUT_TIMEZONE).toFormat("yyyy-MM-dd HH:mm");
-    return getActiveBookingsByHiker(hiker_id, now).map(reservationToResponseDTO);
+
+    return getActiveBookingsByHiker(hiker_id, now).map((reservation) => ({
+        ...reservationToResponseDTO(reservation),
+        menu: getSlot(reservation.date, reservation.start_time)?.menu ?? null,
+    }));
 };
 
 /** The route validates the query and authorizes employee/warden first. 
@@ -290,7 +300,7 @@ export const updateReservation = (
             ? reservation.dietary_requirements
             : replaceRequirements(reservation_id, requirementDTOsToInputs(request.requirements));
 
-        return reservationToResponseDTO({
+        const updatedReservation = reservationToResponseDTO({
             ...reservation,
             date,
             start_time,
@@ -298,6 +308,8 @@ export const updateReservation = (
             seatings,
             dietary_requirements,
         });
+
+        return {...updatedReservation, menu: slot.menu};
     });
 
     // Only after the commit: a refused or rolled back change must not be notified

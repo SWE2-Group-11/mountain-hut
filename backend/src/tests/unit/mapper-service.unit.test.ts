@@ -18,6 +18,7 @@ import {
 } from "../../services/mapper-service";
 import { DietaryRequirement } from "../../models/entities/dietary_requirement";
 
+const MENU = "**Lunch**\n- Soup";
 const DAY = "2030-06-15";
 const START_TIME = "12:00";
 const HIKER_ID = 7;
@@ -33,9 +34,10 @@ function makeAvailability(
     startTime: string,
     totalSeats = 10,
     availableSeats = 6,
+    menu: string | null = null,
 ): SlotAvailability {
     return {
-        slot: new Slot(DAY, startTime, 60),
+        slot: new Slot(DAY, startTime, 60, menu),
         total_seats: totalSeats,
         available_seats: availableSeats,
     };
@@ -44,13 +46,14 @@ function makeAvailability(
 describe("response mappers", () => {
     it("maps a slot with availability to the public response fields", () => {
         expect(slotAvailabilityToSlotDTO(
-            makeAvailability("12:00", 12, 5),
+            makeAvailability("12:00", 12, 5, MENU),
         )).toEqual({
             date: DAY,
             start_time: "12:00",
             duration: 60,
             total_seats: 12,
             available_seats: 5,
+            menu: MENU,
         });
     });
 
@@ -91,13 +94,14 @@ describe("response mappers", () => {
             { table_number: 1, assigned_seats: 2 },
         ];
 
-        const response = assignmentsToAvailabilityResponseDTO(assignments);
+        const response = assignmentsToAvailabilityResponseDTO(assignments, MENU);
 
         expect(response).toEqual({
             available: [
-                { tableId: 3, assignedSeats: 6 },
-                { tableId: 1, assignedSeats: 2 },
+                { tableNumber: 3, assignedSeats: 6 },
+                { tableNumber: 1, assignedSeats: 2 },
             ],
+            menu: MENU,
         });
     });
 
@@ -106,14 +110,14 @@ describe("response mappers", () => {
         { label: "an empty list", assignments: [] },
     ])("maps $label to an empty arrangement", ({ assignments }) => {
         // Why: the client always gets a list, never null
-        expect(assignmentsToAvailabilityResponseDTO(assignments)).toEqual({ available: [] });
+        expect(assignmentsToAvailabilityResponseDTO(assignments, null)).toEqual({ available: [], menu: null });
     });
 
     it("returns DTO instances without database field names", () => {
         // Why: the API returns DTOs, never DAO data
         const response = assignmentsToAvailabilityResponseDTO([
             { table_number: 1, assigned_seats: 4 },
-        ]);
+        ], null);
 
         expect(response).toBeInstanceOf(GetAvailabilityResponseDTO);
         expect(response.available[0]).toBeInstanceOf(AvailableTableDTO);
