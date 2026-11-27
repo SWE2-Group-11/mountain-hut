@@ -32,8 +32,44 @@ jobs:
       - name: Type-check Backend TypeScript
         run: npx tsc --noEmit
 
-      - name: Run Backend Tests (Vitest)
-        run: npx vitest run
+      # Unit and integration tests run separately to get the results and the coverage of each
+      # suite: every test file must belong to one of the two, or it would not run at all.
+      - name: Check Backend Test File Names
+        run: |
+          wrong=$(find src \( -name '*.test.*' -o -name '*.spec.*' \) ! -name '*.unit.test.ts' ! -name '*.integration.test.ts')
+          if [ -n "$wrong" ]; then
+            echo "::error::Test files must end with .unit.test.ts or .integration.test.ts"
+            echo "$wrong"
+            exit 1
+          fi
+
+      - name: Run Backend Unit Tests (Vitest)
+        run: >
+          npx vitest run unit.test
+          --reporter=default --reporter=json --outputFile.json=../test-results/unit.json
+          --coverage.enabled --coverage.reporter=text-summary --coverage.reporter=json-summary
+          --coverage.reportsDirectory=../test-results/unit-coverage
+          --coverage.include='src/**' --coverage.exclude='src/tests/**'
+
+      - name: Run Backend Integration Tests (Vitest)
+        # Runs also when the unit tests fail, so that all the failures are shown
+        if: ${{ !cancelled() }}
+        run: >
+          npx vitest run integration.test
+          --reporter=default --reporter=json --outputFile.json=../test-results/integration.json
+          --coverage.enabled --coverage.reporter=text-summary --coverage.reporter=json-summary
+          --coverage.reportsDirectory=../test-results/integration-coverage
+          --coverage.include='src/**' --coverage.exclude='src/tests/**'
+
+      # Used by the retrospective report (retro-report.yml)
+      - name: Upload Backend Test Results
+        if: ${{ !cancelled() }}
+        continue-on-error: true   # a failed upload must not block the pipeline
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: test-results/
+          retention-days: 90
 
   frontend-ci:
     runs-on: ubuntu-latest
@@ -90,3 +126,13 @@ jobs:
 
       - name: Run Playwright E2E Tests
         run: npm test
+
+      # Used by the retrospective report (retro-report.yml)
+      - name: Upload E2E Test Results
+        if: ${{ !cancelled() }}
+        continue-on-error: true   # a failed upload must not block the pipeline
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: test-results/e2e.json
+          retention-days: 90

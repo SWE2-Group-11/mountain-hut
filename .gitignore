@@ -21,3 +21,8 @@ Desktop.ini
 node_modules/
 /package.json
 /package-lock.json
+
+# Retrospective report (local runs)
+/.venv/
+/retro-report/
+/test-results/
