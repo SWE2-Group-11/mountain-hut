@@ -85,7 +85,7 @@ export const createReservation = (
         throw new ConflictError("The requested capacity is no longer available");
     }
 
-    notifyBookingCreated(result.booking.id);
+    void notifyBookingCreated(result.booking.id);
 
     const reservation = bookingDataToCreateReservationResponseDTO(
         result.booking,
@@ -313,7 +313,7 @@ export const updateReservation = (
     });
 
     // Only after the commit: a refused or rolled back change must not be notified
-    notifyBookingChanged(reservation_id);
+    void notifyBookingChanged(reservation_id);
     return response;
 };
 
