@@ -149,23 +149,6 @@ Base URL: `http://localhost:3000/api/v1`
   - `409 Conflict`: the slot overlaps an existing slot on the same date (slots that only touch, such as 12:00-13:00 and 13:00-14:00, do not overlap)
   - `500 Internal Server Error`: unexpected server error
 
-### GET /slots/configurations - Get reusable table configurations
-
-- **Description:** returns the table and seat configurations of existing slots, so that they can be reused through `copyFrom`
-- **Authentication:** required
-- **Permissions:** employee, warden
-- **Query parameters:**
-  - `from`: optional inclusive start date, formatted `YYYY-MM-DD`
-  - `to`: optional inclusive end date, formatted `YYYY-MM-DD`
-  - `limit`: optional positive integer; defaults to 20, maximum 100
-- **Ordering:** most recent dates first, then latest start time first
-- **Responses:**
-  - `200 OK`: returns the list of configurations, each with `date`, `startTime`, `endTime`, `tables` (`tableNumber`, `seats`) and `totalSeats`; returns `[]` if no slot exists
-  - `400 Bad Request`: `from` > `to`, or invalid `from`, `to` or `limit`
-  - `401 Unauthorized`: user is not authenticated
-  - `403 Forbidden`: user does not have the required permissions
-  - `500 Internal Server Error`: unexpected server error
-
 ### POST /reservations - Create a reservation
 
 - **Description:** create the reservation to book a table, optionally declaring the dietary requirements of the party. A hiker books for themself; an employee book on behalf of the hiker described in `hiker`
@@ -259,4 +242,38 @@ Base URL: `http://localhost:3000/api/v1`
   - `403 Forbidden`: user does not have the required permissions
   - `404 Not Found`: the source week has no slots to copy
   - `409 Conflict`: a target week already has reservations, so its schedule cannot be replaced; nothing was copied
+  - `500 Internal Server Error`: unexpected server error
+
+### PUT /slots/menu - Define the menu of a slot
+
+- **Description:** sets the menu of an existing slot, replacing the previous one. The menu is free text in Markdown (bold, italic, item lists and sub items); a menu returned by `GET /slots/menus` can be reused and edited before being sent
+- **Authentication:** required
+- **Permissions:** employee, warden
+- **Request body:**
+  - `date`: required, formatted `YYYY-MM-DD`
+  - `startTime`: required, start time of the slot, formatted `HH:mm`
+  - `menu`: required, Markdown string of at most 5000 characters with at least one non-space character (stored as sent, not trimmed), or `null` to remove the menu
+- **Responses:**
+  - `200 OK`: returns the updated slot menu (`date`, `startTime`, `menu`)
+  - `400 Bad Request`: missing or invalid `date` or `startTime`, missing `menu`, blank `menu` or `menu` longer than 5000 characters
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
+  - `404 Not Found`: the slot does not exist
+  - `500 Internal Server Error`: unexpected server error
+
+### GET /slots/menus - Get reusable menus
+
+- **Description:** returns the distinct menus already defined for existing slots, so that they can be reused as editable drafts for another slot
+- **Authentication:** required
+- **Permissions:** employee, warden
+- **Query parameters:**
+  - `from`: optional inclusive start date, formatted `YYYY-MM-DD`
+  - `to`: optional inclusive end date, formatted `YYYY-MM-DD`
+  - `limit`: optional positive integer; defaults to 20, maximum 100
+- **Ordering:** most recently used menus first (by the latest slot date and start time using that menu); identical menus are returned once
+- **Responses:**
+  - `200 OK`: returns the list of menus as Markdown strings; returns `[]` if no menu exists
+  - `400 Bad Request`: `from` > `to`, or invalid `from`, `to` or `limit`
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required permissions
   - `500 Internal Server Error`: unexpected server error

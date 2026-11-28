@@ -172,6 +172,8 @@ describe("slot-route — role guards", () => {
             ["employee", "warden"],
             ["employee", "warden"],
             ["employee", "warden"],
+            ["employee", "warden"], // GET /menus
+            ["employee", "warden"], // PUT /menu
         ]);
     });
 });
