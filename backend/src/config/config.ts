@@ -25,12 +25,14 @@ const URL_AUTH = "/session";
 const URL_ACCOUNTS = "/accounts";
 const URL_RESERVATIONS = "/reservations";
 const URL_SLOTS = "/slots";
+const URL_HIKES = "/hikes";
 
 export const ROUTES = {
     V1_AUTH: `${APP_V1_BASE_URL}${URL_AUTH}`,
     V1_ACCOUNTS: `${APP_V1_BASE_URL}${URL_ACCOUNTS}`,
     V1_RESERVATIONS: `${APP_V1_BASE_URL}${URL_RESERVATIONS}`,
     V1_SLOTS: `${APP_V1_BASE_URL}${URL_SLOTS}`,
+    V1_HIKES: `${APP_V1_BASE_URL}${URL_HIKES}`,
 } as const;
 
 // Server configuration

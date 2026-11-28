@@ -260,3 +260,35 @@ Base URL: `http://localhost:3000/api/v1`
   - `404 Not Found`: the source week has no slots to copy
   - `409 Conflict`: a target week already has reservations, so its schedule cannot be replaced; nothing was copied
   - `500 Internal Server Error`: unexpected server error
+
+### POST /hikes - Register a hike
+
+- **Description:** registers a planned hike for the authenticated hiker before departure
+- **Authentication:** required
+- **Permissions:** hiker
+- **Request body:**
+  - `destination`: required non-blank string, name of the destination
+  - `route`: required non-blank string, description of the route
+  - `passagePoints`: optional array of non-blank strings, in route order. Defaults to `[]`
+  - `plannedDepartureAt`: required future departure time in UTC, formatted `YYYY-MM-DDTHH:mm:ssZ`
+  - `expectedReturnAt`: required expected return time in the same format, later than `plannedDepartureAt`
+- **Responses:**
+  - `201 Created`: returns the registered hike (`id`, `destination`, `route`, `passagePoints`, `plannedDepartureAt`, `expectedReturnAt`, `completedAt`). `completedAt` is `null`
+  - `400 Bad Request`: malformed JSON, missing or invalid fields, or the planned departure time has already been reached
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required role or must change their password
+  - `500 Internal Server Error`: unexpected server error
+
+### GET /hikes/popular - Get predefined hikes
+
+- **Description:** returns predefined hikes that can be reused when registering a hike
+- **Authentication:** required
+- **Permissions:** hiker
+- **Query parameters:**
+  - `limit`: optional positive integer, maximum number of hikes to return. If omitted, returns all predefined hikes
+- **Responses:**
+  - `200 OK`: returns the list of predefined hikes ordered by destination, then by `id`, or `[]` if none exist. Each hike includes `id`, `destination`, `route` and `passagePoints`
+  - `400 Bad Request`: invalid `limit`
+  - `401 Unauthorized`: user is not authenticated
+  - `403 Forbidden`: user does not have the required role or must change their password
+  - `500 Internal Server Error`: unexpected server error
