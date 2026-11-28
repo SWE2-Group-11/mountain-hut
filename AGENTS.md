@@ -11,6 +11,14 @@ Guidance for coding agents. It covers only what the docs below do not; read the 
 | Branches, commits, PRs, Definition of Done, docs that must match the code | [docs/working-agreement.md](docs/working-agreement.md) |
 | Setup, running, test prerequisites | [README.md](README.md#development) |
 
+## Requirements
+
+The user stories are in the public course repository [SE2-Polito/AY26-27-Mountain-Hut](https://github.com/SE2-Polito/AY26-27-Mountain-Hut): the index in its `README.md`, one file per story in `stories/` (e.g. `https://raw.githubusercontent.com/SE2-Polito/AY26-27-Mountain-Hut/main/stories/MH-10.md`), the domain in `context.md`. Read the story when the expected behaviour of a task is unclear.
+
+- Find the story by name, not by number. Every YouTrack task is named after its story (also visible in the branch description): task `MH-157` "define menus controller" belongs to story `MH-10` "Define menus". Story IDs (`MH-01` to `MH-30`) and task IDs share the `MH-` prefix but are unrelated numbers.
+- The story file, including its Clarifications section, is the current requirement. Discussions are in that repository's issues: `gh issue list -R SE2-Polito/AY26-27-Mountain-Hut --state all --search "MH-10"`. If an issue and the story disagree, follow the story and report the disagreement.
+- Never open issues or comment in that repository: it is shared by all teams and the product owner. If a requirement is still ambiguous, stop and ask the user, quoting the story wording and the possible interpretations.
+
 ## Checks
 
 Run them in the package you changed, the same as CI (`.github/workflows/ci.yml`).
