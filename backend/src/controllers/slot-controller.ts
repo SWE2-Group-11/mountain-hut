@@ -1,4 +1,4 @@
-import { getAvailableSlotsByDate, getSavedConfigurations, getSlot, getSlotTables, saveSlot, TableInput } from "../dao/slot-dao";
+import { getAvailableSlotsByDate, getSavedConfigurations, getSlot, getSlotTables, saveSlot, TableInput, getSlotOccupancyByDate } from "../dao/slot-dao";
 import { getBookingAvailability } from "../dao/booking-dao";
 import {
     CreateSlotRequestDTO,
@@ -8,11 +8,12 @@ import {
     GetSlotsRequestDTO,
     SlotConfigurationDTO,
     SlotDTO,
+    SlotOccupancyDTO,
 } from "../models/dto/slot-dto";
 import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
 import { NotFoundError } from "../models/errors/notfound-error";
-import { assignmentsToAvailabilityResponseDTO, slotAvailabilityToSlotDTO, slotConfigurationToDTO } from "../services/mapper-service";
+import { assignmentsToAvailabilityResponseDTO, slotAvailabilityToSlotDTO, slotConfigurationToDTO, slotOccupancyToDTO } from "../services/mapper-service";
 import { isBookingOpen } from "../domain/booking-rules";
 import { timeToMinutes } from "../services/date-service";
 
@@ -25,6 +26,13 @@ export const getSlots = (request: GetSlotsRequestDTO): SlotDTO[] =>
     getAvailableSlotsByDate(request.date)
         .filter(({ slot }) => isBookingOpen(slot))
         .map(slotAvailabilityToSlotDTO);
+
+/**
+ * Retrieves the occupancy data of all the slots for a given date. If there are no slots for that date, an empty array is returned.
+ * @param request The request payload containing the date (YYYY-MM-DD).
+ * @returns The occupancy data of the slot, or [] if none is available.
+ */
+export const getSlotOccupancy = (request: GetSlotsRequestDTO): SlotOccupancyDTO[] => getSlotOccupancyByDate(request.date).map(slotOccupancyToDTO);
 
 /**
  * Retrieves the table configurations of existing slots, so that they can be reused through copyFrom.
