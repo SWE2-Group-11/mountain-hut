@@ -9,14 +9,14 @@ export const CHANGE_CUTOFF_HOURS = 48;
 const MINUTE = 60_000;
 
 // Minutes from a fixed origin of a wall-clock time, the same way for any time zone
-const wallClockMinutes = (date: string, time: string): number => {
+export const wallClockMinutes = (date: string, time: string): number => {
   const [year, month, day] = date.split('-').map(Number);
   const [hours, minutes] = time.split(':').map(Number);
   return Date.UTC(year, month - 1, day, hours, minutes) / MINUTE;
 };
 
 // "now" on the wall clock of the hut, whatever the time zone of the visitor's computer
-const hutNowMinutes = (now: Date): number => {
+export const hutNowMinutes = (now: Date): number => {
   const text = new Intl.DateTimeFormat('sv-SE', {
     timeZone: HUT_TIMEZONE,
     year: 'numeric',

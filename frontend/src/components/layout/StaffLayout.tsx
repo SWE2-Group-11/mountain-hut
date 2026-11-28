@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import logoImage from '../../assets/logo.jpeg';
 import { useAuth } from '../../features/auth/useAuth';
 import { UserMenu } from './UserMenu';
-import { CalendarClock, CalendarPlus, CalendarRange, ExternalLink, Search } from 'lucide-react';
+import { CalendarClock, CalendarPlus, CalendarRange, ExternalLink, Search, UtensilsCrossed } from 'lucide-react';
 interface StaffLayoutProps {
   title: string;
   subtitle?: string;
@@ -15,6 +15,7 @@ const STAFF_PAGES = [
    { to: '/staff/slots', label: 'Manage slots', icon: CalendarClock, end: true },
   { to: '/staff/slots/repeat', label: 'Copy a week', icon: CalendarRange, end: true },
   { to: '/availability', label: 'Check availability', icon: Search },
+    { to: '/staff/menus', label: 'Menus', icon: UtensilsCrossed },
 ];
 
 const itemClass = (isActive: boolean) =>
