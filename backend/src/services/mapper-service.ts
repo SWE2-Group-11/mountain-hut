@@ -150,7 +150,7 @@ export const popularHikeToResponseDTO = (hike: PopularHike): PopularHikeResponse
  * @param occupancy The occupancy of a slot with its total, available and booked seats.
  * @returns The mapped SlotOccupancyDTO instance.
  */
-export const slotOccupanyToDTO = (occupancy: SlotOccupancy): SlotOccupancyDTO => ({
+export const slotOccupancyToDTO = (occupancy: SlotOccupancy): SlotOccupancyDTO => ({
     ...slotAvailabilityToSlotDTO(occupancy),
     bookedSeats: occupancy.booked_seats
 });

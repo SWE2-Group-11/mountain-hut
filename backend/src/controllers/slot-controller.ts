@@ -13,7 +13,7 @@ import {
 import { BadRequestError } from "../models/errors/badrequest-error";
 import { ConflictError } from "../models/errors/conflict-error";
 import { NotFoundError } from "../models/errors/notfound-error";
-import { assignmentsToAvailabilityResponseDTO, slotAvailabilityToSlotDTO, slotConfigurationToDTO, slotOccupanyToDTO } from "../services/mapper-service";
+import { assignmentsToAvailabilityResponseDTO, slotAvailabilityToSlotDTO, slotConfigurationToDTO, slotOccupancyToDTO } from "../services/mapper-service";
 import { isBookingOpen } from "../domain/booking-rules";
 import { timeToMinutes } from "../services/date-service";
 
@@ -32,7 +32,7 @@ export const getSlots = (request: GetSlotsRequestDTO): SlotDTO[] =>
  * @param request The request payload containing the date (YYYY-MM-DD).
  * @returns The occupancy data of the slot, or [] if none is available.
  */
-export const getSlotOccupancy = (request: GetSlotsRequestDTO): SlotOccupancyDTO[] => getSlotOccupancyByDate(request.date).map(slotOccupanyToDTO);
+export const getSlotOccupancy = (request: GetSlotsRequestDTO): SlotOccupancyDTO[] => getSlotOccupancyByDate(request.date).map(slotOccupancyToDTO);
 
 /**
  * Retrieves the table configurations of existing slots, so that they can be reused through copyFrom.
