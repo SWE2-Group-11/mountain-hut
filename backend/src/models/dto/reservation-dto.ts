@@ -47,7 +47,7 @@ export class CreateReservationResponseDTO {
         slot: string,
         partySize: number,
         seatings: SeatingDTO[],
-        requirements: RequirementDTO[]
+        requirements: RequirementDTO[],
     ) {
         this.id = id;
         this.date = date;
@@ -92,9 +92,11 @@ export const UpdateReservationRequestSchema = CreateReservationRequestSchema.par
     {message: "At least one field must be provided for update."}
 );
 
+export type ReservationWithMenuResponseDTO = CreateReservationResponseDTO & {menu: string | null;};
+
 export type UpdateReservationRequestDTO = z.infer<typeof UpdateReservationRequestSchema>;
 
-export type UpdateReservationResponseDTO = CreateReservationResponseDTO;
+export type UpdateReservationResponseDTO = ReservationWithMenuResponseDTO;
 
 /**
  * Validation schema for the path parameters identifying a reservation.

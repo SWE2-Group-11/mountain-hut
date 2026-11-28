@@ -28,13 +28,15 @@ export class SlotDTO {
     public duration: number;
     public total_seats: number;
     public available_seats: number;
+    public menu: string | null;
 
-    constructor(date: string, start_time: string, duration: number, total_seats: number, available_seats: number) {
+    constructor(date: string, start_time: string, duration: number, total_seats: number, available_seats: number, menu: string | null) {
         this.date = date;
         this.start_time = start_time;
         this.duration = duration;
         this.total_seats = total_seats;
         this.available_seats = available_seats;
+        this.menu = menu;
     }
 }
 
@@ -176,11 +178,11 @@ export type GetAvailabilityRequestDTO = z.infer<typeof GetAvailabilityRequestSch
  * Proposed seats for one table.
  */
 export class AvailableTableDTO {
-    public tableId: number;
+    public tableNumber: number;
     public assignedSeats: number;
 
-    constructor(tableId: number, assignedSeats: number) {
-        this.tableId = tableId;
+    constructor(tableNumber: number, assignedSeats: number) {
+        this.tableNumber = tableNumber;
         this.assignedSeats = assignedSeats;
     }
 }
@@ -191,9 +193,11 @@ export class AvailableTableDTO {
  */
 export class GetAvailabilityResponseDTO {
     public available: AvailableTableDTO[];
+    public menu: string | null;
 
-    constructor(available: AvailableTableDTO[]) {
+    constructor(available: AvailableTableDTO[], menu: string | null) {
         this.available = available;
+        this.menu = menu;
     }
 }
 

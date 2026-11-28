@@ -48,8 +48,8 @@ const CONFIGURATIONS_URL = `${URL}/configurations`;
 const COPY_WEEK_URL = `${URL}/copy-week`;
 const DAY = "2030-06-15";
 const SLOTS: SlotDTO[] = [
-    { date: DAY, start_time: "12:00", duration: 60, total_seats: 16, available_seats: 7 },
-    { date: DAY, start_time: "19:30", duration: 90, total_seats: 16, available_seats: 12 },
+    { date: DAY, start_time: "12:00", duration: 60, total_seats: 16, available_seats: 7, menu: "**Lunch**\n- Soup" },
+    { date: DAY, start_time: "19:30", duration: 90, total_seats: 16, available_seats: 12, menu: null },
 ];
 const TABLES = [
     { tableNumber: 1, seats: 4 },

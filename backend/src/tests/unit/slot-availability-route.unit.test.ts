@@ -22,7 +22,7 @@ const DAY = "2030-06-15";
 const QUERY = { date: DAY, slot: "12:00", partySize: "4" };
 // What the route should pass on: the same fields, with partySize turned into a number
 const PARSED_QUERY = { date: DAY, slot: "12:00", partySize: 4 };
-const ONE_TABLE: GetAvailabilityResponseDTO = { available: [{ tableId: 2, assignedSeats: 4 }] };
+const ONE_TABLE: GetAvailabilityResponseDTO = { available: [{ tableNumber: 2, assignedSeats: 4 }], menu: "**Lunch**\n- Soup" };
 const STRICT_PARTY_SIZE_MESSAGE = "partySize: partySize must be a positive integer";
 
 // Minimal app: the router and the error format are the real ones
@@ -67,7 +67,7 @@ describe("GET /slots/availability — route", () => {
             { label: "one table", response: ONE_TABLE },
             {
                 label: "a party split over several tables",
-                response: { available: [{ tableId: 2, assignedSeats: 4 }, { tableId: 1, assignedSeats: 3 }] },
+                response: { available: [{ tableNumber: 2, assignedSeats: 4 }, { tableNumber: 1, assignedSeats: 3 }], menu: null },
             },
         ])("answers 200 with what the controller returns for $label", async ({ response }) => {
             // Arrange
@@ -84,14 +84,14 @@ describe("GET /slots/availability — route", () => {
         // Why: "the party cannot be seated" and "the slot is closed" are normal answers (an empty list), not errors
         it("answers 200 with an empty list when the controller finds no arrangement", async () => {
             // Arrange
-            vi.mocked(getAvailability).mockReturnValue({ available: [] });
+            vi.mocked(getAvailability).mockReturnValue({ available: [], menu: ONE_TABLE.menu });
 
             // Act
             const res = await request(app).get(URL).query(QUERY);
 
             // Assert
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ available: [] });
+            expect(res.body).toEqual({ available: [], menu: ONE_TABLE.menu });
         });
 
         // Why: unknown parameters must not reach the controller

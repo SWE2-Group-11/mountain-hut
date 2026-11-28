@@ -162,8 +162,8 @@ export const AvailabilityCard: React.FC = () => {
             </p>
             <ul className="grid sm:grid-cols-2 gap-2">
               {result.tables.map((table) => (
-                <li key={table.tableId} className="bg-white rounded-2xl border border-[#EFEADF] px-4 py-3">
-                  <div className="text-xs uppercase tracking-wider text-[#7C8885]">Table {table.tableId}</div>
+                <li key={table.tableNumber} className="bg-white rounded-2xl border border-[#EFEADF] px-4 py-3">
+                  <div className="text-xs uppercase tracking-wider text-[#7C8885]">Table {table.tableNumber}</div>
                   <div className="flex gap-1 my-1.5" aria-hidden="true">
                     {Array.from({ length: table.assignedSeats }, (_, i) => (
                       <span key={i} className="w-3 h-3 rounded-full bg-[#234E39]" />

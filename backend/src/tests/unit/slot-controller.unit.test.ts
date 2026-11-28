@@ -18,6 +18,7 @@ vi.mock("../../dao/slot-dao", () => ({
 }));
 vi.mock("../../dao/booking-dao", () => ({ saveBooking: vi.fn(), getBookingAvailability: vi.fn() }));
 
+const MENU = "**Lunch**\n- Soup";
 const DAY = "2030-06-15";
 const START_TIME = "12:00";
 
@@ -25,9 +26,10 @@ function makeAvailability(
     startTime: string,
     totalSeats = 10,
     availableSeats = 6,
+    menu: string | null = null,
 ): SlotAvailability {
     return {
-        slot: new Slot(DAY, startTime, 60),
+        slot: new Slot(DAY, startTime, 60, menu),
         total_seats: totalSeats,
         available_seats: availableSeats,
     };
@@ -61,18 +63,18 @@ describe("GET /slots — getSlots controller", () => {
     it("filters closed windows and maps the remaining slots to DTOs", () => {
         vi.mocked(getAvailableSlotsByDate).mockReturnValue([
             makeAvailability("10:00", 10, 5),
-            makeAvailability("12:00", 12, 4),
+            makeAvailability("12:00", 12, 4, MENU),
             makeAvailability("14:00", 20, 7),
         ]);
 
         expect(getSlots({ date: DAY })).toEqual([
             {
                 date: DAY, start_time: "12:00", duration: 60,
-                total_seats: 12, available_seats: 4,
+                total_seats: 12, available_seats: 4, menu: MENU,
             },
             {
                 date: DAY, start_time: "14:00", duration: 60,
-                total_seats: 20, available_seats: 7,
+                total_seats: 20, available_seats: 7, menu: null,
             },
         ]);
     });
@@ -120,7 +122,7 @@ describe("GET /slots/availability — getAvailability controller", () => {
 
     beforeEach(() => {
         // By default the slot exists and is open (12:00 Rome = 10:00Z, cutoff 08:00Z)
-        vi.mocked(getSlot).mockReturnValue(new Slot(DAY, START_TIME, 60));
+        vi.mocked(getSlot).mockReturnValue(new Slot(DAY, START_TIME, 60, MENU));
         vi.mocked(getBookingAvailability).mockReturnValue(null);
     });
 
@@ -136,9 +138,10 @@ describe("GET /slots/availability — getAvailability controller", () => {
         const response = getAvailability({ ...REQUEST });
 
         expect(response).toEqual({
-            available: assignment.map(([tableId, assignedSeats]) => ({
-                tableId, assignedSeats,
+            available: assignment.map(([tableNumber, assignedSeats]) => ({
+                tableNumber, assignedSeats,
             })),
+            menu: MENU,
         });
     });
 
@@ -169,7 +172,7 @@ describe("GET /slots/availability — getAvailability controller", () => {
 
         const response = getAvailability(REQUEST);
 
-        expect(response).toEqual({ available: [] });
+        expect(response).toEqual({ available: [], menu: MENU });
         expect(getBookingAvailability).toHaveBeenCalledTimes(1);
     });
 
@@ -179,7 +182,7 @@ describe("GET /slots/availability — getAvailability controller", () => {
 
         const response = getAvailability(REQUEST);
 
-        expect(response).toEqual({ available: [] });
+        expect(response).toEqual({ available: [], menu: MENU });
         expect(getBookingAvailability).not.toHaveBeenCalled();
     });
 
@@ -200,7 +203,7 @@ describe("GET /slots/availability — getAvailability controller", () => {
 
         const response = getAvailability(REQUEST);
 
-        expect(response).toEqual({ available: [] });
+        expect(response).toEqual({ available: [], menu: MENU });
         expect(getBookingAvailability).not.toHaveBeenCalled();
     });
 

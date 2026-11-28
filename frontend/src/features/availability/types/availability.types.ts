@@ -1,6 +1,6 @@
 // GET /slots/availability?date=YYYY-MM-DD&slot=HH:mm&partySize=N
 export interface AvailableTable {
-  tableId: number; // the table number
+  tableNumber: number; // the table number
   assignedSeats: number;
 }
 

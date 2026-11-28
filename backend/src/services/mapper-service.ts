@@ -2,6 +2,9 @@ import { ErrorDTO } from '../models/dto/error-dto';
 import { AccountResponseDTO } from '../models/dto/account-dto';
 import { AvailableTableDTO, GetAvailabilityResponseDTO, SlotConfigurationDTO, SlotDTO, SlotTableDTO, SlotOccupancyDTO } from '../models/dto/slot-dto';
 import { CreateReservationResponseDTO, RequirementDTO, SeatingDTO } from '../models/dto/reservation-dto';
+import type { PopularHikeResponseDTO, RegisterHikeResponseDTO } from '../models/dto/hike-dto';
+import type { Hike } from '../models/entities/hike';
+import type { PopularHike } from '../models/entities/popular_hike';
 import { SlotAvailability, SlotConfiguration, SlotOccupancy } from '../dao/slot-dao';
 import { Account } from '../models/entities/account';
 import { Booking } from '../models/entities/booking';
@@ -48,7 +51,7 @@ export const accountEntityToResponseDTO = (account: Account): AccountResponseDTO
  * Maps a slot with its availability into a client-ready SlotDTO instance.
  */
 export const slotAvailabilityToSlotDTO = ({ slot, total_seats, available_seats }: SlotAvailability): SlotDTO => {
-    return new SlotDTO(slot.date, slot.start_time, slot.duration, total_seats, available_seats);
+    return new SlotDTO(slot.date, slot.start_time, slot.duration, total_seats, available_seats, slot.menu);
 };
 
 /**
@@ -81,7 +84,8 @@ export const bookingDataToCreateReservationResponseDTO = (
  * Converts a proposed assignment into the public availability response.
  */
 export const assignmentsToAvailabilityResponseDTO = (
-    assignments: Assignment[] | null
+    assignments: Assignment[] | null,
+    menu: string | null
 ): GetAvailabilityResponseDTO => {
     const available = (assignments ?? []).map(
         (assignment) => new AvailableTableDTO(
@@ -90,7 +94,7 @@ export const assignmentsToAvailabilityResponseDTO = (
         )
     );
 
-    return new GetAvailabilityResponseDTO(available);
+    return new GetAvailabilityResponseDTO(available, menu);
 };
 
 /**
@@ -115,6 +119,32 @@ export const reservationToResponseDTO = (
 export const requirementDTOsToInputs = (requirements: RequirementDTO[] = []): RequirementInput[] =>
     requirements.map((r) => ({ allergy_flag: r.hasAllergies, description: r.details }));
 
+/**
+ * Maps a Hike entity to a RegisterHikeResponseDTO.
+ * @param hike The Hike entity to map.
+ * @returns The corresponding RegisterHikeResponseDTO.
+ */
+export const hikeToResponseDTO = (hike: Hike): RegisterHikeResponseDTO => ({
+    id: hike.id,
+    destination: hike.destination,
+    route: hike.route,
+    passagePoints: hike.passage_points,
+    plannedDepartureAt: hike.planned_departure_at,
+    expectedReturnAt: hike.expected_return_at,
+    completedAt: hike.completed_at,
+});
+
+/**
+ * Maps a PopularHike entity to a PopularHikeResponseDTO.
+ * @param hike The PopularHike entity to map.
+ * @returns The corresponding PopularHikeResponseDTO.
+ */
+export const popularHikeToResponseDTO = (hike: PopularHike): PopularHikeResponseDTO => ({
+    id: hike.id,
+    destination: hike.destination,
+    route: hike.route,
+    passagePoints: hike.passage_points,
+});
 /**
  * Maps a slot's occupancy data to a client-ready SlotOccupancyDTO instance.
  * @param occupancy The occupancy of a slot with its total, available and booked seats.

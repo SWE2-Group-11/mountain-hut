@@ -103,7 +103,7 @@ export const getAvailability = (
     }
 
     if (!isBookingOpen(slot)) {
-        return assignmentsToAvailabilityResponseDTO(null);
+        return assignmentsToAvailabilityResponseDTO(null, slot.menu);
     }
 
     const assignments = getBookingAvailability(
@@ -112,5 +112,5 @@ export const getAvailability = (
         request.partySize
     );
 
-    return assignmentsToAvailabilityResponseDTO(assignments);
+    return assignmentsToAvailabilityResponseDTO(assignments, slot.menu);
 };

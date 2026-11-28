@@ -10,6 +10,19 @@ export const LAURA = "laura@mountainhut.test";
 export const EMPLOYEE = "employee@mountainhut.test";
 export const NEW_HIKER = "new.hiker@mountainhut.test";
 
+// Expected Markdown from the slot rows in fixtures/seed.sql.
+export const ALPINE_MENU = `**Alpine Menu**
+- Barley soup
+- Polenta with mushrooms
+- *Apple strudel*`;
+export const DINNER_MENU = `**Dinner Menu**
+- Starters
+  - Cured meats and cheese board
+- Main course
+  - Venison stew with polenta
+  - *Vegetarian*: spinach dumplings
+- Blueberry tart`;
+
 /** Drops, recreates and seeds the in-memory database (the seed is relative to "today"). */
 export const resetTestDatabase = (): void => resetDatabase();
 
