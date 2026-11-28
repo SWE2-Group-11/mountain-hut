@@ -5,7 +5,7 @@ We use two long-lived branches. Both are protected: no direct pushes, every chan
 
 | Branch | Purpose |
 |---|---|
-| `dev` | Integration branch. Code is written on task branches and reaches `dev` only through a reviewed PR with green CI. Default branch of the repo. |
+| `dev` | Integration branch. Code is written on task branches and reaches `dev` only through a reviewed PR. Default branch of the repo. |
 | `main` | Only tested code, usable by the Product Owner. Shown at the demo and released. |
 
 ![Branching workflow with dev and main branches](./img/gitflow.png)
