@@ -9,6 +9,7 @@ import authRouter from "./routes/auth-route";
 import accountRouter from "./routes/account-route";
 import reservationRouter from "./routes/reservation-route";
 import slotRouter from "./routes/slot-route";
+import hikerRouter from "./routes/hike-route";
 
 // Init express
 export const app = express();
@@ -36,6 +37,7 @@ app.use(ROUTES.V1_AUTH, authRouter);
 app.use(ROUTES.V1_ACCOUNTS, accountRouter);
 app.use(ROUTES.V1_RESERVATIONS, reservationRouter);
 app.use(ROUTES.V1_SLOTS, slotRouter);
+app.use(ROUTES.V1_HIKES, hikerRouter);
 
 // Unknown routes → 404 in ErrorDTO format
 app.use((req: Request, res: Response) => {
