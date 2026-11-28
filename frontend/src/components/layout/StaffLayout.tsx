@@ -1,9 +1,10 @@
-import React from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, matchPath, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import logoImage from '../../assets/logo.jpeg';
 import { useAuth } from '../../features/auth/useAuth';
 import { UserMenu } from './UserMenu';
-import { CalendarClock, CalendarPlus, CalendarRange, ExternalLink, Search, UtensilsCrossed } from 'lucide-react';
+import { CalendarClock, CalendarPlus, CalendarRange, ChevronDown, ExternalLink, Search, UtensilsCrossed } from 'lucide-react';
+
 interface StaffLayoutProps {
   title: string;
   subtitle?: string;
@@ -12,10 +13,10 @@ interface StaffLayoutProps {
 
 const STAFF_PAGES = [
   { to: '/staff/reserve', label: 'Reserve for a hiker', icon: CalendarPlus },
-   { to: '/staff/slots', label: 'Manage slots', icon: CalendarClock, end: true },
+  { to: '/staff/slots', label: 'Manage slots', icon: CalendarClock, end: true },
   { to: '/staff/slots/repeat', label: 'Copy a week', icon: CalendarRange, end: true },
   { to: '/availability', label: 'Check availability', icon: Search },
-    { to: '/staff/menus', label: 'Menus', icon: UtensilsCrossed },
+  { to: '/staff/menus', label: 'Menus', icon: UtensilsCrossed },
 ];
 
 const itemClass = (isActive: boolean) =>
@@ -28,6 +29,10 @@ const itemClass = (isActive: boolean) =>
 export const StaffLayout: React.FC<StaffLayoutProps> = ({ title, subtitle, children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // On phones the pages are in a list that opens from a button
+  const [menuOpen, setMenuOpen] = useState(false);
+  const current = STAFF_PAGES.find((p) => matchPath({ path: p.to, end: p.end ?? false }, pathname));
 
   // Always end up on /login, even if the logout request fails
   const handleLogout = async () => {
@@ -59,18 +64,38 @@ export const StaffLayout: React.FC<StaffLayoutProps> = ({ title, subtitle, child
       </header>
 
       <div className="flex-1 flex flex-col md:flex-row">
-        {/* Side menu on desktop, a scrolling strip on phones */}
+        {/* Side menu on desktop; on phones one button that shows the current page and opens the list */}
         <nav
           aria-label="Staff"
-          className="md:w-64 md:shrink-0 md:border-r border-b md:border-b-0 border-[#EFEADF] bg-white/60 p-3 md:p-4 flex md:flex-col gap-1 overflow-x-auto md:sticky md:top-16 md:self-start md:h-[calc(100vh-4rem)]"
+          className="md:w-64 md:shrink-0 md:border-r border-b md:border-b-0 border-[#EFEADF] bg-white/60 p-3 md:p-4 md:sticky md:top-16 md:self-start md:h-[calc(100vh-4rem)]"
         >
-          <p className="hidden md:block px-3.5 pt-2 pb-3 text-[10px] font-bold uppercase tracking-widest text-[#7C8885]">Workspace</p>
-         {STAFF_PAGES.map(({ to, label, icon: Icon, end }) => (
-  <NavLink key={to} to={to} end={end} className={({ isActive }) => itemClass(isActive)}>
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </NavLink>
-          ))}
+          <button
+            type="button"
+            aria-expanded={menuOpen}
+            aria-controls="staff-pages"
+            onClick={() => setMenuOpen((open) => !open)}
+            className="md:hidden w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border border-[#EFEADF] bg-white text-sm font-medium text-[#1C2826] cursor-pointer"
+          >
+            <span>{current?.label ?? 'Workspace'}</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <p className="hidden md:block px-3.5 pt-2 pb-3 text-[10px] font-bold uppercase tracking-widest text-[#7C8885]">
+            Workspace
+          </p>
+          <div id="staff-pages" className={`${menuOpen ? 'flex' : 'hidden'} md:flex flex-col gap-1 mt-2 md:mt-0`}>
+            {STAFF_PAGES.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={() => setMenuOpen(false)}
+                className={({ isActive }) => itemClass(isActive)}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {label}
+              </NavLink>
+            ))}
+          </div>
         </nav>
 
         <main className="flex-1 min-w-0 px-4 md:px-8 py-8 space-y-6">
