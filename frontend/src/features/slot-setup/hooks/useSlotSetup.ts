@@ -16,6 +16,7 @@ import {
   parseTableRows,
   validateTimes,
 } from '../utils/slotSetup.utils';
+import { useSearchParams } from 'react-router-dom';
 
 const emptyRow = (key: number): TableRow => ({ key, tableNumber: '', seats: '' });
 
@@ -38,8 +39,13 @@ export function useSlotSetup() {
 
   // The date picker cannot go in the past; computed once, not on every render
   const [today] = useState(() => formatLocalDate(new Date()));
-
-  const [date, setDate] = useState(today);
+  // The menus page links here with ?date=YYYY-MM-DD; only a valid day that is not in the past is used
+  const [searchParams] = useSearchParams();
+  const [date, setDate] = useState(() => {
+    const wanted = searchParams.get('date') ?? '';
+    return /^\d{4}-\d{2}-\d{2}$/.test(wanted) && wanted >= today ? wanted : today;
+  });
+  
   const [startTime, setStartTime] = useState('12:00');
   const [endTime, setEndTime] = useState('13:00');
 

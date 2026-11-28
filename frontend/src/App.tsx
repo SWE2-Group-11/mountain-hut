@@ -13,6 +13,7 @@ import ChangePasswordPage from './app/change-password/page';
 import ForgotPasswordPage from './app/forgot-password/page';
 import ResetPasswordPage from './app/reset-password/page';
 import RepeatWeekPage from './app/staff/slots/repeat/page';
+import MenusPage from './app/staff/menus/page';
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/staff/slots" element={<SlotSetupPage />} />
         <Route path="/staff/reserve" element={<StaffReservePage />} />
         <Route path="/staff/slots/repeat" element={<RepeatWeekPage />} />
+                <Route path="/staff/menus" element={<MenusPage />} />
       </Route>
     </Routes>
   );
