@@ -9,6 +9,7 @@ Guidance for coding agents. It covers only what the docs below do not; read the 
 | Schema, rules and SQL scripts | [docs/database.md](docs/database.md) |
 | Libraries and tools | [docs/stack.md](docs/stack.md) |
 | Branches, commits, PRs, Definition of Done, docs that must match the code | [docs/working-agreement.md](docs/working-agreement.md) |
+| Test levels, what each covers and how to write tests | [docs/testing-strategy.md](docs/testing-strategy.md) |
 | Setup, running, test prerequisites | [README.md](README.md#development) |
 
 ## Requirements

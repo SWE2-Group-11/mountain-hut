@@ -30,9 +30,11 @@ Merged branches are deleted.
 ## Definition of Done
 A story is **Done** when:
 - [ ] all its tasks are merged into `dev` through reviewed PRs with green CI (code reviewed, code pushed on GitHub)
-- [ ] every layer has unit tests
-- [ ] the DAO and Route integration tests pass in `dev`
-- [ ] the story's E2E tests exist, cover every acceptance criterion and pass in `dev`
+- [ ] its business rules have unit tests
+- [ ] every acceptance criterion is covered by an integration test through the API, passing in `dev`
+- [ ] its E2E tests cover the happy path and at most two main failures, passing in `dev`
+
+What each level covers and how tests are written: [testing-strategy.md](testing-strategy.md).
 
 A bug found in `dev` reopens the story until its fix is merged into `dev`.
 
