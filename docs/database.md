@@ -43,7 +43,7 @@ Primary keys in **bold**, `*` = nullable.
 - `assigned_seats` ≥ 1.
 - Party size of a booking = SUM(`assigned_seats`).
 - A hiker can have at most one booking per slot.
-- A booking can be created only up to 2 hours before the slot start (`date` + `start_time`).
+- A hiker can create a booking only up to 2 hours before the slot start (`date` + `start_time`); staff can create one for a hiker until the slot starts.
 - A booking can be changed only up to 48 hours before the slot start.
 - Every booking belongs to exactly one of: a hiker (`booking.hiker_id`) or a temporary hiker (a row in `temporary_hiker`), never both and never none.
 - `hike.planned_departure_at`, `hike.expected_return_at` and `hike.completed_at` are UTC (`YYYY-MM-DDTHH:MM:SSZ`); `expected_return_at` > `planned_departure_at`.
@@ -78,7 +78,7 @@ The fixed demo data for the tests is in `backend/src/tests/fixtures/seed.sql` (s
 
 | `SEED_MODE` | Used by | Data |
 |---|---|---|
-| `random` (default) | the app | `seed/slots.ts`: slots for the next 3 days, 1 to 3 per day, never overlapping and ending by 23:59, each with 1 to 6 tables of 2 to 8 seats. `seed/bookings.ts`: some of the hikers and some temporary hikers (at least one of each) book a random set of slots, with a party of 1 to half the slot capacity seated with `assignSeats` (skipped if the slot is full) and random dietary requirements (at most one per person). `seed/hikes.ts`: some of the hikers register one of 3 demo hikes (registered, active or overdue). |
+| `random` (default) | the app | `seed/slots.ts`: slots for the next 3 days, 1 to 3 per day, never overlapping and ending by 23:59, each with 1 to 6 tables of 2 to 8 seats; about half of the slots get one of 4 demo Markdown menus, the others have `menu` NULL. `seed/bookings.ts`: some of the hikers and some temporary hikers (at least one of each) book a random set of slots, with a party of 1 to half the slot capacity seated with `assignSeats` (skipped if the slot is full) and random dietary requirements (at most one per person). `seed/hikes.ts`: some of the hikers register one of 3 demo hikes (registered, active or overdue). |
 | `fixed` | the tests (`src/tests/fixtures/test.env`) | `src/tests/fixtures/seed.sql`: 4 slots with the same table layout, 4 bookings with seats and dietary requirements (3 by accounts 3 and 4, 1 for a temporary hiker), 5 hikes by accounts 3 and 4, one per state (registered, active, overdue, completed, cancelled). It works only with `src/tests/fixtures/seed-accounts.json`. |
 
 In `random` mode the data depends on `SEED_RANDOM_SEED`: the same value always gives the same slots, bookings and hikes. If it is not set, a new seed is chosen at every reset and printed at startup (`Random seed: ...`).

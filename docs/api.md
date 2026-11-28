@@ -50,6 +50,7 @@ Base URL: `http://localhost:3000/api/v1`
   - `200 OK`: password changed; returns `id`, `email`, `role` and `must_change_password` (`false`)
   - `400 Bad Request`: missing or invalid request fields
   - `401 Unauthorized`: user is not authenticated, or `current_password` is wrong
+  - `404 Not Found`: the account no longer exists
   - `500 Internal Server Error`: unexpected server error
 
 ### POST /accounts/password-reset - Request a password reset email
@@ -68,7 +69,7 @@ Base URL: `http://localhost:3000/api/v1`
 - **Description:** sets a new password with the token of a reset email and clears `must_change_password`. Sessions already open are not logged out
 - **Authentication:** not required
 - **Request body:**
-  - `token`: required, the `token` query parameter of the link
+  - `token`: required, the `token` query parameter of the link, at most 256 characters
   - `new_password`: required string, 8 to 128 characters
 - **Responses:**
   - `204 No Content`: password changed
@@ -142,7 +143,7 @@ Base URL: `http://localhost:3000/api/v1`
   - Exactly one of `tables` and `copyFrom` is required
 - **Responses:**
   - `201 Created`: returns the created slot (`date`, `startTime`, `endTime`, `tables`, `totalSeats`)
-  - `400 Bad Request`: missing fields, invalid values (including `endTime` not after `startTime` or duplicate `tableNumber`), or both or neither of `tables` and `copyFrom` provided
+  - `400 Bad Request`: missing fields, invalid values (including `endTime` not after `startTime` or duplicate `tableNumber`), both or neither of `tables` and `copyFrom` provided, or the slot referenced by `copyFrom` has no tables
   - `401 Unauthorized`: user is not authenticated
   - `403 Forbidden`: user does not have the required permissions
   - `404 Not Found`: the slot referenced by `copyFrom` does not exist

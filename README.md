@@ -6,7 +6,7 @@
 
 ## Install and run
 
-The whole system runs in a single Docker image: web application, REST API and Mailpit (which catches the booking confirmation emails). Only requisite is a Docker installation.
+The whole system runs in a single Docker image: web application, REST API and Mailpit (which catches the emails sent by the system: booking confirmations and changes, password reset links). Only requisite is a Docker installation.
 
 ### Quick start
 
@@ -69,7 +69,7 @@ The whole system runs in a single Docker image: web application, REST API and Ma
 |---|---|
 | `http://localhost:5173` | Web application |
 | `http://localhost:3000/api/v1` | REST API |
-| `http://localhost:8025` | Mailpit: booking confirmation emails (no real email is ever sent) |
+| `http://localhost:8025` | Mailpit: emails sent by the system, such as booking confirmations and password reset links (no real email is ever sent) |
 
 Keep the ports as they are: the web application calls the API on port 3000, and the API accepts requests only from port 5173.
 
@@ -93,8 +93,9 @@ Keep the ports as they are: the web application calls the API on port 3000, and 
 
 When the database is created (first start, or after a reset), it is filled with random demo data:
 
-- slots for the next 3 days, 1 to 3 per day, each with 1 to 6 tables of 2 to 8 seats;
-- bookings for the hikers in `seed-accounts.json` and for a few temporary hikers (people without an account), with random party sizes and dietary requirements.
+- slots for the next 3 days, 1 to 3 per day, each with 1 to 6 tables of 2 to 8 seats; about half of them have one of 4 demo menus, the others have no menu yet;
+- bookings for the hikers in `seed-accounts.json` and for a few temporary hikers (people without an account), with random party sizes and dietary requirements;
+- hikes for some of the hikers in `seed-accounts.json`, each one of 3 demo hikes: registered (not started yet), active or overdue.
 
 The data is different at every reset. To get the same data again:
 
@@ -102,7 +103,7 @@ The data is different at every reset. To get the same data again:
 2. Put it in `.env`: `SEED_RANDOM_SEED=<seed>`.
 3. Reset the database.
 
-Only the dates change: they always start from the day of the reset.
+Only the dates and times change: slots and bookings always start from the day of the reset, and hike times are relative to the moment of the reset.
 
 ### Manage the installation
 
@@ -163,7 +164,7 @@ docker compose up --build
    npm run dev
    ```
 
-Email settings (environment variables): `SMTP_HOST` (default `localhost`), `SMTP_PORT` (default `1025`) and `MAIL_FROM` (default `Mountain Hut <no-reply@mountainhut.local>`).
+Email settings (environment variables): `SMTP_HOST` (default `localhost`), `SMTP_PORT` (default `1025`) and `MAIL_FROM` (default `Mountain Hut <no-reply@mountainhut.local>`). `CLIENT_ORIGIN` (default `http://localhost:5173`) is the address of the frontend: the API accepts requests only from it, and password reset links point to it.
 
 ### Tests
 
