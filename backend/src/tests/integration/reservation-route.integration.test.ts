@@ -3,7 +3,7 @@ import request from "supertest";
 import { app } from "../../app";
 import {
     resetTestDatabase, dayFromToday, huTime, loginAs, createHikerWithoutBookings,
-    MARIO, LAURA, NEW_HIKER, ALPINE_MENU,
+    MARIO, LAURA, NEW_HIKER, DINNER_MENU,
 } from "../helpers";
 
 const RESERVATIONS_URL = "/api/v1/reservations";
@@ -136,20 +136,20 @@ describe("POST /api/v1/reservations", () => {
     });
 
     describe("successful booking (201)", () => {
-        it("returns the booking with the assigned seats and the slot menu", async () => {
-            const mario = await loginAs(MARIO);
+        it("returns the menu of the booked slot when another slot has a different menu", async () => {
+            const laura = await loginAs(LAURA);
 
-            const res = await mario.post(RESERVATIONS_URL).send(book("13:00", 2));
+            const res = await laura.post(RESERVATIONS_URL).send(book("19:30", 2));
 
             expect(res.status).toBe(201);
             expect(res.body).toEqual({
                 id: expect.any(Number),
                 date: tomorrow,
-                slot: "13:00",
+                slot: "19:30",
                 partySize: 2,
-                seatings: [{ table_number: 4, assigned_seats: 2 }], // smallest table that fits
+                seatings: [{ table_number: 4, assigned_seats: 2 }],
                 requirements: [],
-                menu: ALPINE_MENU,
+                menu: DINNER_MENU,
             });
         });
 
