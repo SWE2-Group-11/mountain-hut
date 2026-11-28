@@ -8,8 +8,6 @@ const testEnv = parseEnv(readFileSync(new URL('./src/tests/fixtures/test.env', i
 export default defineConfig({
   test: {
     pool: 'forks',
-    fileParallelism: false,
-    maxWorkers: 1,
     env: { ...testEnv, DB_PATH: ':memory:' },
     setupFiles: ['./src/tests/setup.ts'],
     passWithNoTests: true,
